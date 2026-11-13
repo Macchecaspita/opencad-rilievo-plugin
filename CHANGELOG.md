@@ -12,6 +12,21 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.2.1] - 2026-11-13
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- Le lettere degli spigoli non si sovrappongono più quando gli spigoli sono vicini
+  (riseghe, lati corti, smussi): ogni lettera cerca un posto libero dalle altre
+  lettere, dalle linee del vano e dagli altri spigoli, e quando deve spostarsi è
+  collegata al suo spigolo con una linea di richiamo. Vale sia per le lettere di
+  lavoro sia per quelle del vano ricalcolato.
+- Rieseguendo *Lettere vertici* le lettere vecchie (e i richiami) vengono
+  sostituite invece di aggiungersi.
+
 ## [0.2.0] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

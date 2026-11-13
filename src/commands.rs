@@ -19,7 +19,7 @@ use codec::{EntityType, Handle, Vector2, Vector3};
 
 use crate::solve::{self, Meas, SolveError, Solution, P2};
 use crate::survey::{Kind, Measure, Saved, Survey};
-use crate::tools;
+use crate::{labels, tools};
 
 /// Layer of the adjusted rooms.
 pub const LAYER_ROOM: &str = "RILIEVO_CORRETTO";
@@ -467,31 +467,6 @@ fn pline(pts: &[P2], z: f64, closed: bool, layer: &str) -> EntityType {
     EntityType::LwPolyline(p)
 }
 
-/// Where the letter of each corner goes: inside the room, on the bisector.
-fn label_positions(pts: &[P2], h: f64) -> Vec<P2> {
-    let n = pts.len();
-    let ccw = solve::signed_area(pts) > 0.0;
-    (0..n)
-        .map(|i| {
-            let (a, b, c) = (pts[(i + n - 1) % n], pts[i], pts[(i + 1) % n]);
-            let inward = |p: P2, q: P2| {
-                let (dx, dy) = (q[0] - p[0], q[1] - p[1]);
-                let l = dx.hypot(dy).max(1e-12);
-                if ccw { [-dy / l, dx / l] } else { [dy / l, -dx / l] }
-            };
-            let (n1, n2) = (inward(a, b), inward(b, c));
-            let mut d = [n1[0] + n2[0], n1[1] + n2[1]];
-            let l = d[0].hypot(d[1]);
-            if l < 1e-9 {
-                d = n1;
-            } else {
-                d = [d[0] / l, d[1] / l];
-            }
-            [b[0] + d[0] * h * 1.3, b[1] + d[1] * h * 1.3]
-        })
-        .collect()
-}
-
 fn room_title(r: usize) -> String {
     tr!(format!("Vano {}", r + 1), format!("Room {}", r + 1))
 }
@@ -509,43 +484,59 @@ fn existing_letters(host: &dyn HostApi) -> Vec<(Handle, String, P2)> {
         .collect()
 }
 
-/// The letters (and, with several rooms, the room numbers) wanted on the
-/// rooms drawn by eye: (text, position, height).
-fn wanted_labels(rooms: &[Room], survey: &Survey, h: f64) -> Vec<(String, P2, f64)> {
-    let mut v = Vec::new();
-    for (r, room) in rooms.iter().enumerate() {
-        for (i, at) in label_positions(&room.pts, h).into_iter().enumerate() {
-            v.push((survey.corner(r, i), at, h));
-        }
-        if survey.multi() {
-            v.push((room_title(r), centroid(&room.pts), h * 1.4));
-        }
-    }
-    v
+/// Leader lines on the labels layer: (handle, start point).
+fn existing_leaders(host: &dyn HostApi) -> Vec<(Handle, P2)> {
+    host.document()
+        .entities()
+        .filter_map(|e| match e {
+            EntityType::LwPolyline(p) if p.common.layer.eq_ignore_ascii_case(LAYER_LABELS) && p.vertices.len() == 2 && !p.is_closed => {
+                Some((p.common.handle, [p.vertices[0].location.x, p.vertices[0].location.y]))
+            }
+            _ => None,
+        })
+        .collect()
 }
 
-/// Write the working letters on the rooms drawn by eye, skipping those
+/// Letters (with leaders where moved) and, with several rooms, room titles,
+/// placed so that none covers another.
+fn label_entities(rooms: &[Vec<P2>], survey: &Survey, h: f64, z: f64, layer: &str, letter_h: f64) -> Vec<EntityType> {
+    let titles: Vec<(String, P2, f64)> = if survey.multi() {
+        rooms.iter().enumerate().map(|(r, pts)| (room_title(r), centroid(pts), h * 1.4)).collect()
+    } else {
+        Vec::new()
+    };
+    let names: Vec<Vec<String>> = rooms.iter().enumerate().map(|(r, pts)| (0..pts.len()).map(|i| survey.corner(r, i)).collect()).collect();
+    let mut out: Vec<EntityType> =
+        titles.iter().map(|(t, at, hh)| mtext(t, *at, z, *hh, AttachmentPoint::MiddleCenter, layer)).collect();
+    for p in labels::place(rooms, &names, letter_h, &titles) {
+        out.push(mtext(&p.text, p.at, z, p.height, AttachmentPoint::MiddleCenter, layer));
+        if let Some((a, b)) = p.leader {
+            out.push(pline(&[a, b], z, false, layer));
+        }
+    }
+    out
+}
+
+/// Write the working letters on the rooms drawn by eye, replacing those
 /// already there.
 fn write_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey, h: f64) {
     ensure_layer(host, LAYER_LABELS, 6);
-    let have = existing_letters(host);
+    remove_labels(host, rooms, survey, h);
     let z = rooms.first().map_or(0.0, |r| r.z);
-    let new: Vec<EntityType> = wanted_labels(rooms, survey, h)
-        .into_iter()
-        .filter(|(name, at, hh)| !have.iter().any(|(_, v, p)| v == name && solve::dist(*p, *at) < hh * 0.6))
-        .map(|(name, at, hh)| mtext(&name, at, z, hh, AttachmentPoint::MiddleCenter, LAYER_LABELS))
-        .collect();
+    let pts: Vec<Vec<P2>> = rooms.iter().map(|r| r.pts.clone()).collect();
+    let new = label_entities(&pts, survey, h, z, LAYER_LABELS, h);
     if !new.is_empty() {
         host.add_entities(new);
     }
 }
 
-/// Remove the working letters of the rooms (they move to the adjusted ones).
-fn remove_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey) {
+/// Remove the working letters (and their leaders) of the rooms.
+fn remove_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey, h: f64) {
     let have = existing_letters(host);
+    let leaders = existing_leaders(host);
     let mut gone: Vec<Handle> = Vec::new();
     for (r, room) in rooms.iter().enumerate() {
-        let (h, _) = default_sizes(&room.pts);
+        let hh = h.max(default_sizes(&room.pts).0);
         let mut targets: Vec<(String, P2)> = (0..room.pts.len()).map(|i| (survey.corner(r, i), room.pts[i])).collect();
         if survey.multi() {
             targets.push((room_title(r), centroid(&room.pts)));
@@ -555,10 +546,15 @@ fn remove_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey) {
                 .iter()
                 .filter(|(hd, v, _)| *v == name && !gone.contains(hd))
                 .map(|(hd, _, p)| (*hd, solve::dist(*p, near)))
-                .filter(|(_, d)| *d < h * 4.0)
+                .filter(|(_, d)| *d < hh * 8.5)
                 .min_by(|a, b| a.1.total_cmp(&b.1));
             if let Some((hd, _)) = best {
                 gone.push(hd);
+            }
+        }
+        for (hd, start) in &leaders {
+            if !gone.contains(hd) && room.pts.iter().any(|v| solve::dist(*v, *start) < hh * 0.3) {
+                gone.push(*hd);
             }
         }
     }
@@ -723,19 +719,11 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     host.begin_undo_group("RV_VANO");
     ensure_layer(host, LAYER_ROOM, 3);
     ensure_layer(host, LAYER_NOTES, 2);
-    remove_labels(host, &rooms, &survey);
+    remove_labels(host, &rooms, &survey, th);
 
-    let mut ents = Vec::new();
-    for r in 0..rooms.len() {
-        let pts = survey.room_points(r, &sol.pts);
-        ents.push(pline(&pts, z, true, LAYER_ROOM));
-        for (i, at) in label_positions(&pts, th).into_iter().enumerate() {
-            ents.push(mtext(&survey.corner(r, i), at, z, th * 1.2, AttachmentPoint::MiddleCenter, LAYER_NOTES));
-        }
-        if survey.multi() {
-            ents.push(mtext(&room_title(r), centroid(&pts), z, th * 1.5, AttachmentPoint::MiddleCenter, LAYER_NOTES));
-        }
-    }
+    let adjusted: Vec<Vec<P2>> = (0..rooms.len()).map(|r| survey.room_points(r, &sol.pts)).collect();
+    let mut ents: Vec<EntityType> = adjusted.iter().map(|pts| pline(pts, z, true, LAYER_ROOM)).collect();
+    ents.extend(label_entities(&adjusted, &survey, th, z, LAYER_NOTES, th * 1.2));
     if saved.table {
         ents.extend(table(&sol, &measures, &bad, th, dec, z));
     }
@@ -1140,14 +1128,7 @@ mod tests {
     }
 
     #[test]
-    fn labels_sit_inside() {
-        let l: Vec<P2> = vec![[0.0, 0.0], [6.0, 0.0], [6.0, 2.0], [3.0, 2.0], [3.0, 5.0], [0.0, 5.0]];
-        for pts in [l.clone(), l.iter().rev().cloned().collect::<Vec<_>>()] {
-            for p in label_positions(&pts, 0.2) {
-                assert!(point_in_polygon(&pts, p), "{p:?}");
-            }
-            assert!(point_in_polygon(&pts, centroid(&pts)) || true);
-        }
+    fn centroid_of_rectangle() {
         let sq: Vec<P2> = vec![[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0]];
         let c = centroid(&sq);
         assert!((c[0] - 2.0).abs() < 1e-12 && (c[1] - 1.0).abs() < 1e-12);
