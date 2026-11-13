@@ -12,6 +12,21 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.3.2] - 2026-11-13
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- Le misure si scrivono in **caselle** invece che in tabelle: la finestra si apre
+  già alta quanto serve e non va più allargata con il mouse. I lati sono su una
+  griglia di 4 per riga, con la lunghezza disegnata tra parentesi; diagonali,
+  collegamenti e spessori su righe *Da – A – Misurata*, con alcune righe vuote per
+  le misure in più. Lo stesso per vincoli, porte e finestre nella pagina 2. Le
+  righe già compilate restano quando la finestra si riapre, con nuove righe vuote
+  dopo.
+
 ## [0.3.1] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
