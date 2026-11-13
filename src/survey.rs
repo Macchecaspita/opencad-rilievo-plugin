@@ -14,8 +14,15 @@
 //!   are in different rooms (a measure through a door). A side and a corner
 //!   (`1B-1C` and `2A`) make a wall thickness: the distance of the corner
 //!   from the line of the side.
+//! * **Vincoli** — `[corner or side, constraint]`: an angle at a corner
+//!   (`C`, `90`) or a side horizontal / vertical (`A-B`, `orizzontale`).
+//!   Each counts as one measure.
+//! * **Porte e finestre** — `[name, side, kind, distance, width, wall]`:
+//!   an opening on a side, at a distance from the side's first corner. Two
+//!   doors with the same name in two rooms are the same door seen from both
+//!   sides: with the wall thickness they link the two rooms by themselves.
 
-use crate::solve::{self, label, parse_label, Meas, P2};
+use crate::solve::{self, label, parse_label, At, Meas, P2};
 
 /// What the user typed for a survey (kept for the session, so a failed
 /// calculation or a re-run opens the dialog with the same values).
@@ -32,6 +39,62 @@ pub struct Saved {
     /// Write the measures book (CSV) after the calculation.
     pub csv: bool,
     pub csv_path: String,
+    /// Rows `[corner or side, constraint]`.
+    pub constraints: Vec<Vec<String>>,
+    /// Rows `[name, side, kind, distance, width, wall thickness]`.
+    pub openings: Vec<Vec<String>>,
+    /// Drawing unit: 0 metres, 1 centimetres, 2 millimetres.
+    pub unit: usize,
+}
+
+/// Metres per drawing unit, for the areas.
+pub fn unit_factor(unit: usize) -> f64 {
+    match unit {
+        1 => 0.01,
+        2 => 0.001,
+        _ => 1.0,
+    }
+}
+
+/// A guess of the drawing unit from the longest side.
+pub fn guess_unit(longest: f64) -> usize {
+    if longest <= 60.0 {
+        0
+    } else if longest <= 6000.0 {
+        1
+    } else {
+        2
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OpKind {
+    Door,
+    Window,
+    Opening,
+}
+
+/// A door, window or plain opening on a side.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Opening {
+    pub name: String,
+    pub kind: OpKind,
+    pub room: usize,
+    /// Side, from corner `a` (where the distance is taken from) to `b`.
+    pub a: usize,
+    pub b: usize,
+    pub s: f64,
+    pub w: f64,
+    pub thick: Option<f64>,
+    /// Index of the same door in the other room, when shared.
+    pub twin: Option<usize>,
+}
+
+/// What the tables say.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Parsed {
+    pub measures: Vec<Measure>,
+    pub openings: Vec<Opening>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,6 +103,9 @@ pub enum Kind {
     Diagonal,
     Link,
     Wall,
+    Angle,
+    Level,
+    Door,
 }
 
 /// One measure as typed, with its display name.
@@ -114,9 +180,9 @@ impl Survey {
         (0..self.rooms.len()).filter(|&r| self.point_of[r].contains(&p)).collect()
     }
 
-    /// A corner name → global point. `"1A"`, `"1 a"`, `"1.A"`; a bare
+    /// A corner name → (room, corner). `"1A"`, `"1 a"`, `"1.A"`; a bare
     /// letter only when there is a single room.
-    pub fn parse_point(&self, s: &str) -> Option<usize> {
+    pub fn parse_corner(&self, s: &str) -> Option<(usize, usize)> {
         let t: String = s.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
         let digits: String = t.chars().take_while(|c| c.is_ascii_digit()).collect();
         let letters = &t[digits.len()..];
@@ -129,7 +195,12 @@ impl Survey {
             digits.parse::<usize>().ok()?.checked_sub(1)?
         };
         let i = parse_label(letters)?;
-        self.point_of.get(r)?.get(i).copied()
+        (r < self.rooms.len() && i < self.rooms[r].len()).then_some((r, i))
+    }
+
+    /// A corner name → global point.
+    pub fn parse_point(&self, s: &str) -> Option<usize> {
+        self.parse_corner(s).map(|(r, i)| self.point_of[r][i])
     }
 
     /// A side written as two corners joined by a dash: `"1B-1C"`, `"B–C"`.
@@ -140,6 +211,19 @@ impl Survey {
         }
         let (a, b) = (self.parse_point(parts[0])?, self.parse_point(parts[1])?);
         (a != b).then_some((a, b))
+    }
+
+    /// A side of a room written as two neighbouring corners, in either
+    /// order: (room, from corner, to corner).
+    pub fn parse_room_side(&self, s: &str) -> Option<(usize, usize, usize)> {
+        let parts: Vec<&str> = s.split(['-', '–', '—', '/']).map(str::trim).filter(|x| !x.is_empty()).collect();
+        if parts.len() != 2 {
+            return None;
+        }
+        let (r1, i) = self.parse_corner(parts[0])?;
+        let (r2, j) = self.parse_corner(parts[1])?;
+        let n = self.rooms[r1].len();
+        (r1 == r2 && (j == (i + 1) % n || i == (j + 1) % n)).then_some((r1, i, j))
     }
 
     /// The rows a fresh dialog starts with: every side, and the diagonals
@@ -177,7 +261,7 @@ impl Survey {
 
     /// Read the tables. Rows with an empty "measured" cell are skipped (a
     /// proposed diagonal not measured). Errors name the row.
-    pub fn parse(&self, saved: &Saved, parse_num: &dyn Fn(&str) -> Option<f64>) -> Result<Vec<Measure>, String> {
+    pub fn parse(&self, saved: &Saved, parse_num: &dyn Fn(&str) -> Option<f64>) -> Result<Parsed, String> {
         let mut out = Vec::new();
         let mut row = 0;
         for (r, room) in self.rooms.iter().enumerate() {
@@ -253,10 +337,170 @@ impl Survey {
             let meas = match meas {
                 Meas::Dist { i, j, .. } => Meas::Dist { i, j, d },
                 Meas::Perp { p, a, b, .. } => Meas::Perp { p, a, b, d },
+                other => other,
             };
             out.push(Measure { meas, name, kind });
         }
-        Ok(out)
+        self.parse_constraints(saved, parse_num, &mut out)?;
+        let openings = self.parse_openings(saved, parse_num, &mut out)?;
+        Ok(Parsed { measures: out, openings })
+    }
+
+    fn parse_constraints(&self, saved: &Saved, parse_num: &dyn Fn(&str) -> Option<f64>, out: &mut Vec<Measure>) -> Result<(), String> {
+        for (k, cells) in saved.constraints.iter().enumerate() {
+            let cell = |c: usize| cells.get(c).map(|s| s.trim().to_string()).unwrap_or_default();
+            let (at, what) = (cell(0), cell(1));
+            if at.is_empty() && what.is_empty() {
+                continue;
+            }
+            let r = k + 1;
+            let low = what.to_lowercase();
+            let low = low.trim_end_matches('°').trim();
+            if let Some((room, i)) = self.parse_corner(&at) {
+                let deg = if low.starts_with("rett") || low == "r" || low.starts_with("right") {
+                    Some(90.0)
+                } else {
+                    parse_num(low)
+                };
+                let Some(mut deg) = deg.filter(|d| *d > 0.0 && *d < 360.0) else {
+                    return Err(tr!(
+                        format!("vincolo alla riga {r}: per lo spigolo {at} scrivi l'angolo in gradi (per esempio 90)"),
+                        format!("constraint on row {r}: for corner {at} type the angle in degrees (for example 90)")
+                    ));
+                };
+                if deg > 180.0 {
+                    deg = 360.0 - deg;
+                }
+                if (deg - 180.0).abs() < 1e-9 {
+                    return Err(tr!(
+                        format!("vincolo alla riga {r}: un angolo piatto (180°) non serve; se {at} non è uno spigolo, toglilo dalla polilinea"),
+                        format!("constraint on row {r}: a straight angle (180°) is not needed; if {at} is not a corner, remove it from the polyline")
+                    ));
+                }
+                let n = self.rooms[room].len();
+                let ids = &self.point_of[room];
+                out.push(Measure {
+                    meas: Meas::Angle { a: ids[(i + n - 1) % n], b: ids[i], c: ids[(i + 1) % n], rad: deg.to_radians() },
+                    name: format!("{} {}", tr!("ang.", "ang."), self.corner(room, i)),
+                    kind: Kind::Angle,
+                });
+            } else if let Some((room, i, j)) = self.parse_room_side(&at).or_else(|| {
+                // Any two corners will do for horizontal / vertical.
+                let (a, b) = self.parse_side(&at)?;
+                let ra = self.rooms_of(a)[0];
+                let ia = self.point_of[ra].iter().position(|&p| p == a)?;
+                let ib = self.point_of[ra].iter().position(|&p| p == b)?;
+                Some((ra, ia, ib))
+            }) {
+                let vertical = if ["o", "or", "orizz", "orizzontale", "h", "horizontal", "oriz"].contains(&low) || low.starts_with("oriz") || low.starts_with("hor") {
+                    false
+                } else if ["v", "vert", "verticale", "vertical"].contains(&low) || low.starts_with("vert") {
+                    true
+                } else {
+                    return Err(tr!(
+                        format!("vincolo alla riga {r}: per il lato {at} scrivi orizzontale oppure verticale"),
+                        format!("constraint on row {r}: for side {at} type horizontal or vertical")
+                    ));
+                };
+                out.push(Measure {
+                    meas: Meas::Level { a: self.point_of[room][i], b: self.point_of[room][j], vertical },
+                    name: format!(
+                        "{}–{} {}",
+                        self.corner(room, i),
+                        self.corner(room, j),
+                        if vertical { tr!("vert.", "vert.") } else { tr!("orizz.", "horiz.") }
+                    ),
+                    kind: Kind::Level,
+                });
+            } else {
+                return Err(tr!(
+                    format!("vincolo alla riga {r}: \"{at}\" non è uno spigolo né un lato ({})", self.ranges()),
+                    format!("constraint on row {r}: \"{at}\" is neither a corner nor a side ({})", self.ranges())
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn parse_openings(&self, saved: &Saved, parse_num: &dyn Fn(&str) -> Option<f64>, out: &mut Vec<Measure>) -> Result<Vec<Opening>, String> {
+        let mut ops: Vec<Opening> = Vec::new();
+        for (k, cells) in saved.openings.iter().enumerate() {
+            let cell = |c: usize| cells.get(c).map(|s| s.trim().to_string()).unwrap_or_default();
+            if (0..6).all(|c| cell(c).is_empty()) {
+                continue;
+            }
+            let r = k + 1;
+            let name = if cell(0).is_empty() { format!("{r}") } else { cell(0) };
+            let Some((room, i, j)) = self.parse_room_side(&cell(1)) else {
+                return Err(tr!(
+                    format!("porta o finestra alla riga {r}: \"{}\" non è un lato di un vano (scrivi due spigoli vicini, per esempio {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1)),
+                    format!("door or window on row {r}: \"{}\" is not a room side (write two neighbouring corners, for example {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1))
+                ));
+            };
+            let t = cell(2).to_lowercase();
+            let kind = if t.is_empty() || t.starts_with('p') || t.starts_with('d') {
+                OpKind::Door
+            } else if t.starts_with('f') || t.starts_with('w') {
+                OpKind::Window
+            } else if t.starts_with('a') || t.starts_with('o') || t.starts_with('v') {
+                OpKind::Opening
+            } else {
+                return Err(tr!(
+                    format!("riga {r} di porte e finestre: tipo \"{}\" sconosciuto (porta, finestra o apertura)", cell(2)),
+                    format!("row {r} of doors and windows: unknown kind \"{}\" (door, window or opening)", cell(2))
+                ));
+            };
+            let s0 = parse_num(&cell(3)).filter(|v| *v >= 0.0);
+            let w = parse_num(&cell(4)).filter(|v| *v > 0.0);
+            let (Some(s0), Some(w)) = (s0, w) else {
+                return Err(tr!(
+                    format!("{name}: scrivi la distanza dallo spigolo {} e la larghezza", self.corner(room, i)),
+                    format!("{name}: type the distance from corner {} and the width", self.corner(room, i))
+                ));
+            };
+            let thick = parse_num(&cell(5)).filter(|v| *v > 0.0);
+            ops.push(Opening { name, kind, room, a: self.point_of[room][i], b: self.point_of[room][j], s: s0, w, thick, twin: None });
+        }
+        // Same name in two rooms: the same door, seen from both sides.
+        for x in 0..ops.len() {
+            let same: Vec<usize> = (0..ops.len()).filter(|&y| ops[y].name.eq_ignore_ascii_case(&ops[x].name)).collect();
+            if same.len() < 2 || same[0] != x {
+                continue;
+            }
+            if same.len() > 2 || ops[same[0]].room == ops[same[1]].room {
+                return Err(tr!(
+                    format!("il nome {} è usato più volte: una porta comune va scritta una volta per ciascuno dei due vani", ops[x].name),
+                    format!("the name {} is used too often: a shared door is written once for each of the two rooms", ops[x].name)
+                ));
+            }
+            let (o1, o2) = (same[0], same[1]);
+            let Some(t) = ops[o1].thick.or(ops[o2].thick) else {
+                return Err(tr!(
+                    format!("la porta {} è comune a due vani: scrivi lo spessore del muro", ops[x].name),
+                    format!("door {} is shared by two rooms: type the wall thickness", ops[x].name)
+                ));
+            };
+            ops[o1].twin = Some(o2);
+            ops[o2].twin = Some(o1);
+            ops[o1].thick = Some(t);
+            ops[o2].thick = Some(t);
+            let (p, q) = (&ops[o1], &ops[o2]);
+            let j1 = At { a: p.a, b: p.b, s: p.s };
+            let k1 = At { a: p.a, b: p.b, s: p.s + p.w };
+            let j2 = At { a: q.a, b: q.b, s: q.s };
+            let k2 = At { a: q.a, b: q.b, s: q.s + q.w };
+            // Which jamb faces which: as drawn.
+            let pts = &self.points;
+            let cross = solve::dist(j1.eval(pts), k2.eval(pts)) + solve::dist(k1.eval(pts), j2.eval(pts));
+            let straight = solve::dist(j1.eval(pts), j2.eval(pts)) + solve::dist(k1.eval(pts), k2.eval(pts));
+            let partner = if cross <= straight { k2 } else { j2 };
+            let nm = |n: usize| format!("{} {} ({n})", tr!("porta", "door"), p.name);
+            out.push(Measure { meas: Meas::PerpAt { p: j2, a: p.a, b: p.b, d: t }, name: nm(1), kind: Kind::Door });
+            out.push(Measure { meas: Meas::PerpAt { p: k2, a: p.a, b: p.b, d: t }, name: nm(2), kind: Kind::Door });
+            // The facing jambs square across the wall: no shift along it.
+            out.push(Measure { meas: Meas::Along { p: j1, q: partner, a: p.a, b: p.b, d: 0.0 }, name: nm(3), kind: Kind::Door });
+        }
+        Ok(ops)
     }
 
     /// Hints for the solver: each room's corner A fixed, A→B kept.
@@ -346,8 +590,8 @@ mod tests {
         others[0][3] = "5,0".into();
         others.push(vec!["1B-1C".into(), "2A".into(), "".into(), "0,30".into()]);
         others.push(vec!["1C".into(), "2a".into(), "".into(), "3,02".into()]);
-        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new() };
-        let m = s.parse(&saved, &num).unwrap();
+        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0 };
+        let m = s.parse(&saved, &num).unwrap().measures;
         assert_eq!(m.len(), 8 + 3);
         assert_eq!(m[8].kind, Kind::Diagonal);
         assert_eq!(m[9].kind, Kind::Wall);
@@ -370,8 +614,73 @@ mod tests {
             table: true,
             csv: false,
             csv_path: String::new(),
+            constraints: vec![],
+            openings: vec![],
+            unit: 0,
         };
         let e = s.parse(&saved, &num).unwrap_err();
         assert!(e.contains("1") && e.contains("\"A\""), "{e}");
+    }
+    #[test]
+    fn constraints_and_openings() {
+        let s = two();
+        let (sides, _) = s.initial(3, &fmt);
+        let saved = Saved {
+            sides: sides.iter().map(|r| vec![r[0].clone(), r[1].clone(), r[1].clone()]).collect(),
+            others: vec![],
+            h: 0.2,
+            tol: 0.02,
+            dims: true,
+            table: true,
+            csv: false,
+            csv_path: String::new(),
+            constraints: vec![
+                vec!["1A".into(), "90".into()],
+                vec!["2c".into(), "270°".into()],
+                vec!["1A-1B".into(), "orizzontale".into()],
+                vec!["2B-2C".into(), "V".into()],
+            ],
+            openings: vec![
+                vec!["P1".into(), "1B-1C".into(), "porta".into(), "1,00".into(), "0,90".into(), "0,30".into()],
+                vec!["p1".into(), "2D-2A".into(), "".into(), "1,10".into(), "0,90".into(), "".into()],
+                vec!["F1".into(), "1D-1C".into(), "finestra".into(), "0,8".into(), "1,2".into(), "".into()],
+            ],
+            unit: 0,
+        };
+        let p = s.parse(&saved, &num).unwrap();
+        let kinds: Vec<Kind> = p.measures.iter().map(|m| m.kind).collect();
+        assert_eq!(kinds.iter().filter(|k| **k == Kind::Angle).count(), 2);
+        assert_eq!(kinds.iter().filter(|k| **k == Kind::Level).count(), 2);
+        assert_eq!(kinds.iter().filter(|k| **k == Kind::Door).count(), 3);
+        let ang = p.measures.iter().find(|m| m.kind == Kind::Angle && m.name.ends_with("2C")).unwrap();
+        assert!(matches!(ang.meas, Meas::Angle { rad, .. } if (rad - std::f64::consts::FRAC_PI_2).abs() < 1e-12));
+        assert_eq!(p.openings.len(), 3);
+        assert_eq!(p.openings[0].twin, Some(1));
+        assert_eq!(p.openings[1].thick, Some(0.30));
+        assert_eq!(p.openings[2].kind, OpKind::Window);
+        // F1 on side D-C: measured from D.
+        assert_eq!(p.openings[2].a, 3);
+    }
+
+    #[test]
+    fn shared_door_needs_the_wall() {
+        let s = two();
+        let saved = Saved {
+            sides: vec![],
+            others: vec![],
+            h: 0.2,
+            tol: 0.02,
+            dims: true,
+            table: true,
+            csv: false,
+            csv_path: String::new(),
+            constraints: vec![],
+            openings: vec![
+                vec!["P1".into(), "1B-1C".into(), "porta".into(), "1".into(), "0,9".into(), "".into()],
+                vec!["P1".into(), "2D-2A".into(), "porta".into(), "1".into(), "0,9".into(), "".into()],
+            ],
+            unit: 0,
+        };
+        assert!(s.parse(&saved, &num).unwrap_err().contains("P1"));
     }
 }

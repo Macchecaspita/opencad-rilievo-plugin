@@ -288,6 +288,46 @@ fn how_to_measure(multi: bool) -> Vec<String> {
     }
     v.push(
         tr!(
+            "VINCOLI — al posto di una diagonale puoi dire che uno spigolo è retto (C, 90) o ha un altro angolo \
+             (C, 135; per uno spigolo rientrante va bene sia 270 sia 90), oppure che un lato è orizzontale o \
+             verticale (A-B, orizzontale). Ogni vincolo vale una misura e riceve il suo scarto: se un angolo \
+             \"retto\" in realtà non lo è, lo scarto lo mostra. Un lato orizzontale o verticale fissa anche la \
+             rotazione del vano sul foglio.",
+            "CONSTRAINTS — instead of a diagonal you can say a corner is square (C, 90) or has another angle \
+             (C, 135; for an inner corner 270 or 90 both work), or that a side is horizontal or vertical (A-B, \
+             horizontal). Each constraint counts as a measure and gets its residual: if a \"square\" corner is \
+             not, the residual shows it. A horizontal or vertical side also fixes the room's rotation on the sheet."
+        )
+        .to_string(),
+    );
+    v.push(
+        tr!(
+            "PORTE E FINESTRE — scrivi il lato (per esempio B-C), il tipo, la distanza dal primo spigolo scritto \
+             (B) fino allo stipite e la larghezza del vano porta. Scrivendo C-B la distanza si misura da C e la \
+             porta si apre dall'altro lato. La porta è disegnata sul layer RILIEVO_APERTURE, incernierata allo \
+             stipite più vicino al primo spigolo, con l'anta verso l'interno.",
+            "DOORS AND WINDOWS — write the side (for example B-C), the kind, the distance from the first corner \
+             written (B) to the jamb and the opening width. Writing C-B measures from C and hinges the door on the \
+             other side. Doors are drawn on layer RILIEVO_APERTURE, hinged at the jamb nearer the first corner, \
+             opening inwards."
+        )
+        .to_string(),
+    );
+    if multi {
+        v.push(
+            tr!(
+                "PORTA COMUNE — la stessa porta vista dai due vani: scrivila una volta per ciascun vano con lo \
+                 stesso nome (P1) e, in una delle due righe, lo spessore del muro. Basta questo a collegare i due \
+                 vani: non servono altre misure di collegamento (aggiungerne una fa da controllo).",
+                "SHARED DOOR — the same door seen from both rooms: write it once for each room with the same name \
+                 (P1) and, on one of the two rows, the wall thickness. That alone links the two rooms: no other \
+                 linking measures are needed (adding one is a check)."
+            )
+            .to_string(),
+        );
+    }
+    v.push(
+        tr!(
             "UNITÀ — le misure vanno nelle unità del disegno (metri, centimetri o millimetri, come hai disegnato); la \
              virgola decimale va bene. Il vertice A (o 1A) resta dov'è e il lato A–B mantiene la direzione disegnata.",
             "UNITS — type the measures in drawing units (metres, centimetres or millimetres, as you drew); a decimal \
@@ -329,26 +369,28 @@ impl MeasureDialog {
         let summary = if multi {
             tr!(
                 format!(
-                    "Vertici: {} (lettere scritte sul disegno). Servono tutti i lati, almeno {need} diagonali e almeno {links} \
-                     misure di collegamento tra i vani. Ogni misura in più fa da controllo.",
+                    "Vertici: {} (lettere scritte sul disegno). Servono tutti i lati, almeno {need} diagonali (o vincoli) e \
+                     almeno {links} misure di collegamento tra i vani, oppure una porta comune per ogni vano collegato. Ogni \
+                     misura in più fa da controllo.",
                     survey.ranges()
                 ),
                 format!(
-                    "Corners: {} (letters written on the drawing). All sides are needed, at least {need} diagonals and at \
-                     least {links} measures linking the rooms. Every extra measure is a check.",
+                    "Corners: {} (letters written on the drawing). All sides are needed, at least {need} diagonals (or \
+                     constraints) and at least {links} measures linking the rooms, or one shared door per linked room. \
+                     Every extra measure is a check.",
                     survey.ranges()
                 )
             )
         } else {
             tr!(
                 format!(
-                    "Vertici: {} (lettere scritte sul disegno). Servono tutti i lati e almeno {need} diagonali; ogni misura \
-                     in più fa da controllo e viene compensata ai minimi quadrati.",
+                    "Vertici: {} (lettere scritte sul disegno). Servono tutti i lati e almeno {need} diagonali o vincoli \
+                     (per esempio un angolo retto); ogni misura in più fa da controllo e viene compensata ai minimi quadrati.",
                     survey.ranges()
                 ),
                 format!(
-                    "Corners: {} (letters written on the drawing). All sides are needed plus at least {need} diagonals; every \
-                     extra measure is a check, adjusted by least squares.",
+                    "Corners: {} (letters written on the drawing). All sides are needed plus at least {need} diagonals or \
+                     constraints (for example a square corner); every extra measure is a check, adjusted by least squares.",
                     survey.ranges()
                 )
             )
@@ -395,6 +437,41 @@ impl MeasureDialog {
                 allow_add: true,
                 allow_delete: true,
             })
+            .with_control(DialogControl::Table {
+                id: "constraints".into(),
+                label: Some(
+                    tr!(
+                        "Vincoli (facoltativi, ognuno vale una misura) — uno spigolo e l'angolo in gradi (C, 90), oppure un lato e orizzontale / verticale (A-B, orizzontale)",
+                        "Constraints (optional, each counts as a measure) — a corner and its angle in degrees (C, 90), or a side and horizontal / vertical (A-B, horizontal)"
+                    )
+                    .into(),
+                ),
+                headers: vec![tr!("Spigolo o lato", "Corner or side").into(), tr!("Vincolo", "Constraint").into()],
+                rows: saved.constraints.clone(),
+                allow_add: true,
+                allow_delete: true,
+            })
+            .with_control(DialogControl::Table {
+                id: "openings".into(),
+                label: Some(
+                    tr!(
+                        "Porte e finestre (facoltative) — lato, tipo (porta, finestra, apertura), distanza dal primo spigolo del lato e larghezza. Stesso nome in due vani = porta comune: con lo spessore del muro collega i vani",
+                        "Doors and windows (optional) — side, kind (door, window, opening), distance from the side's first corner and width. Same name in two rooms = shared door: with the wall thickness it links the rooms"
+                    )
+                    .into(),
+                ),
+                headers: vec![
+                    tr!("Nome", "Name").into(),
+                    tr!("Lato", "Side").into(),
+                    tr!("Tipo", "Kind").into(),
+                    tr!("Distanza", "Distance").into(),
+                    tr!("Larghezza", "Width").into(),
+                    tr!("Spessore muro", "Wall thickness").into(),
+                ],
+                rows: saved.openings.clone(),
+                allow_add: true,
+                allow_delete: true,
+            })
             .with_control(DialogControl::row(vec![
                 number("h", tr!("Altezza testi e quote", "Text and dimension height"), saved.h),
                 number("tol", tr!("Tolleranza scarti", "Residual tolerance"), saved.tol),
@@ -408,6 +485,16 @@ impl MeasureDialog {
                 )
                 .to_string(),
             ))
+            .with_control(DialogControl::Choice {
+                id: "unit".into(),
+                label: tr!("Unità del disegno (per le superfici in m²)", "Drawing unit (for areas in m²)").into(),
+                options: vec![
+                    tr!("metri", "metres").into(),
+                    tr!("centimetri", "centimetres").into(),
+                    tr!("millimetri", "millimetres").into(),
+                ],
+                default_index: saved.unit.min(2),
+            })
             .with_control(DialogControl::row(vec![
                 checkbox("dims", tr!("Quota lati, diagonali e spessori", "Dimension sides, diagonals and thicknesses"), saved.dims),
                 checkbox("table", tr!("Tabella misure e scarti", "Table of measures and residuals"), saved.table),
@@ -467,6 +554,12 @@ impl InteractiveCommand for MeasureDialog {
             table: get_bool(&m, "table", true),
             csv: get_bool(&m, "csv", false),
             csv_path: get_path(&m, "csv_path").or_else(|| base.as_ref().map(|s| s.csv_path.clone())).unwrap_or_default(),
+            constraints: get_table(&m, "constraints").unwrap_or_default(),
+            openings: get_table(&m, "openings").unwrap_or_default(),
+            unit: match m.get("unit") {
+                Some(DialogValue::Choice { index, .. }) => *index,
+                _ => base.as_ref().map_or(0, |s| s.unit),
+            },
         };
         commands::set_pending(self.handles.clone(), saved);
         CommandStep::Dispatch("RV_VANOAPPLY".into())
@@ -578,14 +671,27 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
             ),
         ),
         (
+            tr!("Vincoli, porte e finestre", "Constraints, doors and windows"),
+            tr!(
+                "Un angolo noto (per esempio retto) o un lato orizzontale / verticale può prendere il posto di una \
+                 diagonale. Porte e finestre si danno con lato, distanza dallo spigolo e larghezza; la stessa porta \
+                 scritta nei due vani con lo stesso nome e lo spessore del muro collega i vani da sola.",
+                "A known angle (for example square) or a horizontal / vertical side can take the place of a diagonal. \
+                 Doors and windows are given by side, distance from the corner and width; the same door written in both \
+                 rooms with the same name and the wall thickness links the rooms by itself."
+            ),
+        ),
+        (
             tr!("4. Risultato", "4. Result"),
             tr!(
-                "I vani veri vanno sul layer RILIEVO_CORRETTO; il disegno originale resta. Su RILIEVO_QUOTE: lettere, quote \
-                 dei lati (stile RILIEVO), diagonali, collegamenti, spessori e la tabella misurata / calcolata / scarto, \
+                "I vani veri vanno sul layer RILIEVO_CORRETTO con la loro superficie in m²; il disegno originale resta. Porte \
+                 e finestre su RILIEVO_APERTURE. Su RILIEVO_QUOTE: lettere, quote dei lati (stile RILIEVO), diagonali, \
+                 collegamenti, spessori e la tabella misurata / calcolata / scarto, \
                  con in rosso gli scarti oltre la tolleranza. Se le misure non bastano o non tornano, la finestra si \
                  riapre con il motivo.",
-                "The true rooms go on layer RILIEVO_CORRETTO; the original drawing stays. On RILIEVO_QUOTE: letters, side \
-                 dimensions (style RILIEVO), diagonals, links, thicknesses and the measured / computed / residual table, \
+                "The true rooms go on layer RILIEVO_CORRETTO with their area in m²; the original drawing stays. Doors and \
+                 windows on RILIEVO_APERTURE. On RILIEVO_QUOTE: letters, side dimensions (style RILIEVO), diagonals, links, \
+                 thicknesses and the measured / computed / residual table, \
                  residuals over the tolerance in red. If the measures are not enough or do not fit, the dialog reopens \
                  with the reason."
             ),

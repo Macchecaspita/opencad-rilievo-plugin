@@ -12,6 +12,36 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.3.0] - 2026-11-13
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Vincoli** (nuova tabella nella finestra delle misure): uno spigolo con il suo
+  angolo (`C`, `90`; per uno spigolo rientrante vale anche `270`) oppure un lato
+  orizzontale o verticale (`A-B`, `orizzontale`). Ogni vincolo vale una misura, può
+  prendere il posto di una diagonale e riceve il suo scarto, così un angolo creduto
+  retto che non lo è viene segnalato. Un lato orizzontale o verticale fissa anche la
+  rotazione del vano sul foglio.
+- **Porte e finestre** (nuova tabella): lato, tipo (porta, finestra, apertura),
+  distanza dal primo spigolo del lato e larghezza. Vengono disegnate sul layer
+  RILIEVO_APERTURE: stipiti, anta con l'apertura per le porte, doppia linea per le
+  finestre, nome e larghezza. Scrivendo il lato al contrario (`C-B` invece di `B-C`)
+  la distanza si misura dall'altro spigolo e la porta si apre dall'altra parte.
+- **Porta comune tra due vani**: la stessa porta scritta nei due vani con lo stesso
+  nome e lo spessore del muro collega da sola i due vani (stipiti affacciati, muro
+  parallelo); non servono altre misure di collegamento. Il muro viene disegnato con
+  le spallette.
+- **Superficie dei vani sul disegno**, in m², sotto il nome del vano (o al centro se
+  il vano è uno solo). Nuova scelta *Unità del disegno* (metri, centimetri,
+  millimetri), proposta in base alla grandezza del disegno.
+- Libretto delle misure: angoli in gradi, superfici in m², elenco di porte e
+  finestre.
+- Aiuto: nella sezione *Come misurare* spiegazioni su vincoli, porte e finestre e
+  porta comune; la guida è aggiornata.
+
 ## [0.2.1] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

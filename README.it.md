@@ -27,6 +27,12 @@ vertici diventano 1A, 1B … 2A …, e i vani si legano tra loro con gli **spess
 muri** e le **misure attraverso le porte**; tutto viene compensato insieme. L'ultimo
 calcolo si salva come **libretto delle misure** (CSV per Excel o Calc).
 
+Al posto di qualche diagonale si possono dare **vincoli** (spigolo retto o con un
+angolo noto, lato orizzontale o verticale). Si possono inserire **porte e
+finestre** (lato, distanza dallo spigolo, larghezza): una **porta comune** scritta
+nei due vani con lo spessore del muro basta a collegarli. Ogni vano riporta la sua
+**superficie in m²**.
+
 Il risultato va sul layer **RILIEVO_CORRETTO** (vertice A fermo, lato A–B nella
 direzione disegnata); il disegno originale resta per confronto. Sul layer
 **RILIEVO_QUOTE** vanno lettere, quote dei lati (stile di quota **RILIEVO**),
@@ -60,6 +66,11 @@ italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
   collegamento** verso vertici diversi, per esempio lo spessore del muro (lato
   `1B-1C` e vertice `2A`) più due misure attraverso la porta (`1B`→`2D`, `1C`→`2A`).
   Con 4 o più misure anche il collegamento è controllato.
+- **Vincoli**: un angolo retto (`C`, `90`) o un lato orizzontale (`A-B`,
+  `orizzontale`) vale come una misura e può sostituire una diagonale; anche il
+  vincolo riceve lo scarto, quindi un angolo "retto" che non lo è viene segnalato.
+- **Porta comune**: scrivi la stessa porta nei due vani con lo stesso nome (es. `P1`)
+  e lo spessore del muro; i due vani risultano collegati senza altre misure.
 - Nella finestra delle misure, la sezione **Come misurare** spiega ogni colonna.
 - Se le misure non bastano o non stanno insieme, la finestra si riapre con quello
   che avevi scritto e il motivo in cima (per esempio quali diagonali aggiungere).

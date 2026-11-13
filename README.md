@@ -24,6 +24,11 @@ Several **linked rooms** can be surveyed together (corners 1A, 1B … 2A …), t
 calculation can be saved as a **measures book** (CSV for Excel or Calc). Every
 dialog has its own help ("How to measure").
 
+Known angles and horizontal / vertical sides can replace diagonals
+(**constraints**); **doors and windows** are placed on the sides, and a **shared
+door** written in both rooms with the wall thickness links them by itself. Each
+room shows its **area in m²**.
+
 The result goes on layer **RILIEVO_CORRETTO** (corner A fixed, side A–B in the
 drawn direction); the original stays for comparison. Layer **RILIEVO_QUOTE** gets
 the letters, side dimensions (dimension style **RILIEVO**), diagonals with their

@@ -34,7 +34,32 @@ pub struct Obs {
     pub d: f64,
 }
 
-/// A measure between plan points.
+/// A plan point used by a measure: corner `a`, or the point at distance
+/// `s` from corner `a` along the side towards corner `b` (a door jamb).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct At {
+    pub a: usize,
+    pub b: usize,
+    pub s: f64,
+}
+
+impl At {
+    pub fn corner(i: usize) -> Self {
+        At { a: i, b: i, s: 0.0 }
+    }
+
+    pub fn eval(&self, pts: &[P2]) -> P2 {
+        let a = pts[self.a];
+        if self.s == 0.0 || self.a == self.b {
+            return a;
+        }
+        let b = pts[self.b];
+        let l = dist(a, b).max(1e-300);
+        [a[0] + (b[0] - a[0]) * self.s / l, a[1] + (b[1] - a[1]) * self.s / l]
+    }
+}
+
+/// A measure (or a constraint) between plan points.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Meas {
     /// Distance between points `i` and `j`.
@@ -42,19 +67,79 @@ pub enum Meas {
     /// Distance of point `p` from the line through `a` and `b` (a wall
     /// thickness).
     Perp { p: usize, a: usize, b: usize, d: f64 },
+    /// Angle at corner `b` between the sides towards `a` and `c`, in
+    /// radians, 0 … π (a reflex corner of 270° is the same as 90°).
+    Angle { a: usize, b: usize, c: usize, rad: f64 },
+    /// Side `a`–`b` horizontal (or vertical): the difference of y (or x)
+    /// of its ends is 0.
+    Level { a: usize, b: usize, vertical: bool },
+    /// Distance between two points that may lie along sides.
+    DistAt { p: At, q: At, d: f64 },
+    /// Distance of a point that may lie along a side from the line `a`–`b`.
+    PerpAt { p: At, a: usize, b: usize, d: f64 },
+    /// How far `q` is from `p` along the direction `a`→`b` (signed): 0
+    /// says two door jambs face each other square across the wall.
+    Along { p: At, q: At, a: usize, b: usize, d: f64 },
+}
+
+fn angle_at(a: P2, b: P2, c: P2) -> f64 {
+    let u = [a[0] - b[0], a[1] - b[1]];
+    let v = [c[0] - b[0], c[1] - b[1]];
+    (u[0] * v[1] - u[1] * v[0]).abs().atan2(u[0] * v[0] + u[1] * v[1])
 }
 
 impl Meas {
+    /// The measured (or imposed) value.
     pub fn value(&self) -> f64 {
         match *self {
-            Meas::Dist { d, .. } | Meas::Perp { d, .. } => d,
+            Meas::Dist { d, .. } | Meas::Perp { d, .. } | Meas::DistAt { d, .. } | Meas::PerpAt { d, .. } | Meas::Along { d, .. } => d,
+            Meas::Angle { rad, .. } => rad,
+            Meas::Level { .. } => 0.0,
         }
     }
 
     pub fn points(&self) -> Vec<usize> {
-        match *self {
+        let mut v = match *self {
             Meas::Dist { i, j, .. } => vec![i, j],
             Meas::Perp { p, a, b, .. } => vec![p, a, b],
+            Meas::Angle { a, b, c, .. } => vec![a, b, c],
+            Meas::Level { a, b, .. } => vec![a, b],
+            Meas::DistAt { p, q, .. } => vec![p.a, p.b, q.a, q.b],
+            Meas::PerpAt { p, a, b, .. } => vec![p.a, p.b, a, b],
+            Meas::Along { p, q, a, b, .. } => vec![p.a, p.b, q.a, q.b, a, b],
+        };
+        v.sort();
+        v.dedup();
+        v
+    }
+
+    /// Indices in range, distinct where they must be, value sensible.
+    fn valid(&self, n: usize) -> bool {
+        let inr = self.points().iter().all(|&p| p < n);
+        let ok = match *self {
+            Meas::Dist { i, j, d } => i != j && d > 0.0,
+            Meas::Perp { p, a, b, d } => p != a && p != b && a != b && d > 0.0,
+            Meas::Angle { a, b, c, rad } => a != b && b != c && a != c && rad > 0.0 && rad <= std::f64::consts::PI + 1e-12,
+            Meas::Level { a, b, .. } => a != b,
+            Meas::DistAt { d, .. } => d > 0.0,
+            Meas::PerpAt { a, b, d, .. } => a != b && d > 0.0,
+            Meas::Along { a, b, .. } => a != b,
+        };
+        inr && ok && self.value().is_finite()
+    }
+
+    /// Whether the measure ties the drawing to the sheet's axes (so the
+    /// group may not keep the drawn direction of its first side).
+    pub fn orients(&self) -> bool {
+        matches!(self, Meas::Level { .. })
+    }
+
+    /// Weight factor turning the value into a length: angles count as the
+    /// sideways shift they make over `size`.
+    pub fn scale(&self, size: f64) -> f64 {
+        match self {
+            Meas::Angle { .. } => size,
+            _ => 1.0,
         }
     }
 
@@ -63,11 +148,24 @@ impl Meas {
         match *self {
             Meas::Dist { i, j, .. } => dist(pts[i], pts[j]),
             Meas::Perp { p, a, b, .. } => perp_dist(pts[p], pts[a], pts[b]),
+            Meas::Angle { a, b, c, .. } => angle_at(pts[a], pts[b], pts[c]),
+            Meas::Level { a, b, vertical } => {
+                if vertical { pts[b][0] - pts[a][0] } else { pts[b][1] - pts[a][1] }
+            }
+            Meas::DistAt { p, q, .. } => dist(p.eval(pts), q.eval(pts)),
+            Meas::PerpAt { p, a, b, .. } => perp_dist(p.eval(pts), pts[a], pts[b]),
+            Meas::Along { p, q, a, b, .. } => {
+                let (pp, qq) = (p.eval(pts), q.eval(pts));
+                let u = [pts[b][0] - pts[a][0], pts[b][1] - pts[a][1]];
+                let l = u[0].hypot(u[1]).max(1e-300);
+                ((qq[0] - pp[0]) * u[0] + (qq[1] - pp[1]) * u[1]) / l
+            }
         }
     }
 
     /// Value and partial derivatives `(point, [d/dx, d/dy])`.
-    fn linearize(&self, pts: &[P2], tiny: f64) -> (f64, Vec<(usize, [f64; 2])>) {
+    fn linearize(&self, pts: &[P2], size: f64) -> (f64, Vec<(usize, [f64; 2])>) {
+        let tiny = size * 1e-9;
         match *self {
             Meas::Dist { i, j, .. } => {
                 let (a, b) = (pts[i], pts[j]);
@@ -79,7 +177,6 @@ impl Meas {
                 let (pp, pa, pb) = (pts[p], pts[a], pts[b]);
                 let u = [pb[0] - pa[0], pb[1] - pa[1]];
                 let l = (u[0] * u[0] + u[1] * u[1]).sqrt().max(tiny);
-                // c = u × (p − a); f = |c| / l
                 let c = u[0] * (pp[1] - pa[1]) - u[1] * (pp[0] - pa[0]);
                 let s = if c < 0.0 { -1.0 } else { 1.0 };
                 let f = c.abs() / l;
@@ -88,10 +185,38 @@ impl Meas {
                 let dc_b = [pp[1] - pa[1], -(pp[0] - pa[0])];
                 let dl_a = [-u[0] / l, -u[1] / l];
                 let dl_b = [u[0] / l, u[1] / l];
-                let g = |dc: [f64; 2], dl: [f64; 2]| {
-                    [s * dc[0] / l - f * dl[0] / l, s * dc[1] / l - f * dl[1] / l]
-                };
+                let g = |dc: [f64; 2], dl: [f64; 2]| [s * dc[0] / l - f * dl[0] / l, s * dc[1] / l - f * dl[1] / l];
                 (f, vec![(p, g(dc_p, [0.0, 0.0])), (a, g(dc_a, dl_a)), (b, g(dc_b, dl_b))])
+            }
+            Meas::Level { a, b, vertical } => {
+                let f = self.compute(pts);
+                let (ga, gb) = if vertical { ([-1.0, 0.0], [1.0, 0.0]) } else { ([0.0, -1.0], [0.0, 1.0]) };
+                (f, vec![(a, ga), (b, gb)])
+            }
+            _ => {
+                // Central differences: exact enough, and the same code for
+                // every composite measure.
+                let f = self.compute(pts);
+                let h = size.max(1e-12) * 1e-6;
+                let mut q = pts.to_vec();
+                let parts = self
+                    .points()
+                    .into_iter()
+                    .map(|p| {
+                        let mut g = [0.0; 2];
+                        for (c, gc) in g.iter_mut().enumerate() {
+                            let x = q[p][c];
+                            q[p][c] = x + h;
+                            let up = self.compute(&q);
+                            q[p][c] = x - h;
+                            let dn = self.compute(&q);
+                            q[p][c] = x;
+                            *gc = (up - dn) / (2.0 * h);
+                        }
+                        (p, g)
+                    })
+                    .collect();
+                (f, parts)
             }
         }
     }
@@ -101,8 +226,12 @@ impl Meas {
 pub struct Solution {
     /// The adjusted points, in the given order.
     pub pts: Vec<P2>,
-    /// Computed − measured, one per measure, in the given order.
+    /// Computed − measured, one per measure, in the given order (angles in
+    /// radians).
     pub residuals: Vec<f64>,
+    /// The residuals as lengths (angles times the room size): what the
+    /// tolerance is checked against.
+    pub scaled: Vec<f64>,
     /// Measures beyond the minimum, over all groups (0: no check).
     pub redundancy: usize,
     /// Standard deviation of a single measure, when `redundancy > 0`.
@@ -273,6 +402,12 @@ pub fn solve(drawn: &[P2], obs: &[Obs]) -> Result<Solution, SolveError> {
     solve_network(drawn, &meas, &[])
 }
 
+/// Unknowns of a group of `m` points: `2m − 3`, or `2m − 2` when some
+/// measure ties it to the sheet's axes (then only its first point is held).
+fn unknowns_of(m: usize, orients: bool) -> usize {
+    if orients { (2 * m).saturating_sub(2) } else { needed(m) }
+}
+
 /// Adjust the drawn points `init` to the measures. `datum_hint` may name,
 /// for a group, the pair (fixed point, direction point) to use; otherwise
 /// the group's first point is fixed and the direction to the first point it
@@ -283,9 +418,7 @@ pub fn solve_network(init: &[P2], meas: &[Meas], datum_hint: &[(usize, usize)]) 
         return Err(SolveError::TooFewPoints);
     }
     for (k, m) in meas.iter().enumerate() {
-        let pts = m.points();
-        let distinct = pts.iter().enumerate().all(|(x, a)| pts.iter().skip(x + 1).all(|b| a != b));
-        if pts.iter().any(|&p| p >= n) || !distinct || !(m.value().is_finite() && m.value() > 0.0) {
+        if !m.valid(n) {
             return Err(SolveError::BadObs(k));
         }
     }
@@ -301,11 +434,12 @@ pub fn solve_network(init: &[P2], meas: &[Meas], datum_hint: &[(usize, usize)]) 
             .filter(|(_, m)| group.binary_search(&m.points()[0]).is_ok())
             .map(|(k, _)| k)
             .collect();
-        let unknowns = needed(group.len());
+        let gm: Vec<Meas> = local.iter().map(|&k| meas[k]).collect();
+        let orients = gm.iter().any(Meas::orients);
+        let unknowns = unknowns_of(group.len(), orients);
         if group.len() < 3 || local.len() < unknowns {
             return Err(SolveError::NotEnough { needed: unknowns.max(3), have: local.len(), group: group.clone() });
         }
-        let gm: Vec<Meas> = local.iter().map(|&k| meas[k]).collect();
         let (p0, p1) = datum_hint
             .iter()
             .copied()
@@ -323,21 +457,32 @@ pub fn solve_network(init: &[P2], meas: &[Meas], datum_hint: &[(usize, usize)]) 
                     .unwrap_or(group[1]);
                 (p0, p1)
             });
-        let (sol, it) = solve_group(&mut pts, group, &gm, p0, p1)?;
-        let _ = sol;
+        let it = solve_group(&mut pts, group, &gm, p0, p1, orients)?;
         iterations = iterations.max(it);
         redundancy += local.len() - unknowns;
     }
 
+    let size = mean_size(meas);
     let residuals: Vec<f64> = meas.iter().map(|m| m.compute(&pts) - m.value()).collect();
-    let sigma0 = (redundancy > 0).then(|| (residuals.iter().map(|v| v * v).sum::<f64>() / redundancy as f64).sqrt());
-    Ok(Solution { pts, residuals, redundancy, sigma0, groups: all_groups.len(), iterations })
+    let scaled: Vec<f64> = meas.iter().zip(&residuals).map(|(m, v)| v * m.scale(size)).collect();
+    let sigma0 = (redundancy > 0).then(|| (scaled.iter().map(|v| v * v).sum::<f64>() / redundancy as f64).sqrt());
+    Ok(Solution { pts, residuals, scaled, redundancy, sigma0, groups: all_groups.len(), iterations })
+}
+
+/// Mean length of the length measures (the scale of the room).
+fn mean_size(meas: &[Meas]) -> f64 {
+    let l: Vec<f64> = meas
+        .iter()
+        .filter(|m| matches!(m, Meas::Dist { .. } | Meas::DistAt { .. }))
+        .map(|m| m.value())
+        .collect();
+    if l.is_empty() { 1.0 } else { l.iter().sum::<f64>() / l.len() as f64 }
 }
 
 /// Gauss–Newton on one group; writes the result into `pts`.
-fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: usize) -> Result<((), usize), SolveError> {
+fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: usize, orients: bool) -> Result<usize, SolveError> {
     let m = group.len();
-    let unknowns = needed(m);
+    let unknowns = unknowns_of(m, orients);
     let fixed = pts[p0];
     let l01 = dist(pts[p0], pts[p1]);
     if l01 <= 0.0 {
@@ -346,18 +491,20 @@ fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: us
     let u = [(pts[p1][0] - fixed[0]) / l01, (pts[p1][1] - fixed[1]) / l01];
 
     // Start: the drawn group scaled about p0 to the measures' size.
-    let (sum_m, sum_d) = meas.iter().fold((0.0, 0.0), |(a, b), x| (a + x.value(), b + x.compute(pts)));
-    let s = if sum_d > 0.0 { sum_m / sum_d } else { 1.0 };
+    let lengths: Vec<&Meas> = meas.iter().filter(|x| matches!(x, Meas::Dist { .. } | Meas::DistAt { .. })).collect();
+    let (sum_m, sum_d) = lengths.iter().fold((0.0, 0.0), |(a, b), x| (a + x.value(), b + x.compute(pts)));
+    let s = if sum_d > 0.0 && sum_m > 0.0 { sum_m / sum_d } else { 1.0 };
     for &p in group {
         pts[p] = [fixed[0] + (pts[p][0] - fixed[0]) * s, fixed[1] + (pts[p][1] - fixed[1]) * s];
     }
-    let size = (sum_m / meas.len() as f64).max(1e-12);
+    let size = mean_size(meas).max(1e-12);
 
-    // Unknown columns: p1 → one (distance along u); other free points → two.
+    // Unknown columns. Held direction: p1 → one (distance along u). Free
+    // rotation: p1 → two like every other point.
     let mut col: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
-    let mut next = 1;
+    let mut next = if orients { 0 } else { 1 };
     for &p in group {
-        if p != p0 && p != p1 {
+        if p != p0 && (orients || p != p1) {
             col.insert(p, next);
             next += 2;
         }
@@ -372,20 +519,21 @@ fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: us
         let mut nm = vec![vec![0.0; unknowns]; unknowns];
         let mut rhs = vec![0.0; unknowns];
         for x in meas {
-            let (f, parts) = x.linearize(pts, size * 1e-9);
-            let mut row: Vec<(usize, f64)> = Vec::with_capacity(6);
+            let (f, parts) = x.linearize(pts, size);
+            let w8 = x.scale(size);
+            let mut row: Vec<(usize, f64)> = Vec::with_capacity(8);
             for (p, g) in parts {
                 if p == p0 {
                     continue;
                 }
-                if p == p1 {
-                    row.push((0, g[0] * u[0] + g[1] * u[1]));
+                if p == p1 && !orients {
+                    row.push((0, w8 * (g[0] * u[0] + g[1] * u[1])));
                 } else if let Some(&c) = col.get(&p) {
-                    row.push((c, g[0]));
-                    row.push((c + 1, g[1]));
+                    row.push((c, w8 * g[0]));
+                    row.push((c + 1, w8 * g[1]));
                 }
             }
-            let w = x.value() - f;
+            let w = w8 * (x.value() - f);
             for &(c1, v1) in &row {
                 rhs[c1] += v1 * w;
                 for &(c2, v2) in &row {
@@ -399,13 +547,15 @@ fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: us
         };
         let big = dx.iter().fold(0.0f64, |a, v| a.max(v.abs()));
         let k = if big > size { size / big } else { 1.0 };
-        let t = dist(fixed, pts[p1]) + k * dx[0];
-        pts[p1] = [fixed[0] + t * u[0], fixed[1] + t * u[1]];
+        if !orients {
+            let t = dist(fixed, pts[p1]) + k * dx[0];
+            pts[p1] = [fixed[0] + t * u[0], fixed[1] + t * u[1]];
+        }
         for (&p, &c) in &col {
             pts[p][0] += k * dx[c];
             pts[p][1] += k * dx[c + 1];
         }
-        if big < size * 1e-11 {
+        if big < size * 1e-10 {
             converged = true;
             break;
         }
@@ -416,7 +566,7 @@ fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: us
     if !converged {
         return Err(SolveError::NoConvergence);
     }
-    Ok(((), iterations))
+    Ok(iterations)
 }
 
 /// Whether the segment p–q crosses the segment a–b at an inner point.
@@ -627,7 +777,7 @@ mod tests {
     fn perp_derivatives_match_numeric() {
         let pts: Vec<P2> = vec![[0.3, 2.1], [0.0, 0.0], [4.0, 0.5]];
         let m = Meas::Perp { p: 0, a: 1, b: 2, d: 1.0 };
-        let (f, parts) = m.linearize(&pts, 1e-12);
+        let (f, parts) = m.linearize(&pts, 1.0);
         assert!((f - perp_dist(pts[0], pts[1], pts[2])).abs() < 1e-12);
         let h = 1e-6;
         for (p, g) in parts {
@@ -722,5 +872,75 @@ mod tests {
         meas.push(Meas::Dist { i: 2, j: 4, d: dist(truth[2], truth[4]) });
         let e = solve_network(&drawn, &meas, &[(0, 1)]).unwrap_err();
         assert!(matches!(e, SolveError::NotEnough { needed: 13, have: 12, .. }), "{e:?}");
+    }
+    #[test]
+    fn right_angle_replaces_the_diagonal() {
+        let truth: Vec<P2> = vec![[0.0, 0.0], [5.0, 0.0], [5.0, 4.0], [0.0, 4.0]];
+        let drawn: Vec<P2> = vec![[0.0, 0.0], [5.3, 0.2], [5.1, 4.4], [-0.2, 3.9]];
+        let mut meas: Vec<Meas> = sides(4).iter().map(|&(i, j)| Meas::Dist { i, j, d: dist(truth[i], truth[j]) }).collect();
+        meas.push(Meas::Angle { a: 3, b: 0, c: 1, rad: std::f64::consts::FRAC_PI_2 });
+        let sol = solve_network(&drawn, &meas, &[(0, 1)]).unwrap();
+        assert_eq!(sol.redundancy, 0);
+        assert!((dist(sol.pts[0], sol.pts[2]) - 41f64.sqrt()).abs() < 1e-8);
+    }
+
+    #[test]
+    fn reflex_corner_angle() {
+        // L-room: the inner corner (3) is 270°, given as 90°.
+        let truth: Vec<P2> = vec![[0.0, 0.0], [6.0, 0.0], [6.0, 2.5], [3.0, 2.5], [3.0, 5.0], [0.0, 5.0]];
+        let drawn: Vec<P2> = vec![[0.0, 0.0], [6.2, 0.1], [6.0, 2.2], [3.3, 2.6], [2.9, 5.2], [0.1, 4.8]];
+        let mut meas: Vec<Meas> = sides(6).iter().map(|&(i, j)| Meas::Dist { i, j, d: dist(truth[i], truth[j]) }).collect();
+        let r = std::f64::consts::FRAC_PI_2;
+        meas.push(Meas::Angle { a: 5, b: 0, c: 1, rad: r });
+        meas.push(Meas::Angle { a: 2, b: 3, c: 4, rad: r });
+        meas.push(Meas::Angle { a: 1, b: 2, c: 3, rad: r });
+        let sol = solve_network(&drawn, &meas, &[(0, 1)]).unwrap();
+        // Same shape as the truth (the drawn A–B direction is kept).
+        for i in 0..6 {
+            for j in i + 1..6 {
+                assert!((dist(sol.pts[i], sol.pts[j]) - dist(truth[i], truth[j])).abs() < 1e-6, "{i}-{j}");
+            }
+        }
+    }
+
+    #[test]
+    fn horizontal_side_frees_the_rotation() {
+        // Drawn tilted by 5°; side A–B declared horizontal.
+        let truth: Vec<P2> = vec![[0.0, 0.0], [5.0, 0.0], [5.0, 4.0], [0.0, 4.0]];
+        let t = 5f64.to_radians();
+        let drawn: Vec<P2> = truth.iter().map(|p| [p[0] * t.cos() - p[1] * t.sin(), p[0] * t.sin() + p[1] * t.cos()]).collect();
+        let mut meas: Vec<Meas> = sides(4).iter().map(|&(i, j)| Meas::Dist { i, j, d: dist(truth[i], truth[j]) }).collect();
+        meas.push(Meas::Dist { i: 0, j: 2, d: dist(truth[0], truth[2]) });
+        meas.push(Meas::Level { a: 0, b: 1, vertical: false });
+        let sol = solve_network(&drawn, &meas, &[(0, 1)]).unwrap();
+        assert_eq!(sol.redundancy, 0);
+        assert!((sol.pts[1][1] - sol.pts[0][1]).abs() < 1e-9);
+        assert!((sol.pts[3][0] - sol.pts[0][0]).abs() < 1e-9, "D straight above A");
+    }
+
+    #[test]
+    fn rooms_linked_through_a_shared_door() {
+        // Room 1: 0..4 × 0..3; room 2 behind a 0.30 wall at x = 4.30.
+        // Door 0.90 wide: in room 1 on side B–C (1→2) at 1.00 from B;
+        // in room 2 on side D–A (7→4) at 1.10 from D (so it faces it).
+        let (truth, drawn) = two_rooms();
+        let mut meas = room_meas(&truth, 0);
+        meas.extend(room_meas(&truth, 4));
+        let (b, c, d2, a2) = (1, 2, 7, 4);
+        let j1 = At { a: b, b: c, s: 1.0 };
+        let j2 = At { a: d2, b: a2, s: 1.1 };
+        let k2 = At { a: d2, b: a2, s: 2.0 };
+        meas.push(Meas::PerpAt { p: j2, a: b, b: c, d: perp_dist(j2.eval(&truth), truth[b], truth[c]) });
+        meas.push(Meas::PerpAt { p: k2, a: b, b: c, d: perp_dist(k2.eval(&truth), truth[b], truth[c]) });
+        meas.push(Meas::Along { p: j1, q: k2, a: b, b: c, d: {
+            let (pp, qq) = (j1.eval(&truth), k2.eval(&truth));
+            let u = [truth[c][0] - truth[b][0], truth[c][1] - truth[b][1]];
+            ((qq[0] - pp[0]) * u[0] + (qq[1] - pp[1]) * u[1]) / u[0].hypot(u[1])
+        } });
+        let sol = solve_network(&drawn, &meas, &[(0, 1), (4, 5)]).unwrap();
+        assert_eq!(sol.groups, 1);
+        for (a, b) in sol.pts.iter().zip(&truth) {
+            assert!(dist(*a, *b) < 1e-6, "{a:?} {b:?}");
+        }
     }
 }

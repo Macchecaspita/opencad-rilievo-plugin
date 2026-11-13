@@ -18,7 +18,7 @@ use codec::entities::{AttachmentPoint, LwPolyline, LwVertex, MText};
 use codec::{EntityType, Handle, Vector2, Vector3};
 
 use crate::solve::{self, Meas, SolveError, Solution, P2};
-use crate::survey::{Kind, Measure, Saved, Survey};
+use crate::survey::{self, Kind, Measure, OpKind, Opening, Saved, Survey};
 use crate::{labels, tools};
 
 /// Layer of the adjusted rooms.
@@ -27,6 +27,8 @@ pub const LAYER_ROOM: &str = "RILIEVO_CORRETTO";
 pub const LAYER_NOTES: &str = "RILIEVO_QUOTE";
 /// Layer of the working letters written on the rooms drawn by eye.
 pub const LAYER_LABELS: &str = "RILIEVO_ETICHETTE";
+/// Layer of doors, windows and openings.
+pub const LAYER_OPENINGS: &str = "RILIEVO_APERTURE";
 /// Dimension style the plugin keeps for its dimensions.
 pub const DIM_STYLE: &str = "RILIEVO";
 
@@ -395,7 +397,20 @@ fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
             let longest = rooms.iter().map(|r| default_sizes(&r.pts)).fold((0.0f64, 0.0f64), |a, b| (a.0.max(b.0), a.1.max(b.1)));
             let (h, tol) = if all.is_empty() { (1.0, 0.01) } else { longest };
             let (sides, others) = survey.initial(decimals(tol), &fmt_num);
-            Saved { sides, others, h, tol, dims: true, table: true, csv: false, csv_path: default_book_path(host) }
+            let longest = rooms.iter().flat_map(|r| (0..r.pts.len()).map(move |i| solve::dist(r.pts[i], r.pts[(i + 1) % r.pts.len()]))).fold(0.0f64, f64::max);
+            Saved {
+                sides,
+                others,
+                h,
+                tol,
+                dims: true,
+                table: true,
+                csv: false,
+                csv_path: default_book_path(host),
+                constraints: Vec::new(),
+                openings: Vec::new(),
+                unit: survey::guess_unit(longest),
+            }
         }
     };
     if msg.is_none() {
@@ -499,12 +514,21 @@ fn existing_leaders(host: &dyn HostApi) -> Vec<(Handle, P2)> {
 
 /// Letters (with leaders where moved) and, with several rooms, room titles,
 /// placed so that none covers another.
-fn label_entities(rooms: &[Vec<P2>], survey: &Survey, h: f64, z: f64, layer: &str, letter_h: f64) -> Vec<EntityType> {
-    let titles: Vec<(String, P2, f64)> = if survey.multi() {
-        rooms.iter().enumerate().map(|(r, pts)| (room_title(r), centroid(pts), h * 1.4)).collect()
-    } else {
-        Vec::new()
-    };
+fn label_entities(rooms: &[Vec<P2>], survey: &Survey, h: f64, z: f64, layer: &str, letter_h: f64, area_unit: Option<usize>) -> Vec<EntityType> {
+    let mut titles: Vec<(String, P2, f64)> = Vec::new();
+    for (r, pts) in rooms.iter().enumerate() {
+        let c = centroid(pts);
+        let has_title = survey.multi();
+        if has_title {
+            titles.push((room_title(r), c, h * 1.4));
+        }
+        if let Some(u) = area_unit {
+            let f = survey::unit_factor(u);
+            let area = solve::signed_area(pts).abs() * f * f;
+            let at = if has_title { [c[0], c[1] - h * 1.9] } else { c };
+            titles.push((format!("{} m²", fmt_num(area, 2)), at, h * 1.1));
+        }
+    }
     let names: Vec<Vec<String>> = rooms.iter().enumerate().map(|(r, pts)| (0..pts.len()).map(|i| survey.corner(r, i)).collect()).collect();
     let mut out: Vec<EntityType> =
         titles.iter().map(|(t, at, hh)| mtext(t, *at, z, *hh, AttachmentPoint::MiddleCenter, layer)).collect();
@@ -524,7 +548,7 @@ fn write_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey, h: f64)
     remove_labels(host, rooms, survey, h);
     let z = rooms.first().map_or(0.0, |r| r.z);
     let pts: Vec<Vec<P2>> = rooms.iter().map(|r| r.pts.clone()).collect();
-    let new = label_entities(&pts, survey, h, z, LAYER_LABELS, h);
+    let new = label_entities(&pts, survey, h, z, LAYER_LABELS, h, None);
     if !new.is_empty() {
         host.add_entities(new);
     }
@@ -682,6 +706,25 @@ fn kind_name(k: Kind) -> &'static str {
         Kind::Diagonal => tr!("diagonale", "diagonal"),
         Kind::Link => tr!("collegamento", "link"),
         Kind::Wall => tr!("spessore muro", "wall thickness"),
+        Kind::Angle => tr!("angolo", "angle"),
+        Kind::Level => tr!("orizzontale / verticale", "horizontal / vertical"),
+        Kind::Door => tr!("porta comune", "shared door"),
+    }
+}
+
+/// A measure's value as shown: angles in degrees.
+fn show(m: &Measure, v: f64, dec: usize) -> String {
+    match m.kind {
+        Kind::Angle => format!("{}°", fmt_num(v.to_degrees(), 2)),
+        _ => fmt_num(v, dec),
+    }
+}
+
+/// A residual as shown: angles in degrees, signed.
+fn show_res(m: &Measure, v: f64, dec: usize) -> String {
+    match m.kind {
+        Kind::Angle => format!("{}°", fmt_signed(v.to_degrees(), 2)),
+        _ => fmt_signed(v, dec),
     }
 }
 
@@ -692,8 +735,8 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
         return;
     };
     let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
-    let measures = match survey.parse(&saved, &parse_num) {
-        Ok(m) => m,
+    let (measures, openings) = match survey.parse(&saved, &parse_num) {
+        Ok(p) => (p.measures, p.openings),
         Err(msg) => {
             host.push_error(&format!("RV_VANO: {msg}."));
             open_dialog(host, hs, Some(msg));
@@ -714,7 +757,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     let th = saved.h.max(1e-9);
     let dec = decimals(saved.tol);
     let z = rooms[0].z;
-    let bad: Vec<usize> = (0..measures.len()).filter(|&k| saved.tol > 0.0 && sol.residuals[k].abs() > saved.tol).collect();
+    let bad: Vec<usize> = (0..measures.len()).filter(|&k| saved.tol > 0.0 && sol.scaled[k].abs() > saved.tol).collect();
 
     host.begin_undo_group("RV_VANO");
     ensure_layer(host, LAYER_ROOM, 3);
@@ -723,7 +766,10 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
 
     let adjusted: Vec<Vec<P2>> = (0..rooms.len()).map(|r| survey.room_points(r, &sol.pts)).collect();
     let mut ents: Vec<EntityType> = adjusted.iter().map(|pts| pline(pts, z, true, LAYER_ROOM)).collect();
-    ents.extend(label_entities(&adjusted, &survey, th, z, LAYER_NOTES, th * 1.2));
+    ents.extend(label_entities(&adjusted, &survey, th, z, LAYER_NOTES, th * 1.2, Some(saved.unit)));
+    ensure_layer(host, LAYER_OPENINGS, 4);
+    let (op_ents, op_warn) = openings_entities(&survey, &openings, &sol.pts, th, dec, z);
+    ents.extend(op_ents);
     if saved.table {
         ents.extend(table(&sol, &measures, &bad, th, dec, z));
     }
@@ -738,7 +784,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
 
     // Measures book: kept for RV_LIBRETTO, written now when asked.
     let doc = host.document_path(host.tab_id()).map(|p| p.to_string_lossy().to_string());
-    let book = book_csv(&survey, &sol, &measures, &bad, saved.tol, dec, doc.as_deref());
+    let book = book_csv(&survey, &sol, &measures, &openings, &bad, &saved, dec, doc.as_deref());
     let path = if saved.csv_path.trim().is_empty() { default_book_path(host) } else { saved.csv_path.trim().to_string() };
     *LAST_BOOK.lock().unwrap_or_else(|e| e.into_inner()) = Some((book.clone(), path.clone()));
 
@@ -775,7 +821,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
         for (k, m) in measures.iter().enumerate() {
             let flag = if bad.contains(&k) { "  !" } else { "" };
             let v = sol.residuals[k];
-            lines.push(format!("  {:<18} {} → {}  ({}){flag}", m.name, fmt_num(m.meas.value(), dec), fmt_num(m.meas.value() + v, dec), fmt_signed(v, dec)));
+            lines.push(format!("  {:<18} {} → {}  ({}){flag}", m.name, show(m, m.meas.value(), dec), show(m, m.meas.value() + v, dec), show_res(m, v, dec)));
         }
     }
     for l in &lines {
@@ -797,6 +843,9 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
                 names.join(", ")
             )
         ));
+    }
+    for w in &op_warn {
+        host.push_error(&format!("RV_VANO: {w}."));
     }
     if dims_failed > 0 {
         host.push_error(&tr!(
@@ -839,7 +888,8 @@ fn write_book(host: &mut dyn HostApi, path: &str, text: &str) {
 /// The measures book as CSV: semicolons and decimal commas in Italian (as
 /// Excel and Calc expect in Italy), commas and points in English; UTF-8
 /// with BOM so Excel reads the accents.
-pub fn book_csv(survey: &Survey, sol: &Solution, measures: &[Measure], bad: &[usize], tol: f64, dec: usize, doc: Option<&str>) -> String {
+pub fn book_csv(survey: &Survey, sol: &Solution, measures: &[Measure], openings: &[Opening], bad: &[usize], saved: &Saved, dec: usize, doc: Option<&str>) -> String {
+    let tol = saved.tol;
     let sep = if crate::i18n::italian() { ";" } else { "," };
     let cell = |s: &str| {
         if s.contains(sep) || s.contains('"') {
@@ -884,9 +934,9 @@ pub fn book_csv(survey: &Survey, sol: &Solution, measures: &[Measure], bad: &[us
         push(vec![
             m.name.clone(),
             kind_name(m.kind).into(),
-            fmt_num(m.meas.value(), dec + 1),
-            fmt_num(m.meas.value() + v, dec + 1),
-            fmt_num(v, dec + 1),
+            show(m, m.meas.value(), dec + 1),
+            show(m, m.meas.value() + v, dec + 1),
+            show_res(m, v, dec + 1),
             if bad.contains(&k) { tr!("SÌ", "YES").into() } else { String::new() },
         ]);
     }
@@ -898,11 +948,36 @@ pub fn book_csv(survey: &Survey, sol: &Solution, measures: &[Measure], bad: &[us
     }
     push(vec![]);
     push(vec![tr!("SUPERFICI E PERIMETRI", "AREAS AND PERIMETERS").into()]);
-    push(vec![tr!("Vano", "Room").into(), tr!("Superficie", "Area").into(), tr!("Perimetro", "Perimeter").into()]);
+    push(vec![tr!("Vano", "Room").into(), tr!("Superficie (m²)", "Area (m²)").into(), tr!("Perimetro (unità del disegno)", "Perimeter (drawing units)").into()]);
+    let f = survey::unit_factor(saved.unit);
     for r in 0..survey.rooms.len() {
         let pts = survey.room_points(r, &sol.pts);
         let per: f64 = (0..pts.len()).map(|i| solve::dist(pts[i], pts[(i + 1) % pts.len()])).sum();
-        push(vec![(r + 1).to_string(), fmt_num(solve::signed_area(&pts).abs(), dec), fmt_num(per, dec)]);
+        push(vec![(r + 1).to_string(), fmt_num(solve::signed_area(&pts).abs() * f * f, 2), fmt_num(per, dec)]);
+    }
+    if !openings.is_empty() {
+        push(vec![]);
+        push(vec![tr!("PORTE E FINESTRE", "DOORS AND WINDOWS").into()]);
+        push(vec![
+            tr!("Nome", "Name").into(),
+            tr!("Tipo", "Kind").into(),
+            tr!("Lato (dallo spigolo)", "Side (from corner)").into(),
+            tr!("Distanza", "Distance").into(),
+            tr!("Larghezza", "Width").into(),
+            tr!("Spessore muro", "Wall thickness").into(),
+            tr!("Comune con", "Shared with").into(),
+        ]);
+        for o in openings {
+            push(vec![
+                o.name.clone(),
+                op_kind_name(o.kind).into(),
+                format!("{}–{}", survey.names[o.a], survey.names[o.b]),
+                fmt_num(o.s, dec),
+                fmt_num(o.w, dec),
+                o.thick.map(|t| fmt_num(t, dec)).unwrap_or_default(),
+                o.twin.map(|t| room_title(openings[t].room)).unwrap_or_default(),
+            ]);
+        }
     }
     out
 }
@@ -927,9 +1002,9 @@ fn table(sol: &Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize
         let v = sol.residuals[k];
         rows.push([
             m.name.clone(),
-            fmt_num(m.meas.value(), dec),
-            fmt_num(m.meas.value() + v, dec),
-            if sol.redundancy > 0 { fmt_signed(v, dec) } else { "—".into() },
+            show(m, m.meas.value(), dec),
+            show(m, m.meas.value() + v, dec),
+            if sol.redundancy > 0 { show_res(m, v, dec) } else { "—".into() },
         ]);
     }
     let top = y;
@@ -1043,6 +1118,7 @@ fn dimension(host: &mut dyn HostApi, survey: &Survey, pts: &[P2], measures: &[Me
                     failed.push((a, b, at));
                 }
             }
+            (Kind::Angle | Kind::Level | Kind::Door, _) => {}
             (_, Meas::Dist { i, j, .. }) => {
                 // Diagonals cross near the middle of a room, so the length
                 // goes at 35 % or 65 % of the way, alternately.
@@ -1060,6 +1136,7 @@ fn dimension(host: &mut dyn HostApi, survey: &Survey, pts: &[P2], measures: &[Me
                 let txt = format!("{} {}", tr!("sp.", "th."), fmt_num(solve::perp_dist(pts[p], pts[a], pts[b]), dec));
                 marks.push(along_text(&txt, f, pts[p], mid, h * 0.8, z));
             }
+            _ => {}
         }
     }
     if !marks.is_empty() {
@@ -1080,6 +1157,99 @@ fn dimension(host: &mut dyn HostApi, survey: &Survey, pts: &[P2], measures: &[Me
         host.add_entities(texts);
     }
     k
+}
+
+fn op_kind_name(k: OpKind) -> &'static str {
+    match k {
+        OpKind::Door => tr!("porta", "door"),
+        OpKind::Window => tr!("finestra", "window"),
+        OpKind::Opening => tr!("apertura", "opening"),
+    }
+}
+
+/// Doors, windows and openings on the adjusted rooms: jambs, the door leaf
+/// with its swing, the window's double line, a label with name and width;
+/// a door shared by two rooms gets the wall's jamb lines across. Also
+/// returns warnings (an opening running past the end of its side).
+fn openings_entities(survey: &Survey, openings: &[Opening], pts: &[P2], h: f64, dec: usize, z: f64) -> (Vec<EntityType>, Vec<String>) {
+    let mut out = Vec::new();
+    let mut warn = Vec::new();
+    let jambs = |o: &Opening| {
+        let (a, b) = (pts[o.a], pts[o.b]);
+        let l = solve::dist(a, b).max(1e-12);
+        let u = [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+        let j = [a[0] + u[0] * o.s, a[1] + u[1] * o.s];
+        let k = [a[0] + u[0] * (o.s + o.w), a[1] + u[1] * (o.s + o.w)];
+        (j, k, u, l)
+    };
+    for (x, o) in openings.iter().enumerate() {
+        let (j, k, u, l) = jambs(o);
+        if o.s + o.w > l + 1e-9 {
+            warn.push(tr!(
+                format!("{} {} esce dal lato {}–{} (lungo {})", op_kind_name(o.kind), o.name, survey.names[o.a], survey.names[o.b], fmt_num(l, dec)),
+                format!("{} {} runs past the end of side {}–{} ({} long)", op_kind_name(o.kind), o.name, survey.names[o.a], survey.names[o.b], fmt_num(l, dec))
+            ));
+        }
+        // Inward normal: towards the inside of the opening's room.
+        let room = survey.room_points(o.room, pts);
+        let mid = [(j[0] + k[0]) / 2.0, (j[1] + k[1]) / 2.0];
+        let mut n = [-u[1], u[0]];
+        let probe = [mid[0] + n[0] * h * 0.05, mid[1] + n[1] * h * 0.05];
+        if !point_in_polygon(&room, probe) {
+            n = [-n[0], -n[1]];
+        }
+        let out_len = o.thick.unwrap_or(h);
+        // Jambs: across the wall when the door is shared (drawn once),
+        // otherwise a tick outwards.
+        match o.twin {
+            Some(t) if t > x => {
+                let (j2, k2, _, _) = jambs(&openings[t]);
+                let (pj, pk) = if solve::dist(j, k2) + solve::dist(k, j2) <= solve::dist(j, j2) + solve::dist(k, k2) { (k2, j2) } else { (j2, k2) };
+                out.push(pline(&[j, pj], z, false, LAYER_OPENINGS));
+                out.push(pline(&[k, pk], z, false, LAYER_OPENINGS));
+            }
+            Some(_) => {}
+            None => {
+                out.push(pline(&[j, [j[0] - n[0] * out_len, j[1] - n[1] * out_len]], z, false, LAYER_OPENINGS));
+                out.push(pline(&[k, [k[0] - n[0] * out_len, k[1] - n[1] * out_len]], z, false, LAYER_OPENINGS));
+            }
+        }
+        // A shared door is drawn (leaf, label) once, from its first room.
+        if o.twin.is_some_and(|t| t < x) {
+            continue;
+        }
+        match o.kind {
+            OpKind::Door => {
+                // Leaf hinged at the first jamb, open inwards, and its swing.
+                let tip = [j[0] + n[0] * o.w, j[1] + n[1] * o.w];
+                out.push(pline(&[j, tip], z, false, LAYER_OPENINGS));
+                let ccw = n[0] * u[1] - n[1] * u[0] > 0.0;
+                let mut arc = LwPolyline::new();
+                let mut v0 = LwVertex::new(Vector2::new(tip[0], tip[1]));
+                v0.bulge = if ccw { (std::f64::consts::PI / 8.0).tan() } else { -(std::f64::consts::PI / 8.0).tan() };
+                arc.vertices = vec![v0, LwVertex::new(Vector2::new(k[0], k[1]))];
+                arc.elevation = z;
+                arc.common.layer = LAYER_OPENINGS.to_string();
+                out.push(EntityType::LwPolyline(arc));
+            }
+            OpKind::Window => {
+                let d = (o.thick.unwrap_or(h) * 0.35).min(h * 0.6);
+                for sgn in [-1.0, 1.0] {
+                    let off = [n[0] * d * sgn * 0.5 - n[0] * d * 0.5, n[1] * d * sgn * 0.5 - n[1] * d * 0.5];
+                    out.push(pline(&[[j[0] + off[0], j[1] + off[1]], [k[0] + off[0], k[1] + off[1]]], z, false, LAYER_OPENINGS));
+                }
+            }
+            OpKind::Opening => {}
+        }
+        // Name and width, inside the room along the side.
+        let at = [mid[0] + n[0] * h * 0.6, mid[1] + n[1] * h * 0.6];
+        let first = if o.kind == OpKind::Door { 1.0 } else { 0.0 };
+        let at = [at[0] + n[0] * h * 0.6 * first, at[1] + n[1] * h * 0.6 * first];
+        let mut t = along_text(&format!("{} {}", o.name, fmt_num(o.w, dec)), j, k, at, h * 0.75, z);
+        t.common_mut().layer = LAYER_OPENINGS.to_string();
+        out.push(t);
+    }
+    (out, warn)
 }
 
 /// A text sitting on the segment a–b at `at`, turned to read along it
@@ -1146,7 +1316,8 @@ mod tests {
         ];
         let m: Vec<Meas> = meas.iter().map(|x| x.meas).collect();
         let sol = solve::solve_network(&survey.points, &m, &survey.datum()).unwrap();
-        let csv = book_csv(&survey, &sol, &meas, &[], 0.02, 3, Some("C:\\x.dwg"));
+        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0 };
+        let csv = book_csv(&survey, &sol, &meas, &[], &[], &saved, 3, Some("C:\\x.dwg"));
         assert!(csv.starts_with('\u{feff}'));
         assert!(csv.contains("A–C"));
         assert!(csv.lines().any(|l| l.starts_with("1") && l.contains("12")), "area row: {csv}");
