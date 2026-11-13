@@ -262,6 +262,7 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         "RV_" | "RV_HELP" => help(host),
         "RV_LANG" => lang(host, &rest),
         "RV_GUIDE" => host.start_interactive(Box::new(tools::GuideDialog::new())),
+        "RV_MANUALE" => open_manual(host),
         "RV_VANO" => start_pick(host, "RV_VANOOPEN", "RV_VANO"),
         "RV_ETICHETTE" => start_pick(host, "RV_ETICHETTEAPPLY", "RV_ETICHETTE"),
         "RV_VANOOPEN" => {
@@ -304,16 +305,48 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
     true
 }
 
+/// The surveying manual (PDF), built into the plugin.
+const MANUAL: &[u8] = include_bytes!("../docs/Manuale_rilievo.pdf");
+
+/// Write the manual next to the temporary files and open it with the
+/// system's PDF viewer.
+fn open_manual(host: &mut dyn HostApi) {
+    let path = std::env::temp_dir().join(format!("RilievoVani_Manuale_{}.pdf", env!("CARGO_PKG_VERSION")));
+    if let Err(e) = std::fs::write(&path, MANUAL) {
+        host.push_error(&tr!(
+            format!("RV_MANUALE: non riesco a scrivere il manuale in {}: {e}", path.display()),
+            format!("RV_MANUALE: cannot write the manual to {}: {e}", path.display())
+        ));
+        return;
+    }
+    #[cfg(target_os = "windows")]
+    let r = std::process::Command::new("cmd").args(["/C", "start", ""]).arg(&path).spawn();
+    #[cfg(target_os = "macos")]
+    let r = std::process::Command::new("open").arg(&path).spawn();
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let r = std::process::Command::new("xdg-open").arg(&path).spawn();
+    match r {
+        Ok(_) => host.push_info(&tr!(
+            format!("RV_MANUALE: manuale di rilievo aperto ({}).", path.display()),
+            format!("RV_MANUALE: surveying manual opened ({}).", path.display())
+        )),
+        Err(e) => host.push_error(&tr!(
+            format!("RV_MANUALE: il manuale è in {} ma non riesco ad aprirlo ({e}): aprilo a mano.", path.display()),
+            format!("RV_MANUALE: the manual is at {} but cannot be opened ({e}): open it by hand.", path.display())
+        )),
+    }
+}
+
 fn help(host: &mut dyn HostApi) {
     host.push_output(&tr!(
         format!(
             "Rilievo Vani {}: RV_VANO (misure di lati, diagonali e collegamenti di uno o più vani), RV_ETICHETTE \
-             (lettere sui vertici), RV_LIBRETTO (salva il libretto delle misure), RV_GUIDE (guida), RV_LANG IT|EN|AUTO.",
+             (lettere sui vertici), RV_LIBRETTO (salva il libretto delle misure), RV_GUIDE (guida), RV_MANUALE (manuale di rilievo in PDF), RV_LANG IT|EN|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
             "Rilievo Vani {}: RV_VANO (sides, diagonals and links of one or more rooms), RV_ETICHETTE (corner letters), \
-             RV_LIBRETTO (save the measures book), RV_GUIDE (guide), RV_LANG IT|EN|AUTO.",
+             RV_LIBRETTO (save the measures book), RV_GUIDE (guide), RV_MANUALE (surveying manual, PDF), RV_LANG IT|EN|AUTO.",
             env!("CARGO_PKG_VERSION")
         )
     ));
@@ -410,6 +443,7 @@ fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
                 constraints: Vec::new(),
                 openings: Vec::new(),
                 unit: survey::guess_unit(longest),
+                fill: true,
             }
         }
     };
@@ -744,8 +778,17 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
         }
     };
     let meas: Vec<Meas> = measures.iter().map(|m| m.meas).collect();
+    // When the measures leave part of the shape free (furniture in the way of
+    // a diagonal…), finish it from the drawing if the user allows it.
+    let mut filled: Option<String> = None;
     let sol = match solve::solve_network(&survey.points, &meas, &survey.datum()) {
         Ok(s) => s,
+        Err(e @ (SolveError::NotEnough { .. } | SolveError::NotRigid { .. }))
+            if saved.fill && solve_filled(&survey, &meas).is_some() =>
+        {
+            filled = Some(explain(&e, &survey, &measures));
+            solve_filled(&survey, &meas).unwrap()
+        }
         Err(e) => {
             let msg = explain(&e, &survey, &measures);
             host.push_error(&format!("RV_VANO: {msg}."));
@@ -771,7 +814,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     let (op_ents, op_warn) = openings_entities(&survey, &openings, &sol.pts, th, dec, z);
     ents.extend(op_ents);
     if saved.table {
-        ents.extend(table(&sol, &measures, &bad, th, dec, z));
+        ents.extend(table(&sol, &measures, &bad, th, dec, z, filled.is_some()));
     }
     host.add_entities(ents);
 
@@ -784,7 +827,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
 
     // Measures book: kept for RV_LIBRETTO, written now when asked.
     let doc = host.document_path(host.tab_id()).map(|p| p.to_string_lossy().to_string());
-    let book = book_csv(&survey, &sol, &measures, &openings, &bad, &saved, dec, doc.as_deref());
+    let book = book_csv(&survey, &sol, &measures, &openings, &bad, &saved, dec, doc.as_deref(), filled.as_deref());
     let path = if saved.csv_path.trim().is_empty() { default_book_path(host) } else { saved.csv_path.trim().to_string() };
     *LAST_BOOK.lock().unwrap_or_else(|e| e.into_inner()) = Some((book.clone(), path.clone()));
 
@@ -844,6 +887,18 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
             )
         ));
     }
+    if let Some(why) = &filled {
+        host.push_error(&tr!(
+            format!(
+                "RV_VANO: misure non sufficienti ({why}). Il calcolo è stato completato con gli angoli e le posizioni del \
+                 disegno: le parti non misurate sono solo indicative. Se puoi, aggiungi le misure mancanti o dei vincoli."
+            ),
+            format!(
+                "RV_VANO: not enough measures ({why}). The calculation was finished with the drawing's angles and \
+                 positions: the parts not measured are only indicative. If you can, add the missing measures or constraints."
+            )
+        ));
+    }
     for w in &op_warn {
         host.push_error(&format!("RV_VANO: {w}."));
     }
@@ -888,7 +943,18 @@ fn write_book(host: &mut dyn HostApi, path: &str, text: &str) {
 /// The measures book as CSV: semicolons and decimal commas in Italian (as
 /// Excel and Calc expect in Italy), commas and points in English; UTF-8
 /// with BOM so Excel reads the accents.
-pub fn book_csv(survey: &Survey, sol: &Solution, measures: &[Measure], openings: &[Opening], bad: &[usize], saved: &Saved, dec: usize, doc: Option<&str>) -> String {
+#[allow(clippy::too_many_arguments)]
+pub fn book_csv(
+    survey: &Survey,
+    sol: &Solution,
+    measures: &[Measure],
+    openings: &[Opening],
+    bad: &[usize],
+    saved: &Saved,
+    dec: usize,
+    doc: Option<&str>,
+    filled: Option<&str>,
+) -> String {
     let tol = saved.tol;
     let sep = if crate::i18n::italian() { ";" } else { "," };
     let cell = |s: &str| {
@@ -919,6 +985,15 @@ pub fn book_csv(survey: &Survey, sol: &Solution, measures: &[Measure], openings:
         sol.sigma0.map(|s| fmt_num(s, dec + 1)).unwrap_or_else(|| "—".into()),
     ]);
     push(vec![tr!("Tolleranza", "Tolerance").into(), fmt_num(tol, dec)]);
+    if let Some(why) = filled {
+        push(vec![
+            tr!("ATTENZIONE", "WARNING").into(),
+            tr!(
+                format!("misure non sufficienti ({why}): forma completata con gli angoli del disegno, parti non misurate indicative"),
+                format!("not enough measures ({why}): shape finished with the drawing's angles, unmeasured parts indicative")
+            ),
+        ]);
+    }
     push(vec![]);
     push(vec![tr!("MISURE", "MEASURES").into()]);
     push(vec![
@@ -984,7 +1059,21 @@ pub fn book_csv(survey: &Survey, sol: &Solution, measures: &[Measure], openings:
 
 /// The table of measures, right of the rooms: measure, measured, computed
 /// and residual; residuals over the tolerance in red.
-fn table(sol: &Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize, z: f64) -> Vec<EntityType> {
+/// Solve with stand-ins from the drawing added (low weight), returning only
+/// the real measures' residuals.
+fn solve_filled(survey: &Survey, meas: &[Meas]) -> Option<Solution> {
+    let extra = survey.stand_ins(meas);
+    let mut all = meas.to_vec();
+    all.extend(extra.iter().copied());
+    let mut w = vec![1.0; meas.len()];
+    w.extend(std::iter::repeat_n(0.05, extra.len()));
+    let mut s = solve::solve_network_weighted(&survey.points, &all, &w, meas.len(), &survey.datum()).ok()?;
+    s.residuals.truncate(meas.len());
+    s.scaled.truncate(meas.len());
+    Some(s)
+}
+
+fn table(sol: &Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize, z: f64, filled: bool) -> Vec<EntityType> {
     let maxx = sol.pts.iter().map(|p| p[0]).fold(f64::MIN, f64::max);
     let maxy = sol.pts.iter().map(|p| p[1]).fold(f64::MIN, f64::max);
     let x0 = maxx + h * 5.0;
@@ -1042,6 +1131,21 @@ fn table(sol: &Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize
         None => tr!("Nessuna misura di controllo".to_string(), "No check measure".to_string()),
     };
     out.push(mtext(&foot, [x0, bottom - row_h * 0.6], z, h * 0.85, AttachmentPoint::MiddleLeft, LAYER_NOTES));
+    if filled {
+        let mut t = mtext(
+            tr!(
+                "Misure non sufficienti: forma completata dal disegno (parti non misurate indicative)",
+                "Not enough measures: shape finished from the drawing (unmeasured parts indicative)"
+            ),
+            [x0, bottom - row_h * 1.5],
+            z,
+            h * 0.85,
+            AttachmentPoint::MiddleLeft,
+            LAYER_NOTES,
+        );
+        t.common_mut().color = codec::types::Color::from_index(1);
+        out.push(t);
+    }
     out
 }
 
@@ -1316,8 +1420,8 @@ mod tests {
         ];
         let m: Vec<Meas> = meas.iter().map(|x| x.meas).collect();
         let sol = solve::solve_network(&survey.points, &m, &survey.datum()).unwrap();
-        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0 };
-        let csv = book_csv(&survey, &sol, &meas, &[], &[], &saved, 3, Some("C:\\x.dwg"));
+        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true };
+        let csv = book_csv(&survey, &sol, &meas, &[], &[], &saved, 3, Some("C:\\x.dwg"), None);
         assert!(csv.starts_with('\u{feff}'));
         assert!(csv.contains("A–C"));
         assert!(csv.lines().any(|l| l.starts_with("1") && l.contains("12")), "area row: {csv}");

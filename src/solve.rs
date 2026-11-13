@@ -80,9 +80,12 @@ pub enum Meas {
     /// How far `q` is from `p` along the direction `a`→`b` (signed): 0
     /// says two door jambs face each other square across the wall.
     Along { p: At, q: At, a: usize, b: usize, d: f64 },
+    /// Turn from direction `a`→`b` to direction `c`→`d`, in radians
+    /// (signed): keeps two rooms turned as drawn.
+    Turn { a: usize, b: usize, c: usize, d: usize, rad: f64 },
 }
 
-fn angle_at(a: P2, b: P2, c: P2) -> f64 {
+pub fn angle_at(a: P2, b: P2, c: P2) -> f64 {
     let u = [a[0] - b[0], a[1] - b[1]];
     let v = [c[0] - b[0], c[1] - b[1]];
     (u[0] * v[1] - u[1] * v[0]).abs().atan2(u[0] * v[0] + u[1] * v[1])
@@ -93,7 +96,7 @@ impl Meas {
     pub fn value(&self) -> f64 {
         match *self {
             Meas::Dist { d, .. } | Meas::Perp { d, .. } | Meas::DistAt { d, .. } | Meas::PerpAt { d, .. } | Meas::Along { d, .. } => d,
-            Meas::Angle { rad, .. } => rad,
+            Meas::Angle { rad, .. } | Meas::Turn { rad, .. } => rad,
             Meas::Level { .. } => 0.0,
         }
     }
@@ -107,6 +110,7 @@ impl Meas {
             Meas::DistAt { p, q, .. } => vec![p.a, p.b, q.a, q.b],
             Meas::PerpAt { p, a, b, .. } => vec![p.a, p.b, a, b],
             Meas::Along { p, q, a, b, .. } => vec![p.a, p.b, q.a, q.b, a, b],
+            Meas::Turn { a, b, c, d, .. } => vec![a, b, c, d],
         };
         v.sort();
         v.dedup();
@@ -124,6 +128,7 @@ impl Meas {
             Meas::DistAt { d, .. } => d > 0.0,
             Meas::PerpAt { a, b, d, .. } => a != b && d > 0.0,
             Meas::Along { a, b, .. } => a != b,
+            Meas::Turn { a, b, c, d, .. } => a != b && c != d,
         };
         inr && ok && self.value().is_finite()
     }
@@ -138,7 +143,7 @@ impl Meas {
     /// sideways shift they make over `size`.
     pub fn scale(&self, size: f64) -> f64 {
         match self {
-            Meas::Angle { .. } => size,
+            Meas::Angle { .. } | Meas::Turn { .. } => size,
             _ => 1.0,
         }
     }
@@ -154,6 +159,14 @@ impl Meas {
             }
             Meas::DistAt { p, q, .. } => dist(p.eval(pts), q.eval(pts)),
             Meas::PerpAt { p, a, b, .. } => perp_dist(p.eval(pts), pts[a], pts[b]),
+            Meas::Turn { a, b, c, d, rad } => {
+                let u = [pts[b][0] - pts[a][0], pts[b][1] - pts[a][1]];
+                let v = [pts[d][0] - pts[c][0], pts[d][1] - pts[c][1]];
+                let t = (u[0] * v[1] - u[1] * v[0]).atan2(u[0] * v[0] + u[1] * v[1]);
+                // Stay on the same turn as the value (no 2π jumps).
+                let tau = std::f64::consts::TAU;
+                t + ((rad - t) / tau).round() * tau
+            }
             Meas::Along { p, q, a, b, .. } => {
                 let (pp, qq) = (p.eval(pts), q.eval(pts));
                 let u = [pts[b][0] - pts[a][0], pts[b][1] - pts[a][1]];
@@ -413,6 +426,20 @@ fn unknowns_of(m: usize, orients: bool) -> usize {
 /// the group's first point is fixed and the direction to the first point it
 /// is measured to is kept.
 pub fn solve_network(init: &[P2], meas: &[Meas], datum_hint: &[(usize, usize)]) -> Result<Solution, SolveError> {
+    solve_network_weighted(init, meas, &vec![1.0; meas.len()], meas.len(), datum_hint)
+}
+
+/// Like [`solve_network`], with a weight per measure. The first `n_real`
+/// measures are real; the others are stand-ins taken from the drawing (low
+/// weight) that only fill what the real ones leave free: they are left out
+/// of the redundancy and of σ₀.
+pub fn solve_network_weighted(
+    init: &[P2],
+    meas: &[Meas],
+    weights: &[f64],
+    n_real: usize,
+    datum_hint: &[(usize, usize)],
+) -> Result<Solution, SolveError> {
     let n = init.len();
     if n < 3 {
         return Err(SolveError::TooFewPoints);
@@ -435,6 +462,8 @@ pub fn solve_network(init: &[P2], meas: &[Meas], datum_hint: &[(usize, usize)]) 
             .map(|(k, _)| k)
             .collect();
         let gm: Vec<Meas> = local.iter().map(|&k| meas[k]).collect();
+        let gw: Vec<f64> = local.iter().map(|&k| weights.get(k).copied().unwrap_or(1.0)).collect();
+        let real_here = local.iter().filter(|&&k| k < n_real).count();
         let orients = gm.iter().any(Meas::orients);
         let unknowns = unknowns_of(group.len(), orients);
         if group.len() < 3 || local.len() < unknowns {
@@ -457,15 +486,15 @@ pub fn solve_network(init: &[P2], meas: &[Meas], datum_hint: &[(usize, usize)]) 
                     .unwrap_or(group[1]);
                 (p0, p1)
             });
-        let it = solve_group(&mut pts, group, &gm, p0, p1, orients)?;
+        let it = solve_group(&mut pts, group, &gm, &gw, p0, p1, orients)?;
         iterations = iterations.max(it);
-        redundancy += local.len() - unknowns;
+        redundancy += real_here.saturating_sub(unknowns);
     }
 
     let size = mean_size(meas);
     let residuals: Vec<f64> = meas.iter().map(|m| m.compute(&pts) - m.value()).collect();
     let scaled: Vec<f64> = meas.iter().zip(&residuals).map(|(m, v)| v * m.scale(size)).collect();
-    let sigma0 = (redundancy > 0).then(|| (scaled.iter().map(|v| v * v).sum::<f64>() / redundancy as f64).sqrt());
+    let sigma0 = (redundancy > 0).then(|| (scaled[..n_real.min(scaled.len())].iter().map(|v| v * v).sum::<f64>() / redundancy as f64).sqrt());
     Ok(Solution { pts, residuals, scaled, redundancy, sigma0, groups: all_groups.len(), iterations })
 }
 
@@ -480,7 +509,7 @@ fn mean_size(meas: &[Meas]) -> f64 {
 }
 
 /// Gauss–Newton on one group; writes the result into `pts`.
-fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: usize, orients: bool) -> Result<usize, SolveError> {
+fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], weights: &[f64], p0: usize, p1: usize, orients: bool) -> Result<usize, SolveError> {
     let m = group.len();
     let unknowns = unknowns_of(m, orients);
     let fixed = pts[p0];
@@ -514,13 +543,14 @@ fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: us
     let mut last_ok = true;
     let mut converged = false;
     let mut iterations = 0;
+    let mut last_big = f64::INFINITY;
     for it in 1..=200 {
         iterations = it;
         let mut nm = vec![vec![0.0; unknowns]; unknowns];
         let mut rhs = vec![0.0; unknowns];
-        for x in meas {
+        for (x, &wt) in meas.iter().zip(weights) {
             let (f, parts) = x.linearize(pts, size);
-            let w8 = x.scale(size);
+            let w8 = x.scale(size) * wt;
             let mut row: Vec<(usize, f64)> = Vec::with_capacity(8);
             for (p, g) in parts {
                 if p == p0 {
@@ -555,10 +585,16 @@ fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: us
             pts[p][0] += k * dx[c];
             pts[p][1] += k * dx[c + 1];
         }
+        last_big = big;
         if big < size * 1e-10 {
             converged = true;
             break;
         }
+    }
+    // Weak stand-ins against real measures can make the last digits creep
+    // slowly: a step of a millionth of the size is still a solution.
+    if !converged && last_big < size * 1e-6 {
+        converged = true;
     }
     if !last_ok {
         return Err(SolveError::NotRigid { group: group.to_vec() });
@@ -942,5 +978,29 @@ mod tests {
         for (a, b) in sol.pts.iter().zip(&truth) {
             assert!(dist(*a, *b) < 1e-6, "{a:?} {b:?}");
         }
+    }
+    #[test]
+    fn drawing_fills_missing_diagonal() {
+        // L-room, only the sides measured: the drawn angles (weak) finish it.
+        let truth: Vec<P2> = vec![[0.0, 0.0], [6.0, 0.0], [6.0, 2.5], [3.0, 2.5], [3.0, 5.0], [0.0, 5.0]];
+        let drawn: Vec<P2> = vec![[0.0, 0.0], [5.5, 0.0], [5.5, 2.3], [2.8, 2.3], [2.8, 4.6], [0.0, 4.6]];
+        let mut meas: Vec<Meas> = sides(6).iter().map(|&(i, j)| Meas::Dist { i, j, d: dist(truth[i], truth[j]) }).collect();
+        assert!(solve_network(&drawn, &meas, &[(0, 1)]).is_err());
+        let n_real = meas.len();
+        for b in 0..6 {
+            let (a, c) = ((b + 5) % 6, (b + 1) % 6);
+            meas.push(Meas::Angle { a, b, c, rad: angle_at(drawn[a], drawn[b], drawn[c]) });
+        }
+        let mut w = vec![1.0; n_real];
+        w.extend(vec![0.05; 6]);
+        let sol = solve_network_weighted(&drawn, &meas, &w, n_real, &[(0, 1)]).unwrap();
+        // Real sides are kept almost exactly; the shape is the drawn one.
+        for k in 0..n_real {
+            assert!(sol.residuals[k].abs() < 1e-3, "{k}: {}", sol.residuals[k]);
+        }
+        for (a, b) in sol.pts.iter().zip(&truth) {
+            assert!(dist(*a, *b) < 0.01, "{a:?} {b:?}");
+        }
+        assert_eq!(sol.redundancy, 0);
     }
 }

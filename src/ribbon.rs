@@ -36,7 +36,10 @@ impl CadModule for RilievoModule {
                 },
                 RibbonGroup {
                     title: tr!("Aiuto", "Help"),
-                    tools: vec![cmd("RV_GUIDE", tr!("Guida", "Guide"), include_bytes!("../icons/guide.svg"))],
+                    tools: vec![
+                        cmd("RV_GUIDE", tr!("Guida", "Guide"), include_bytes!("../icons/guide.svg")),
+                        cmd("RV_MANUALE", tr!("Manuale PDF", "PDF manual"), include_bytes!("../icons/manual.svg")),
+                    ],
                 },
             ]
         })

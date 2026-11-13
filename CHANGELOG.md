@@ -12,6 +12,27 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.4.0] - 2026-11-13
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Calcolo anche con misure incomplete**: quando mobili o ostacoli impediscono
+  alcune diagonali (o manca un collegamento), con l'opzione *completa la forma con
+  gli angoli del disegno* (pagina 2, attiva di solito) il plugin prende dal disegno
+  quello che manca — gli angoli degli spigoli e, tra vani già legati da qualche
+  misura, la posizione relativa — con un peso basso, così dove ci sono misure vere
+  vincono loro. Il risultato viene segnalato in rosso nella tabella, sulla riga di
+  comando e nel libretto: le parti non misurate sono solo indicative.
+- **Manuale di rilievo in PDF** (pulsante *Manuale PDF*, comando `RV_MANUALE`),
+  incorporato nel plugin: come rilevare un appartamento intero, con disegni —
+  eidotipo e numerazione dei vani, lati e diagonali, misura di controllo, mobili
+  che ostacolano, porte comuni e spessori, porte e finestre, muri esterni, lettura
+  degli scarti, valori indicativi e lista di controllo per il cantiere. Si trova
+  anche in `docs/Manuale_rilievo.pdf`.
+
 ## [0.3.2] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

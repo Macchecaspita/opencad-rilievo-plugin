@@ -45,6 +45,8 @@ pub struct Saved {
     pub openings: Vec<Vec<String>>,
     /// Drawing unit: 0 metres, 1 centimetres, 2 millimetres.
     pub unit: usize,
+    /// When the measures are not enough, finish the shape from the drawing.
+    pub fill: bool,
 }
 
 /// Metres per drawing unit, for the areas.
@@ -503,6 +505,59 @@ impl Survey {
         Ok(ops)
     }
 
+    /// Stand-in measures taken from the drawing, to finish a shape the real
+    /// measures leave free (furniture in the way of a diagonal, a link not
+    /// taken): the drawn angle at every corner and, between rooms the real
+    /// measures already tie together, their drawn pose (turn and position of
+    /// corner A). Used with a low
+    /// weight, so where real measures exist they win.
+    pub fn stand_ins(&self, real: &[Meas]) -> Vec<Meas> {
+        let mut out = Vec::new();
+        for ids in &self.point_of {
+            let n = ids.len();
+            for i in 0..n {
+                let (a, b, c) = (ids[(i + n - 1) % n], ids[i], ids[(i + 1) % n]);
+                if a == b || b == c || a == c {
+                    continue;
+                }
+                let rad = solve::angle_at(self.points[a], self.points[b], self.points[c]);
+                if rad > 1e-6 && rad < std::f64::consts::PI - 1e-6 {
+                    out.push(Meas::Angle { a, b, c, rad });
+                }
+            }
+        }
+        let groups = solve::groups(self.points.len(), real);
+        let group_of = |p: usize| groups.iter().position(|g| g.contains(&p));
+        for r in 1..self.rooms.len() {
+            let Some(gr) = group_of(self.point_of[r][0]) else { continue };
+            let Some(q) = (0..r).find(|&q| group_of(self.point_of[q][0]) == Some(gr)) else { continue };
+            // The second room turned as drawn, and its corner A where it was
+            // drawn relative to the first room's corner A. Only the pose: no drawn length that could fight the
+            // measured sizes.
+            let (q0, q1, r0, r1) = (self.point_of[q][0], self.point_of[q][1], self.point_of[r][0], self.point_of[r][1]);
+            if q0 == q1 || r0 == r1 || r0 == q0 || r0 == q1 {
+                continue;
+            }
+            let (pq0, pq1, pr0, pr1) = (self.points[q0], self.points[q1], self.points[r0], self.points[r1]);
+            let (u, v) = ([pq1[0] - pq0[0], pq1[1] - pq0[1]], [pr1[0] - pr0[0], pr1[1] - pr0[1]]);
+            let turn = (u[0] * v[1] - u[1] * v[0]).atan2(u[0] * v[0] + u[1] * v[1]);
+            out.push(Meas::Turn { a: q0, b: q1, c: r0, d: r1, rad: turn });
+            let l = u[0].hypot(u[1]);
+            let along = ((pr0[0] - pq0[0]) * u[0] + (pr0[1] - pq0[1]) * u[1]) / l;
+            out.push(Meas::Along { p: At::corner(q0), q: At::corner(r0), a: q0, b: q1, d: along });
+            // Second component along the first room's other side at A (never
+            // parallel to A–B): together they place corner A.
+            let qn = *self.point_of[q].last().unwrap_or(&q0);
+            let w = [self.points[qn][0] - pq0[0], self.points[qn][1] - pq0[1]];
+            let lw = w[0].hypot(w[1]);
+            if qn != q0 && lw > 0.0 {
+                let along2 = ((pr0[0] - pq0[0]) * w[0] + (pr0[1] - pq0[1]) * w[1]) / lw;
+                out.push(Meas::Along { p: At::corner(q0), q: At::corner(r0), a: q0, b: qn, d: along2 });
+            }
+        }
+        out
+    }
+
     /// Hints for the solver: each room's corner A fixed, A→B kept.
     pub fn datum(&self) -> Vec<(usize, usize)> {
         self.point_of.iter().map(|ids| (ids[0], ids[1])).collect()
@@ -590,7 +645,7 @@ mod tests {
         others[0][3] = "5,0".into();
         others.push(vec!["1B-1C".into(), "2A".into(), "".into(), "0,30".into()]);
         others.push(vec!["1C".into(), "2a".into(), "".into(), "3,02".into()]);
-        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0 };
+        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true };
         let m = s.parse(&saved, &num).unwrap().measures;
         assert_eq!(m.len(), 8 + 3);
         assert_eq!(m[8].kind, Kind::Diagonal);
@@ -617,6 +672,7 @@ mod tests {
             constraints: vec![],
             openings: vec![],
             unit: 0,
+            fill: true,
         };
         let e = s.parse(&saved, &num).unwrap_err();
         assert!(e.contains("1") && e.contains("\"A\""), "{e}");
@@ -646,6 +702,7 @@ mod tests {
                 vec!["F1".into(), "1D-1C".into(), "finestra".into(), "0,8".into(), "1,2".into(), "".into()],
             ],
             unit: 0,
+            fill: true,
         };
         let p = s.parse(&saved, &num).unwrap();
         let kinds: Vec<Kind> = p.measures.iter().map(|m| m.kind).collect();
@@ -680,6 +737,7 @@ mod tests {
                 vec!["P1".into(), "2D-2A".into(), "porta".into(), "1".into(), "0,9".into(), "".into()],
             ],
             unit: 0,
+            fill: true,
         };
         assert!(s.parse(&saved, &num).unwrap_err().contains("P1"));
     }

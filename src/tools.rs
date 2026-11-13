@@ -321,6 +321,19 @@ fn how_to_measure(multi: bool) -> Vec<String> {
     }
     v.push(
         tr!(
+            "MISURE MANCANTI — se un mobile impedisce una diagonale, lasciala vuota: con l'opzione \"completa la \
+             forma\" (pagina 2, attiva di solito) il plugin usa per quella parte gli angoli del disegno e lo segnala in \
+             rosso. Il risultato è buono quanto il disegno in quel punto: meglio un vincolo (angolo retto) o una \
+             diagonale tra altri spigoli, se si può.",
+            "MISSING MEASURES — if furniture blocks a diagonal, leave it empty: with \"finish the shape\" (page 2, \
+             usually on) the plugin uses the drawing's angles for that part and says so in red. The result is as good \
+             as the drawing there: a constraint (square corner) or a diagonal between other corners is better, if \
+             possible."
+        )
+        .to_string(),
+    );
+    v.push(
+        tr!(
             "UNITÀ — le misure vanno nelle unità del disegno (metri, centimetri o millimetri, come hai disegnato); la \
              virgola decimale va bene. Il vertice A (o 1A) resta dov'è e il lato A–B mantiene la direzione disegnata.",
             "UNITS — type the measures in drawing units (metres, centimetres or millimetres, as you drew); a decimal \
@@ -555,6 +568,14 @@ impl MeasureDialog {
                 default_index: saved.unit.min(2),
             },
         ]))
+        .with_control(checkbox(
+            "fill",
+            tr!(
+                "Se mancano misure (mobili, ostacoli), completa la forma con gli angoli del disegno",
+                "If measures are missing (furniture, obstacles), finish the shape with the drawing's angles"
+            ),
+            saved.fill,
+        ))
         .with_control(DialogControl::row(vec![
             checkbox("dims", tr!("Quote", "Dimensions"), saved.dims),
             checkbox("table", tr!("Tabella scarti", "Residuals table"), saved.table),
@@ -618,6 +639,7 @@ impl MeasureDialog {
         s.dims = get_bool(m, "dims", s.dims);
         s.table = get_bool(m, "table", s.table);
         s.csv = get_bool(m, "csv", s.csv);
+        s.fill = get_bool(m, "fill", s.fill);
         if let Some(p) = get_path(m, "csv_path") {
             s.csv_path = p;
         }
@@ -832,10 +854,21 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
             ),
         ),
         (
+            tr!("Manuale di rilievo (PDF)", "Surveying manual (PDF)"),
+            tr!(
+                "Il pulsante Manuale PDF apre una guida passo passo, con disegni, per rilevare un intero appartamento: \
+                 eidotipo, misure dei vani, diagonali e controlli, mobili che ostacolano, porte comuni, finestre e muri \
+                 esterni, lettura degli scarti, lista di controllo per il cantiere. (In italiano.)",
+                "The PDF manual button opens a step-by-step guide, with drawings, to survey a whole flat: sketch, room \
+                 measures, diagonals and checks, furniture in the way, shared doors, windows and outer walls, reading the \
+                 residuals, a site checklist. (In Italian.)"
+            ),
+        ),
+        (
             tr!("Comandi", "Commands"),
             tr!(
-                "RV_VANO, RV_ETICHETTE, RV_LIBRETTO, RV_GUIDE; RV_LANG IT|EN|AUTO cambia la lingua.",
-                "RV_VANO, RV_ETICHETTE, RV_LIBRETTO, RV_GUIDE; RV_LANG IT|EN|AUTO changes the language."
+                "RV_VANO, RV_ETICHETTE, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|AUTO cambia la lingua.",
+                "RV_VANO, RV_ETICHETTE, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|AUTO changes the language."
             ),
         ),
     ]
@@ -899,6 +932,7 @@ mod tests {
             constraints: vec![],
             openings: vec![],
             unit: 0,
+            fill: true,
         }
     }
 

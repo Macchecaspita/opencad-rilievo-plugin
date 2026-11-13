@@ -50,6 +50,7 @@ italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
 | `RV_ETICHETTE` | **Lettere vertici** | scrive solo le lettere sui vertici (layer RILIEVO_ETICHETTE), per l'eidotipo |
 | `RV_LIBRETTO` | **Libretto misure** | salva l'ultimo calcolo in CSV: misure, scarti, σ₀, coordinate, superfici |
 | `RV_GUIDE` | **Guida** | breve guida |
+| `RV_MANUALE` | **Manuale PDF** | manuale di rilievo di un appartamento, con disegni ([docs/Manuale_rilievo.pdf](docs/Manuale_rilievo.pdf)) |
 | `RV_LANG IT\|EN\|AUTO` | | lingua dei messaggi |
 
 ### Consigli di rilievo
@@ -71,6 +72,9 @@ italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
   vincolo riceve lo scarto, quindi un angolo "retto" che non lo è viene segnalato.
 - **Porta comune**: scrivi la stessa porta nei due vani con lo stesso nome (es. `P1`)
   e lo spessore del muro; i due vani risultano collegati senza altre misure.
+- **Misure mancanti** (mobili, ostacoli): lascia vuoto quello che non hai potuto
+  misurare; con l'opzione *completa la forma con gli angoli del disegno* il plugin
+  calcola lo stesso e segnala in rosso che quelle parti sono indicative.
 - Nella finestra delle misure, la sezione **Come misurare** spiega ogni colonna.
 - Se le misure non bastano o non stanno insieme, la finestra si riapre con quello
   che avevi scritto e il motivo in cima (per esempio quali diagonali aggiungere).
