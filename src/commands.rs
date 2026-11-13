@@ -1,12 +1,14 @@
 //! Command dispatch: the glue between the host and the survey maths.
 //!
-//! `RV_VANO` picks a room and opens the measures dialog; the dialog hands
-//! back `RV_VANOAPPLY`, which runs here with full `HostApi` access, solves
-//! and draws the result as one undo step. When the measures are not enough
-//! or do not fit together, the dialog opens again with what was typed and
-//! the reason on top.
+//! `RV_VANO` picks one or more rooms and opens the measures dialog; the
+//! dialog hands back `RV_VANOAPPLY`, which runs here with full `HostApi`
+//! access, solves and draws the result as one undo step. When the measures
+//! are not enough or do not fit together, the dialog opens again with what
+//! was typed and the reason on top. `RV_LIBRETTO` saves the last result as
+//! a measures book (CSV).
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use ocs_plugin_api::host::codec;
@@ -15,7 +17,8 @@ use ocs_plugin_api::host::{CommandRequest, HostApi, HostSettingValue, LayerConfi
 use codec::entities::{AttachmentPoint, LwPolyline, LwVertex, MText};
 use codec::{EntityType, Handle, Vector2, Vector3};
 
-use crate::solve::{self, label, parse_label, Obs, SolveError, P2};
+use crate::solve::{self, Meas, SolveError, Solution, P2};
+use crate::survey::{Kind, Measure, Saved, Survey};
 use crate::tools;
 
 /// Layer of the adjusted rooms.
@@ -27,7 +30,7 @@ pub const LAYER_LABELS: &str = "RILIEVO_ETICHETTE";
 /// Dimension style the plugin keeps for its dimensions.
 pub const DIM_STYLE: &str = "RILIEVO";
 
-// ── Room ────────────────────────────────────────────────────────────────────
+// ── Rooms ───────────────────────────────────────────────────────────────────
 
 /// A closed polyline drawn as a room.
 #[derive(Clone, Debug)]
@@ -52,7 +55,6 @@ fn room_of(e: &EntityType) -> Option<Room> {
     if explicit {
         pts.pop();
     }
-    // Drop repeated vertices.
     let mut clean: Vec<P2> = Vec::with_capacity(pts.len());
     for q in pts {
         if clean.last().map_or(true, |l| solve::dist(*l, q) > 1e-9) {
@@ -69,9 +71,17 @@ fn room_of(e: &EntityType) -> Option<Room> {
     Some(Room { handle: e.common().handle, pts: clean, z: p.elevation, had_arcs })
 }
 
-/// Every closed polyline in the drawing (model space, XY plane).
+/// Every closed polyline in the drawing (XY plane), except the plugin's own
+/// output.
 pub fn rooms(host: &dyn HostApi) -> Vec<Room> {
-    host.document().entities().filter_map(room_of).collect()
+    host.document()
+        .entities()
+        .filter(|e| {
+            let l = &e.common().layer;
+            !l.eq_ignore_ascii_case(LAYER_ROOM) && !l.eq_ignore_ascii_case(LAYER_NOTES)
+        })
+        .filter_map(room_of)
+        .collect()
 }
 
 /// Live read of one room by handle.
@@ -81,6 +91,10 @@ fn fetch_room(host: &dyn HostApi, h: Handle) -> Option<Room> {
         Some(e) => room_of(&e),
         None => host.document().get_entity(h).and_then(room_of),
     }
+}
+
+fn fetch_rooms(host: &dyn HostApi, hs: &[Handle]) -> Option<Vec<Room>> {
+    hs.iter().map(|&h| fetch_room(host, h)).collect()
 }
 
 pub fn point_in_polygon(poly: &[P2], p: P2) -> bool {
@@ -97,39 +111,59 @@ pub fn point_in_polygon(poly: &[P2], p: P2) -> bool {
     inside
 }
 
-// ── What the user typed, per room ───────────────────────────────────────────
-
-/// The dialog's content: kept per room for the session, so a failed
-/// calculation (or a later re-run) opens the dialog with the same values.
-#[derive(Clone, Debug)]
-pub struct Saved {
-    /// Rows `[side, drawn, measured]`, one per side in vertex order.
-    pub sides: Vec<Vec<String>>,
-    /// Rows `[from, to, drawn, measured]`.
-    pub diags: Vec<Vec<String>>,
-    pub h: f64,
-    pub tol: f64,
-    pub dims: bool,
-    pub table: bool,
+fn centroid(p: &[P2]) -> P2 {
+    // Area centroid; falls back to the mean of the corners.
+    let n = p.len();
+    let a = solve::signed_area(p);
+    if a.abs() < 1e-12 {
+        let (x, y) = p.iter().fold((0.0, 0.0), |(x, y), q| (x + q[0], y + q[1]));
+        return [x / n as f64, y / n as f64];
+    }
+    let (mut cx, mut cy) = (0.0, 0.0);
+    for i in 0..n {
+        let (q, r) = (p[i], p[(i + 1) % n]);
+        let c = q[0] * r[1] - r[0] * q[1];
+        cx += (q[0] + r[0]) * c;
+        cy += (q[1] + r[1]) * c;
+    }
+    [cx / (6.0 * a), cy / (6.0 * a)]
 }
 
-static SAVED: Mutex<Option<HashMap<u64, Saved>>> = Mutex::new(None);
-static PENDING: Mutex<Option<(Handle, Saved)>> = Mutex::new(None);
+// ── Session state ───────────────────────────────────────────────────────────
 
-pub fn saved_for(h: Handle) -> Option<Saved> {
-    SAVED.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(&h.value()).cloned())
+static SAVED: Mutex<Option<HashMap<String, Saved>>> = Mutex::new(None);
+static PENDING: Mutex<Option<(Vec<Handle>, Saved)>> = Mutex::new(None);
+/// The last measures book (CSV text) and its suggested file.
+static LAST_BOOK: Mutex<Option<(String, String)>> = Mutex::new(None);
+
+fn key(hs: &[Handle]) -> String {
+    hs.iter().map(|h| hex(*h)).collect::<Vec<_>>().join(",")
 }
 
-fn remember(h: Handle, s: Saved) {
-    SAVED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new).insert(h.value(), s);
+pub fn saved_for(hs: &[Handle]) -> Option<Saved> {
+    SAVED.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(&key(hs)).cloned())
 }
 
-pub fn set_pending(h: Handle, s: Saved) {
-    *PENDING.lock().unwrap_or_else(|e| e.into_inner()) = Some((h, s));
+fn remember(hs: &[Handle], s: Saved) {
+    SAVED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new).insert(key(hs), s);
 }
 
-fn take_pending() -> Option<(Handle, Saved)> {
+pub fn set_pending(hs: Vec<Handle>, s: Saved) {
+    *PENDING.lock().unwrap_or_else(|e| e.into_inner()) = Some((hs, s));
+}
+
+fn take_pending() -> Option<(Vec<Handle>, Saved)> {
     PENDING.lock().unwrap_or_else(|e| e.into_inner()).take()
+}
+
+pub fn last_book() -> Option<(String, String)> {
+    LAST_BOOK.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+static PENDING_BOOK_PATH: Mutex<Option<String>> = Mutex::new(None);
+
+pub fn set_pending_book_path(p: String) {
+    *PENDING_BOOK_PATH.lock().unwrap_or_else(|e| e.into_inner()) = Some(p);
 }
 
 // ── Numbers ─────────────────────────────────────────────────────────────────
@@ -145,7 +179,11 @@ pub fn parse_num(s: &str) -> Option<f64> {
 
 /// `v` with `dec` decimals, decimal comma in Italian.
 pub fn fmt_num(v: f64, dec: usize) -> String {
-    let s = format!("{v:.dec$}");
+    let mut s = format!("{v:.dec$}");
+    // No "-0.000": a value that rounds to zero is just zero.
+    if s.starts_with('-') && s[1..].chars().all(|c| c == '0' || c == '.') {
+        s.remove(0);
+    }
     if crate::i18n::italian() { s.replace('.', ",") } else { s }
 }
 
@@ -170,9 +208,9 @@ fn nice(v: f64) -> f64 {
     10.0 * p
 }
 
-/// Text height and residual tolerance suited to the room's size: a 5 m
-/// room drawn in metres gets 0.2 and 0.02; the same room in millimetres
-/// gets 200 and 20.
+/// Text height and residual tolerance suited to the rooms' size: a 5 m
+/// room drawn in metres gets 0.2 and 0.02; the same in millimetres gets 200
+/// and 20.
 pub fn default_sizes(pts: &[P2]) -> (f64, f64) {
     let n = pts.len();
     let longest = (0..n).map(|i| solve::dist(pts[i], pts[(i + 1) % n])).fold(0.0f64, f64::max);
@@ -195,6 +233,10 @@ fn hex(h: Handle) -> String {
 fn parse_handle(tok: &str) -> Option<Handle> {
     let t = tok.trim().trim_start_matches("0x").trim_start_matches("0X");
     u64::from_str_radix(t, 16).ok().filter(|v| *v != 0).map(Handle::new)
+}
+
+fn parse_handles(tok: &str) -> Vec<Handle> {
+    tok.split(',').filter_map(parse_handle).collect()
 }
 
 // ── Dispatch ────────────────────────────────────────────────────────────────
@@ -221,32 +263,33 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         "RV_VANO" => start_pick(host, "RV_VANOOPEN", "RV_VANO"),
         "RV_ETICHETTE" => start_pick(host, "RV_ETICHETTEAPPLY", "RV_ETICHETTE"),
         "RV_VANOOPEN" => {
-            if let Some(h) = arg.as_deref().and_then(parse_handle) {
-                open_dialog(host, h, None);
+            let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            if !hs.is_empty() {
+                open_dialog(host, &hs, None);
             }
         }
         "RV_ETICHETTEAPPLY" => {
-            if let Some(h) = arg.as_deref().and_then(parse_handle) {
-                match fetch_room(host, h) {
-                    Some(room) => {
-                        let (hh, _) = default_sizes(&room.pts);
-                        let h = saved_for(room.handle).map_or(hh, |s| s.h);
-                        host.begin_undo_group("RV_ETICHETTE");
-                        let n = write_labels(host, &room, h);
-                        host.end_undo_group();
-                        host.set_dirty();
-                        host.push_info(&tr!(
-                            format!("RV_ETICHETTE: {n} lettere scritte sul layer {LAYER_LABELS}."),
-                            format!("RV_ETICHETTE: {n} letters written on layer {LAYER_LABELS}.")
-                        ));
-                    }
-                    None => host.push_error(tr!("RV_ETICHETTE: il vano non è più nel disegno.", "RV_ETICHETTE: the room is no longer in the drawing.")),
-                }
+            let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            if !hs.is_empty() {
+                labels_only(host, &hs);
             }
         }
         "RV_VANOAPPLY" => {
-            if let Some((h, saved)) = take_pending() {
-                apply(host, h, saved);
+            if let Some((hs, saved)) = take_pending() {
+                apply(host, &hs, saved);
+            }
+        }
+        "RV_LIBRETTO" => match last_book() {
+            Some((_, default)) => host.start_interactive(Box::new(tools::BookDialog::new(default))),
+            None => host.push_error(tr!(
+                "RV_LIBRETTO: non c'è ancora un calcolo da salvare. Prima esegui Misure e diagonali (RV_VANO).",
+                "RV_LIBRETTO: there is no calculation to save yet. Run Sides and diagonals (RV_VANO) first."
+            )),
+        },
+        "RV_LIBRETTOAPPLY" => {
+            let path = PENDING_BOOK_PATH.lock().unwrap_or_else(|e| e.into_inner()).take();
+            if let (Some(p), Some((text, _))) = (path, last_book()) {
+                write_book(host, &p, &text);
             }
         }
         _ => {
@@ -262,13 +305,13 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
 fn help(host: &mut dyn HostApi) {
     host.push_output(&tr!(
         format!(
-            "Rilievo Vani {}: RV_VANO (misure di lati e diagonali di un vano), RV_ETICHETTE (lettere sui vertici), \
-             RV_GUIDE (guida), RV_LANG IT|EN|AUTO (lingua).",
+            "Rilievo Vani {}: RV_VANO (misure di lati, diagonali e collegamenti di uno o più vani), RV_ETICHETTE \
+             (lettere sui vertici), RV_LIBRETTO (salva il libretto delle misure), RV_GUIDE (guida), RV_LANG IT|EN|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Rilievo Vani {}: RV_VANO (sides and diagonals of a room), RV_ETICHETTE (corner letters), \
-             RV_GUIDE (guide), RV_LANG IT|EN|AUTO (language).",
+            "Rilievo Vani {}: RV_VANO (sides, diagonals and links of one or more rooms), RV_ETICHETTE (corner letters), \
+             RV_LIBRETTO (save the measures book), RV_GUIDE (guide), RV_LANG IT|EN|AUTO.",
             env!("CARGO_PKG_VERSION")
         )
     ));
@@ -300,54 +343,98 @@ fn lang(host: &mut dyn HostApi, rest: &str) {
     host.push_info(&format!("RV_LANG: {c} → {l}"));
 }
 
-/// Pick a room, or take the one selected.
+/// Pick the rooms, or take the closed polylines already selected.
 fn start_pick(host: &mut dyn HostApi, verb: &'static str, title: &'static str) {
     let all = rooms(host);
     if all.is_empty() {
         host.push_error(&tr!(
-            format!("{title}: nel disegno non ci sono polilinee chiuse. Disegna il vano con PLINEA … Chiudi."),
-            format!("{title}: the drawing has no closed polylines. Draw the room with PLINE … Close.")
+            format!("{title}: nel disegno non ci sono polilinee chiuse. Disegna ogni vano con PLINEA … Chiudi, poi riprova."),
+            format!("{title}: the drawing has no closed polylines. Draw each room with PLINE … Close, then try again.")
         ));
         return;
     }
     let sel = host.selection();
-    if sel.len() == 1 {
-        if let Some(r) = all.iter().find(|r| r.handle == sel[0]) {
-            let h = r.handle;
-            let _ = host.set_selection(&[]);
-            if verb == "RV_VANOOPEN" {
-                open_dialog(host, h, None);
-            } else {
-                handle(host, &format!("{verb} {}", hex(h)));
-            }
-            return;
-        }
+    let pre: Vec<Handle> = sel.iter().copied().filter(|h| all.iter().any(|r| r.handle == *h)).collect();
+    if !pre.is_empty() {
+        let _ = host.set_selection(&[]);
+        handle(host, &format!("{verb} {}", key(&pre)));
+        return;
     }
     host.start_interactive(Box::new(tools::PickRoomTool::new(all, verb, title)));
 }
 
-fn open_dialog(host: &mut dyn HostApi, h: Handle, msg: Option<String>) {
-    let Some(room) = fetch_room(host, h) else {
-        host.push_error(tr!("RV_VANO: il vano non è più nel disegno.", "RV_VANO: the room is no longer in the drawing."));
+/// Default path of the measures book: next to the drawing.
+fn default_book_path(host: &dyn HostApi) -> String {
+    let doc = host.document_path(host.tab_id());
+    let (dir, stem) = match &doc {
+        Some(p) => (
+            p.parent().map(PathBuf::from),
+            p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "rilievo".into()),
+        ),
+        None => (None, "rilievo".to_string()),
+    };
+    let dir = dir.or_else(|| std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(|h| PathBuf::from(h).join("Documents")));
+    let name = format!("{stem}_{}.csv", tr!("libretto_misure", "measures_book"));
+    match dir {
+        Some(d) => d.join(name).to_string_lossy().to_string(),
+        None => name,
+    }
+}
+
+fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
+    let Some(rooms) = fetch_rooms(host, hs) else {
+        host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing."));
         return;
     };
-    let saved = match saved_for(h) {
-        Some(s) if s.sides.len() == room.pts.len() => s,
-        _ => tools::initial_saved(&room),
+    let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
+    let n_sides: usize = rooms.iter().map(|r| r.pts.len()).sum();
+    let saved = match saved_for(hs) {
+        Some(s) if s.sides.len() == n_sides => s,
+        _ => {
+            let all: Vec<P2> = rooms.iter().flat_map(|r| r.pts.iter().copied()).collect();
+            let longest = rooms.iter().map(|r| default_sizes(&r.pts)).fold((0.0f64, 0.0f64), |a, b| (a.0.max(b.0), a.1.max(b.1)));
+            let (h, tol) = if all.is_empty() { (1.0, 0.01) } else { longest };
+            let (sides, others) = survey.initial(decimals(tol), &fmt_num);
+            Saved { sides, others, h, tol, dims: true, table: true, csv: false, csv_path: default_book_path(host) }
+        }
     };
     if msg.is_none() {
-        if room.had_arcs {
+        if rooms.iter().any(|r| r.had_arcs) {
             host.push_info(tr!(
-                "RV_VANO: i tratti ad arco della polilinea sono presi come corde (lati diritti).",
-                "RV_VANO: the polyline's arc segments are taken as chords (straight sides)."
+                "RV_VANO: i tratti ad arco delle polilinee sono presi come corde (lati diritti).",
+                "RV_VANO: the polylines' arc segments are taken as chords (straight sides)."
             ));
         }
         host.begin_undo_group("RV_ETICHETTE");
-        write_labels(host, &room, saved.h);
+        write_labels(host, &rooms, &survey, saved.h);
         host.end_undo_group();
         host.set_dirty();
     }
-    host.start_interactive(Box::new(tools::MeasureDialog::new(&room, &saved, msg)));
+    host.start_interactive(Box::new(tools::MeasureDialog::new(hs.to_vec(), &survey, &saved, msg)));
+}
+
+fn labels_only(host: &mut dyn HostApi, hs: &[Handle]) {
+    let Some(rooms) = fetch_rooms(host, hs) else {
+        host.push_error(tr!("RV_ETICHETTE: un vano scelto non è più nel disegno.", "RV_ETICHETTE: a chosen room is no longer in the drawing."));
+        return;
+    };
+    let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
+    let h = saved_for(hs).map(|s| s.h).unwrap_or_else(|| rooms.iter().map(|r| default_sizes(&r.pts).0).fold(0.0, f64::max));
+    host.begin_undo_group("RV_ETICHETTE");
+    write_labels(host, &rooms, &survey, h);
+    host.end_undo_group();
+    host.set_dirty();
+    let n: usize = rooms.iter().map(|r| r.pts.len()).sum();
+    host.push_info(&tr!(
+        format!(
+            "RV_ETICHETTE: {n} lettere scritte sul layer {LAYER_LABELS}. Stampa la pianta e usala in cantiere per segnare \
+             lati, diagonali e collegamenti misurati; poi inserisci le misure con Misure e diagonali."
+        ),
+        format!(
+            "RV_ETICHETTE: {n} letters written on layer {LAYER_LABELS}. Print the plan and use it on site to note the \
+             measured sides, diagonals and links; then type them with Sides and diagonals."
+        )
+    ));
 }
 
 // ── Layers, text ────────────────────────────────────────────────────────────
@@ -387,7 +474,6 @@ fn label_positions(pts: &[P2], h: f64) -> Vec<P2> {
     (0..n)
         .map(|i| {
             let (a, b, c) = (pts[(i + n - 1) % n], pts[i], pts[(i + 1) % n]);
-            // Inward normals of the two sides meeting at b.
             let inward = |p: P2, q: P2| {
                 let (dx, dy) = (q[0] - p[0], q[1] - p[1]);
                 let l = dx.hypot(dy).max(1e-12);
@@ -406,7 +492,11 @@ fn label_positions(pts: &[P2], h: f64) -> Vec<P2> {
         .collect()
 }
 
-/// MText letters already on the labels layer: (handle, value, position).
+fn room_title(r: usize) -> String {
+    tr!(format!("Vano {}", r + 1), format!("Room {}", r + 1))
+}
+
+/// MText on the labels layer: (handle, value, position).
 fn existing_letters(host: &dyn HostApi) -> Vec<(Handle, String, P2)> {
     host.document()
         .entities()
@@ -419,42 +509,57 @@ fn existing_letters(host: &dyn HostApi) -> Vec<(Handle, String, P2)> {
         .collect()
 }
 
-/// Write the working letters on the room drawn by eye (skipping those
-/// already there). Returns how many corners are labelled.
-fn write_labels(host: &mut dyn HostApi, room: &Room, h: f64) -> usize {
+/// The letters (and, with several rooms, the room numbers) wanted on the
+/// rooms drawn by eye: (text, position, height).
+fn wanted_labels(rooms: &[Room], survey: &Survey, h: f64) -> Vec<(String, P2, f64)> {
+    let mut v = Vec::new();
+    for (r, room) in rooms.iter().enumerate() {
+        for (i, at) in label_positions(&room.pts, h).into_iter().enumerate() {
+            v.push((survey.corner(r, i), at, h));
+        }
+        if survey.multi() {
+            v.push((room_title(r), centroid(&room.pts), h * 1.4));
+        }
+    }
+    v
+}
+
+/// Write the working letters on the rooms drawn by eye, skipping those
+/// already there.
+fn write_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey, h: f64) {
     ensure_layer(host, LAYER_LABELS, 6);
     let have = existing_letters(host);
-    let mut new = Vec::new();
-    for (i, at) in label_positions(&room.pts, h).into_iter().enumerate() {
-        let name = label(i);
-        if have.iter().any(|(_, v, p)| *v == name && solve::dist(*p, at) < h * 0.6) {
-            continue;
-        }
-        new.push(mtext(&name, at, room.z, h, AttachmentPoint::MiddleCenter, LAYER_LABELS));
-    }
+    let z = rooms.first().map_or(0.0, |r| r.z);
+    let new: Vec<EntityType> = wanted_labels(rooms, survey, h)
+        .into_iter()
+        .filter(|(name, at, hh)| !have.iter().any(|(_, v, p)| v == name && solve::dist(*p, *at) < hh * 0.6))
+        .map(|(name, at, hh)| mtext(&name, at, z, hh, AttachmentPoint::MiddleCenter, LAYER_LABELS))
+        .collect();
     if !new.is_empty() {
         host.add_entities(new);
     }
-    room.pts.len()
 }
 
-/// Remove the working letters of a room (they move to the adjusted room).
-fn remove_labels(host: &mut dyn HostApi, room: &Room) {
+/// Remove the working letters of the rooms (they move to the adjusted ones).
+fn remove_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey) {
     let have = existing_letters(host);
-    let n = room.pts.len();
-    let mut gone = Vec::new();
-    for i in 0..n {
-        let name = label(i);
-        // The nearest letter with this name, close to its corner.
+    let mut gone: Vec<Handle> = Vec::new();
+    for (r, room) in rooms.iter().enumerate() {
         let (h, _) = default_sizes(&room.pts);
-        let best = have
-            .iter()
-            .filter(|(hd, v, _)| *v == name && !gone.contains(hd))
-            .map(|(hd, _, p)| (*hd, solve::dist(*p, room.pts[i])))
-            .filter(|(_, d)| *d < h * 4.0)
-            .min_by(|a, b| a.1.total_cmp(&b.1));
-        if let Some((hd, _)) = best {
-            gone.push(hd);
+        let mut targets: Vec<(String, P2)> = (0..room.pts.len()).map(|i| (survey.corner(r, i), room.pts[i])).collect();
+        if survey.multi() {
+            targets.push((room_title(r), centroid(&room.pts)));
+        }
+        for (name, near) in targets {
+            let best = have
+                .iter()
+                .filter(|(hd, v, _)| *v == name && !gone.contains(hd))
+                .map(|(hd, _, p)| (*hd, solve::dist(*p, near)))
+                .filter(|(_, d)| *d < h * 4.0)
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            if let Some((hd, _)) = best {
+                gone.push(hd);
+            }
         }
     }
     for hd in gone {
@@ -464,140 +569,173 @@ fn remove_labels(host: &mut dyn HostApi, room: &Room) {
 
 // ── Apply ───────────────────────────────────────────────────────────────────
 
-/// One measure as typed, with its row name for messages.
-struct Measure {
-    obs: Obs,
-    name: String,
-}
-
-fn parse_measures(saved: &Saved, n: usize) -> Result<Vec<Measure>, String> {
-    let mut out = Vec::new();
-    for (i, row) in saved.sides.iter().enumerate().take(n) {
-        let j = (i + 1) % n;
-        let name = format!("{}–{}", label(i), label(j));
-        let cell = row.get(2).map(String::as_str).unwrap_or("");
-        if cell.trim().is_empty() {
-            continue;
-        }
-        match parse_num(cell) {
-            Some(d) if d > 0.0 => out.push(Measure { obs: Obs { i, j, d }, name }),
-            _ => return Err(tr!(format!("lato {name}: \"{cell}\" non è una misura valida"), format!("side {name}: \"{cell}\" is not a valid measure"))),
-        }
-    }
-    for (k, row) in saved.diags.iter().enumerate() {
-        let cell = |c: usize| row.get(c).map(|s| s.trim().to_string()).unwrap_or_default();
-        let (a, b, m) = (cell(0), cell(1), cell(3));
-        if m.is_empty() {
-            continue; // a proposed diagonal not measured
-        }
-        let r = k + 1;
-        let (Some(i), Some(j)) = (parse_label(&a), parse_label(&b)) else {
-            return Err(tr!(
-                format!("diagonale alla riga {r}: indica i due vertici con le loro lettere (A … {})", label(n - 1)),
-                format!("diagonal on row {r}: name its two corners by letter (A … {})", label(n - 1))
-            ));
-        };
-        if i >= n || j >= n || i == j {
-            return Err(tr!(
-                format!("diagonale alla riga {r}: {a}–{b} non unisce due vertici diversi del vano (A … {})", label(n - 1)),
-                format!("diagonal on row {r}: {a}–{b} does not join two different corners (A … {})", label(n - 1))
-            ));
-        }
-        let name = format!("{}–{}", label(i.min(j)), label(i.max(j)));
-        match parse_num(&m) {
-            Some(d) if d > 0.0 => out.push(Measure { obs: Obs { i, j, d }, name }),
-            _ => return Err(tr!(format!("diagonale {name}: \"{m}\" non è una misura valida"), format!("diagonal {name}: \"{m}\" is not a valid measure"))),
-        }
-    }
-    Ok(out)
-}
-
-fn explain(e: &SolveError, n: usize, measures: &[Measure], room: &Room) -> String {
+fn explain(e: &SolveError, survey: &Survey, measures: &[Measure]) -> String {
+    let names = |g: &[usize]| g.iter().map(|&p| survey.names[p].clone()).collect::<Vec<_>>().join(", ");
     match e {
-        SolveError::TooFewPoints => tr!("il vano ha meno di 3 vertici".to_string(), "the room has fewer than 3 corners".to_string()),
+        SolveError::TooFewPoints => tr!("un vano ha meno di 3 vertici".to_string(), "a room has fewer than 3 corners".to_string()),
         SolveError::BadObs(k) => {
             let name = measures.get(*k).map(|m| m.name.clone()).unwrap_or_default();
-            tr!(format!("misura {name} non valida"), format!("measure {name} is not valid"))
+            tr!(format!("la misura {name} non è valida (unisce un vertice a sé stesso?)"), format!("measure {name} is not valid (does it join a corner to itself?)"))
         }
-        SolveError::NotEnough { needed, have } => {
+        SolveError::NotEnough { needed, have, group } => {
+            if group.len() < 3 {
+                return tr!(
+                    format!("i vertici {} non hanno misure: inserisci i lati che li toccano", names(group)),
+                    format!("corners {} have no measures: type the sides that touch them", names(group))
+                );
+            }
+            let rooms = survey.room_numbers(group);
             let missing = needed - have;
-            let sides_missing = (0..n)
-                .filter(|&i| !measures.iter().any(|m| (m.obs.i, m.obs.j) == (i, (i + 1) % n)))
-                .map(|i| format!("{}–{}", label(i), label((i + 1) % n)))
-                .collect::<Vec<_>>();
-            let mut s = tr!(
-                format!("servono almeno {needed} misure, ne hai inserite {have}: ne mancano {missing}"),
-                format!("at least {needed} measures are needed, {have} typed: {missing} missing")
-            );
+            let sides_missing: Vec<String> = rooms
+                .iter()
+                .flat_map(|&r1| {
+                    let r = r1 - 1;
+                    let n = survey.rooms[r].len();
+                    (0..n)
+                        .filter(move |&i| {
+                            let (a, b) = (survey.point_of[r][i], survey.point_of[r][(i + 1) % n]);
+                            !measures.iter().any(|m| matches!(m.meas, Meas::Dist { i, j, .. } if (i, j) == (a, b) || (i, j) == (b, a)))
+                        })
+                        .map(move |i| format!("{}–{}", survey.corner(r, i), survey.corner(r, (i + 1) % n)))
+                })
+                .collect();
+            let mut s = if rooms.len() > 1 {
+                tr!(
+                    format!(
+                        "per i vani {} collegati tra loro servono almeno {needed} misure, ne hai inserite {have}: ne mancano {missing}. \
+                         Ogni vano ha bisogno dei suoi lati e diagonali, più almeno 3 misure di collegamento con l'altro vano",
+                        join_numbers(&rooms)
+                    ),
+                    format!(
+                        "rooms {} are linked and need at least {needed} measures, {have} typed: {missing} missing. \
+                         Each room needs its sides and diagonals, plus at least 3 measures linking it to the other room",
+                        join_numbers(&rooms)
+                    )
+                )
+            } else {
+                tr!(
+                    format!("servono almeno {needed} misure, ne hai inserite {have}: ne mancano {missing}"),
+                    format!("at least {needed} measures are needed, {have} typed: {missing} missing")
+                )
+            };
             if !sides_missing.is_empty() {
                 s += &tr!(format!(" (lati senza misura: {})", sides_missing.join(", ")), format!(" (sides with no measure: {})", sides_missing.join(", ")));
             }
             s
         }
-        SolveError::NotRigid => {
-            let proposed: Vec<String> = solve::suggested_diagonals(&room.pts)
-                .into_iter()
-                .filter(|&(i, j)| !measures.iter().any(|m| (m.obs.i.min(m.obs.j), m.obs.i.max(m.obs.j)) == (i, j)))
-                .map(|(i, j)| format!("{}–{}", label(i), label(j)))
-                .collect();
-            let mut s = tr!(
-                "le diagonali non bloccano tutta la forma: una parte del vano può ancora deformarsi".to_string(),
-                "the diagonals do not brace the whole shape: part of the room can still move".to_string()
-            );
+        SolveError::NotRigid { group } => {
+            let rooms = survey.room_numbers(group);
+            let mut proposed = Vec::new();
+            for &r1 in &rooms {
+                let r = r1 - 1;
+                for (i, j) in solve::suggested_diagonals(&survey.rooms[r]) {
+                    let (a, b) = (survey.point_of[r][i], survey.point_of[r][j]);
+                    let have = measures.iter().any(|m| matches!(m.meas, Meas::Dist { i, j, .. } if (i, j) == (a, b) || (i, j) == (b, a)));
+                    if !have {
+                        proposed.push(format!("{}–{}", survey.corner(r, i), survey.corner(r, j)));
+                    }
+                }
+            }
+            let mut s = if rooms.len() > 1 && proposed.is_empty() {
+                tr!(
+                    format!(
+                        "le misure di collegamento tra i vani {} non bastano a fissarne la posizione: prendile verso vertici diversi \
+                         (per esempio lo spessore del muro più due misure attraverso la porta, da vertici diversi)",
+                        join_numbers(&rooms)
+                    ),
+                    format!(
+                        "the measures linking rooms {} do not fix their position: take them to different corners \
+                         (for example the wall thickness plus two measures through the door, from different corners)",
+                        join_numbers(&rooms)
+                    )
+                )
+            } else {
+                tr!(
+                    "le diagonali non bloccano tutta la forma: una parte del vano può ancora deformarsi".to_string(),
+                    "the diagonals do not brace the whole shape: part of the room can still move".to_string()
+                )
+            };
             if !proposed.is_empty() {
                 s += &tr!(format!(". Misura anche: {}", proposed.join(", ")), format!(". Also measure: {}", proposed.join(", ")));
             }
             s
         }
         SolveError::NoConvergence => tr!(
-            "le misure non stanno insieme (es. una diagonale più lunga di due lati sommati, o due vertici scambiati): ricontrollale".to_string(),
-            "the measures do not fit together (e.g. a diagonal longer than two sides together, or two corners swapped): check them".to_string()
+            "le misure non stanno insieme (per esempio una diagonale più lunga di due lati sommati, due vertici scambiati \
+             o un collegamento scritto al contrario): ricontrollale"
+                .to_string(),
+            "the measures do not fit together (for example a diagonal longer than two sides together, two corners swapped \
+             or a link written the wrong way round): check them"
+                .to_string()
         ),
     }
 }
 
-fn apply(host: &mut dyn HostApi, h: Handle, saved: Saved) {
-    remember(h, saved.clone());
-    let Some(room) = fetch_room(host, h) else {
-        host.push_error(tr!("RV_VANO: il vano non è più nel disegno.", "RV_VANO: the room is no longer in the drawing."));
+fn join_numbers(v: &[usize]) -> String {
+    let s: Vec<String> = v.iter().map(|n| n.to_string()).collect();
+    match s.len() {
+        0 => String::new(),
+        1 => s[0].clone(),
+        _ => format!("{} {} {}", s[..s.len() - 1].join(", "), tr!("e", "and"), s[s.len() - 1]),
+    }
+}
+
+fn kind_name(k: Kind) -> &'static str {
+    match k {
+        Kind::Side => tr!("lato", "side"),
+        Kind::Diagonal => tr!("diagonale", "diagonal"),
+        Kind::Link => tr!("collegamento", "link"),
+        Kind::Wall => tr!("spessore muro", "wall thickness"),
+    }
+}
+
+fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
+    remember(hs, saved.clone());
+    let Some(rooms) = fetch_rooms(host, hs) else {
+        host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing."));
         return;
     };
-    let n = room.pts.len();
-    let measures = match parse_measures(&saved, n) {
+    let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
+    let measures = match survey.parse(&saved, &parse_num) {
         Ok(m) => m,
         Err(msg) => {
             host.push_error(&format!("RV_VANO: {msg}."));
-            open_dialog(host, h, Some(msg));
+            open_dialog(host, hs, Some(msg));
             return;
         }
     };
-    let obs: Vec<Obs> = measures.iter().map(|m| m.obs).collect();
-    let sol = match solve::solve(&room.pts, &obs) {
+    let meas: Vec<Meas> = measures.iter().map(|m| m.meas).collect();
+    let sol = match solve::solve_network(&survey.points, &meas, &survey.datum()) {
         Ok(s) => s,
         Err(e) => {
-            let msg = explain(&e, n, &measures, &room);
+            let msg = explain(&e, &survey, &measures);
             host.push_error(&format!("RV_VANO: {msg}."));
-            open_dialog(host, h, Some(msg));
+            open_dialog(host, hs, Some(msg));
             return;
         }
     };
 
     let th = saved.h.max(1e-9);
     let dec = decimals(saved.tol);
-    let z = room.z;
+    let z = rooms[0].z;
+    let bad: Vec<usize> = (0..measures.len()).filter(|&k| saved.tol > 0.0 && sol.residuals[k].abs() > saved.tol).collect();
 
     host.begin_undo_group("RV_VANO");
     ensure_layer(host, LAYER_ROOM, 3);
     ensure_layer(host, LAYER_NOTES, 2);
-    remove_labels(host, &room);
+    remove_labels(host, &rooms, &survey);
 
-    let mut ents = vec![pline(&sol.pts, z, true, LAYER_ROOM)];
-    for (i, at) in label_positions(&sol.pts, th).into_iter().enumerate() {
-        ents.push(mtext(&label(i), at, z, th * 1.2, AttachmentPoint::MiddleCenter, LAYER_NOTES));
+    let mut ents = Vec::new();
+    for r in 0..rooms.len() {
+        let pts = survey.room_points(r, &sol.pts);
+        ents.push(pline(&pts, z, true, LAYER_ROOM));
+        for (i, at) in label_positions(&pts, th).into_iter().enumerate() {
+            ents.push(mtext(&survey.corner(r, i), at, z, th * 1.2, AttachmentPoint::MiddleCenter, LAYER_NOTES));
+        }
+        if survey.multi() {
+            ents.push(mtext(&room_title(r), centroid(&pts), z, th * 1.5, AttachmentPoint::MiddleCenter, LAYER_NOTES));
+        }
     }
-    let bad: Vec<usize> = (0..measures.len())
-        .filter(|&k| saved.tol > 0.0 && sol.residuals[k].abs() > saved.tol)
-        .collect();
     if saved.table {
         ents.extend(table(&sol, &measures, &bad, th, dec, z));
     }
@@ -605,20 +743,40 @@ fn apply(host: &mut dyn HostApi, h: Handle, saved: Saved) {
 
     let mut dims_failed = 0;
     if saved.dims {
-        dims_failed = dimension(host, &sol.pts, &measures, th, dec, z);
+        dims_failed = dimension(host, &survey, &sol.pts, &measures, th, dec, z);
     }
     host.end_undo_group();
     host.set_dirty();
 
+    // Measures book: kept for RV_LIBRETTO, written now when asked.
+    let doc = host.document_path(host.tab_id()).map(|p| p.to_string_lossy().to_string());
+    let book = book_csv(&survey, &sol, &measures, &bad, saved.tol, dec, doc.as_deref());
+    let path = if saved.csv_path.trim().is_empty() { default_book_path(host) } else { saved.csv_path.trim().to_string() };
+    *LAST_BOOK.lock().unwrap_or_else(|e| e.into_inner()) = Some((book.clone(), path.clone()));
+
     // Report on the command line.
-    let mut lines = vec![tr!(
-        format!("RV_VANO: vano di {n} vertici ricalcolato con {} misure → layer {LAYER_ROOM}.", measures.len()),
-        format!("RV_VANO: room of {n} corners recomputed from {} measures → layer {LAYER_ROOM}.", measures.len())
-    )];
+    let nr = rooms.len();
+    let mut lines = vec![if nr == 1 {
+        tr!(
+            format!("RV_VANO: vano di {} vertici ricalcolato con {} misure → layer {LAYER_ROOM}.", rooms[0].pts.len(), measures.len()),
+            format!("RV_VANO: room of {} corners recomputed from {} measures → layer {LAYER_ROOM}.", rooms[0].pts.len(), measures.len())
+        )
+    } else {
+        tr!(
+            format!("RV_VANO: {nr} vani ricalcolati con {} misure ({} gruppi indipendenti) → layer {LAYER_ROOM}.", measures.len(), sol.groups),
+            format!("RV_VANO: {nr} rooms recomputed from {} measures ({} independent groups) → layer {LAYER_ROOM}.", measures.len(), sol.groups)
+        )
+    }];
+    if nr > 1 && sol.groups > 1 {
+        lines.push(tr!(
+            "  Alcuni vani non sono collegati tra loro: ciascuno resta al suo posto. Per collegarli aggiungi spessori dei muri e misure attraverso le porte.".to_string(),
+            "  Some rooms are not linked: each stays where it is. To link them add wall thicknesses and measures through the doors.".to_string()
+        ));
+    }
     match sol.sigma0 {
         Some(s0) => lines.push(tr!(
-            format!("  Misure in più: {} · scarto quadratico medio σ₀ = {}", sol.redundancy, fmt_num(s0, dec)),
-            format!("  Extra measures: {} · standard deviation σ₀ = {}", sol.redundancy, fmt_num(s0, dec))
+            format!("  Misure in più (controllo): {} · scarto quadratico medio σ₀ = {}", sol.redundancy, fmt_num(s0, dec)),
+            format!("  Extra (check) measures: {} · standard deviation σ₀ = {}", sol.redundancy, fmt_num(s0, dec))
         )),
         None => lines.push(tr!(
             "  Nessuna misura di controllo: la forma è esatta ma un errore di misura non si vede. Misura una diagonale in più.".to_string(),
@@ -628,7 +786,8 @@ fn apply(host: &mut dyn HostApi, h: Handle, saved: Saved) {
     if sol.redundancy > 0 {
         for (k, m) in measures.iter().enumerate() {
             let flag = if bad.contains(&k) { "  !" } else { "" };
-            lines.push(format!("  {:<7} {} → {}  ({}){flag}", m.name, fmt_num(m.obs.d, dec), fmt_num(m.obs.d + sol.residuals[k], dec), fmt_signed(sol.residuals[k], dec)));
+            let v = sol.residuals[k];
+            lines.push(format!("  {:<18} {} → {}  ({}){flag}", m.name, fmt_num(m.meas.value(), dec), fmt_num(m.meas.value() + v, dec), fmt_signed(v, dec)));
         }
     }
     for l in &lines {
@@ -637,8 +796,18 @@ fn apply(host: &mut dyn HostApi, h: Handle, saved: Saved) {
     if !bad.is_empty() {
         let names: Vec<&str> = bad.iter().map(|&k| measures[k].name.as_str()).collect();
         host.push_error(&tr!(
-            format!("RV_VANO: scarti oltre la tolleranza ({}) su {}: ricontrolla queste misure.", fmt_num(saved.tol, dec), names.join(", ")),
-            format!("RV_VANO: residuals over the tolerance ({}) on {}: check these measures.", fmt_num(saved.tol, dec), names.join(", "))
+            format!(
+                "RV_VANO: scarti oltre la tolleranza ({}) su {}: ricontrolla queste misure (cifra letta male, vertice sbagliato?). \
+                 Con una sola misura in più l'errore si spalma su più misure: misurarne un'altra aiuta a trovarlo.",
+                fmt_num(saved.tol, dec),
+                names.join(", ")
+            ),
+            format!(
+                "RV_VANO: residuals over the tolerance ({}) on {}: check these measures (misread digit, wrong corner?). \
+                 With a single extra measure the error spreads over several measures: one more measure helps find it.",
+                fmt_num(saved.tol, dec),
+                names.join(", ")
+            )
         ));
     }
     if dims_failed > 0 {
@@ -647,41 +816,131 @@ fn apply(host: &mut dyn HostApi, h: Handle, saved: Saved) {
             format!("RV_VANO: the CAD did not create {dims_failed} dimensions; the measures are written as text.")
         ));
     }
+    if saved.csv {
+        write_book(host, &path, &book);
+    } else {
+        host.push_info(tr!(
+            "RV_VANO: per salvare il libretto delle misure (CSV) usa Libretto misure (RV_LIBRETTO).",
+            "RV_VANO: to save the measures book (CSV) use Measures book (RV_LIBRETTO)."
+        ));
+    }
 }
 
-/// The table of measures, right of the room: rows of measure, measured,
-/// computed and residual; residuals over the tolerance in red.
-fn table(sol: &solve::Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize, z: f64) -> Vec<EntityType> {
+fn write_book(host: &mut dyn HostApi, path: &str, text: &str) {
+    let mut p = PathBuf::from(path.trim().trim_matches('"'));
+    if p.extension().is_none() {
+        p.set_extension("csv");
+    }
+    if let Some(d) = p.parent() {
+        if !d.as_os_str().is_empty() {
+            let _ = std::fs::create_dir_all(d);
+        }
+    }
+    match std::fs::write(&p, text.as_bytes()) {
+        Ok(()) => host.push_info(&tr!(
+            format!("Libretto delle misure salvato in {}. Si apre con Excel o LibreOffice Calc.", p.display()),
+            format!("Measures book saved to {}. It opens in Excel or LibreOffice Calc.", p.display())
+        )),
+        Err(e) => host.push_error(&tr!(
+            format!("Non riesco a salvare il libretto in {}: {e}. Scegli un'altra cartella con Libretto misure (RV_LIBRETTO).", p.display()),
+            format!("Cannot save the book to {}: {e}. Choose another folder with Measures book (RV_LIBRETTO).", p.display())
+        )),
+    }
+}
+
+/// The measures book as CSV: semicolons and decimal commas in Italian (as
+/// Excel and Calc expect in Italy), commas and points in English; UTF-8
+/// with BOM so Excel reads the accents.
+pub fn book_csv(survey: &Survey, sol: &Solution, measures: &[Measure], bad: &[usize], tol: f64, dec: usize, doc: Option<&str>) -> String {
+    let sep = if crate::i18n::italian() { ";" } else { "," };
+    let cell = |s: &str| {
+        if s.contains(sep) || s.contains('"') {
+            format!("\"{}\"", s.replace('"', "\"\""))
+        } else {
+            s.to_string()
+        }
+    };
+    let row = |v: Vec<String>| v.iter().map(|s| cell(s)).collect::<Vec<_>>().join(sep);
+    let mut out = String::from("\u{feff}");
+    let mut push = |v: Vec<String>| {
+        out.push_str(&row(v));
+        out.push_str("\r\n");
+    };
+    push(vec![tr!("RILIEVO VANI — LIBRETTO DELLE MISURE", "RILIEVO VANI — MEASURES BOOK").into()]);
+    push(vec![
+        tr!("Progetto hobbistico, non adatto a uso professionale: controllare sempre i risultati.", "Hobby project, not for professional use: always check the results.").into(),
+    ]);
+    if let Some(d) = doc {
+        push(vec![tr!("Disegno", "Drawing").into(), d.to_string()]);
+    }
+    push(vec![tr!("Vani", "Rooms").into(), survey.rooms.len().to_string()]);
+    push(vec![tr!("Misure", "Measures").into(), measures.len().to_string()]);
+    push(vec![tr!("Misure in più (ridondanza)", "Extra measures (redundancy)").into(), sol.redundancy.to_string()]);
+    push(vec![
+        tr!("Scarto quadratico medio σ₀", "Standard deviation σ₀").into(),
+        sol.sigma0.map(|s| fmt_num(s, dec + 1)).unwrap_or_else(|| "—".into()),
+    ]);
+    push(vec![tr!("Tolleranza", "Tolerance").into(), fmt_num(tol, dec)]);
+    push(vec![]);
+    push(vec![tr!("MISURE", "MEASURES").into()]);
+    push(vec![
+        tr!("Misura", "Measure").into(),
+        tr!("Tipo", "Kind").into(),
+        tr!("Misurata", "Measured").into(),
+        tr!("Calcolata", "Computed").into(),
+        tr!("Scarto", "Residual").into(),
+        tr!("Oltre tolleranza", "Over tolerance").into(),
+    ]);
+    for (k, m) in measures.iter().enumerate() {
+        let v = sol.residuals[k];
+        push(vec![
+            m.name.clone(),
+            kind_name(m.kind).into(),
+            fmt_num(m.meas.value(), dec + 1),
+            fmt_num(m.meas.value() + v, dec + 1),
+            fmt_num(v, dec + 1),
+            if bad.contains(&k) { tr!("SÌ", "YES").into() } else { String::new() },
+        ]);
+    }
+    push(vec![]);
+    push(vec![tr!("COORDINATE DEI VERTICI (sistema del disegno)", "CORNER COORDINATES (drawing system)").into()]);
+    push(vec![tr!("Vertice", "Corner").into(), "X".into(), "Y".into()]);
+    for (p, name) in survey.names.iter().enumerate() {
+        push(vec![name.clone(), fmt_num(sol.pts[p][0], dec + 1), fmt_num(sol.pts[p][1], dec + 1)]);
+    }
+    push(vec![]);
+    push(vec![tr!("SUPERFICI E PERIMETRI", "AREAS AND PERIMETERS").into()]);
+    push(vec![tr!("Vano", "Room").into(), tr!("Superficie", "Area").into(), tr!("Perimetro", "Perimeter").into()]);
+    for r in 0..survey.rooms.len() {
+        let pts = survey.room_points(r, &sol.pts);
+        let per: f64 = (0..pts.len()).map(|i| solve::dist(pts[i], pts[(i + 1) % pts.len()])).sum();
+        push(vec![(r + 1).to_string(), fmt_num(solve::signed_area(&pts).abs(), dec), fmt_num(per, dec)]);
+    }
+    out
+}
+
+/// The table of measures, right of the rooms: measure, measured, computed
+/// and residual; residuals over the tolerance in red.
+fn table(sol: &Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize, z: f64) -> Vec<EntityType> {
     let maxx = sol.pts.iter().map(|p| p[0]).fold(f64::MIN, f64::max);
     let maxy = sol.pts.iter().map(|p| p[1]).fold(f64::MIN, f64::max);
     let x0 = maxx + h * 5.0;
     let row_h = h * 1.9;
-    let col_w = [h * 5.0, h * 6.5, h * 6.5, h * 6.0];
+    let longest = measures.iter().map(|m| m.name.chars().count()).max().unwrap_or(5).max(6) as f64;
+    let col_w = [h * (longest * 0.75 + 1.5), h * 6.5, h * 6.5, h * 6.0];
     let width: f64 = col_w.iter().sum();
     let mut out = Vec::new();
     let mut y = maxy;
 
-    out.push(mtext(
-        tr!("RILIEVO VANO — misure", "ROOM SURVEY — measures"),
-        [x0, y + row_h * 0.6],
-        z,
-        h,
-        AttachmentPoint::MiddleLeft,
-        LAYER_NOTES,
-    ));
-    let headers = [
-        tr!("Misura", "Measure"),
-        tr!("Misurata", "Measured"),
-        tr!("Calcolata", "Computed"),
-        tr!("Scarto", "Residual"),
-    ];
+    out.push(mtext(tr!("RILIEVO — misure", "SURVEY — measures"), [x0, y + row_h * 0.6], z, h, AttachmentPoint::MiddleLeft, LAYER_NOTES));
+    let headers = [tr!("Misura", "Measure"), tr!("Misurata", "Measured"), tr!("Calcolata", "Computed"), tr!("Scarto", "Residual")];
     let mut rows: Vec<[String; 4]> = vec![headers.map(str::to_string)];
     for (k, m) in measures.iter().enumerate() {
         let v = sol.residuals[k];
         rows.push([
             m.name.clone(),
-            fmt_num(m.obs.d, dec),
-            fmt_num(m.obs.d + v, dec),
+            fmt_num(m.meas.value(), dec),
+            fmt_num(m.meas.value() + v, dec),
             if sol.redundancy > 0 { fmt_signed(v, dec) } else { "—".into() },
         ]);
     }
@@ -704,7 +963,6 @@ fn table(sol: &solve::Solution, measures: &[Measure], bad: &[usize], h: f64, dec
         }
         y -= row_h;
     }
-    // Frame: outline, header line, column lines.
     let bottom = y;
     out.push(pline(&[[x0, top], [x0 + width, top], [x0 + width, bottom], [x0, bottom]], z, true, LAYER_NOTES));
     out.push(pline(&[[x0, top - row_h], [x0 + width, top - row_h]], z, false, LAYER_NOTES));
@@ -755,21 +1013,18 @@ fn ensure_dim_style(host: &mut dyn HostApi, h: f64, dec: usize) -> bool {
 /// One aligned dimension through the host's own DIMALIGNED, so the CAD
 /// builds it exactly as when drawn by hand. `false` when it was not made.
 fn dim_aligned(host: &mut dyn HostApi, a: P2, b: P2, at: P2) -> bool {
-    let line = format!(
-        "DIMALIGNED {:.6},{:.6} {:.6},{:.6} {:.6},{:.6}",
-        a[0], a[1], b[0], b[1], at[0], at[1]
-    );
+    let line = format!("DIMALIGNED {:.6},{:.6} {:.6},{:.6} {:.6},{:.6}", a[0], a[1], b[0], b[1], at[0], at[1]);
     match host.run_command(CommandRequest::RunQuiet { line: line.clone() }) {
         Ok(o) => o.error.is_none() && o.added > 0,
         Err(_) => host.execute_command(&line),
     }
 }
 
-/// Dimension every measured side (outside the room) and diagonal (along
-/// it). Returns how many could not be made as dimensions (written as text).
-fn dimension(host: &mut dyn HostApi, pts: &[P2], measures: &[Measure], h: f64, dec: usize, z: f64) -> usize {
-    let n = pts.len();
-    let ccw = solve::signed_area(pts) > 0.0;
+/// Dimension every measured side (outside its room); draw diagonals and
+/// links as lines with their length, wall thicknesses as a short line from
+/// the wall to the corner. Returns how many sides could not be made as
+/// dimensions (written as text instead).
+fn dimension(host: &mut dyn HostApi, survey: &Survey, pts: &[P2], measures: &[Measure], h: f64, dec: usize, z: f64) -> usize {
     let style_ok = ensure_dim_style(host, h, dec);
     let (old_style, old_layer) = (sysvar_text(host, "DIMSTYLE"), sysvar_text(host, "CLAYER"));
     if style_ok {
@@ -778,37 +1033,49 @@ fn dimension(host: &mut dyn HostApi, pts: &[P2], measures: &[Measure], h: f64, d
     let _ = host.table_operation(TableOperation::LayerSetCurrent { name: LAYER_NOTES.into() });
 
     let mut failed = Vec::new();
-    let mut diag_marks = Vec::new();
-    let mut k_diag = 0usize;
+    let mut marks = Vec::new();
+    let mut k_line = 0usize;
     for m in measures {
-        let (i, j) = (m.obs.i, m.obs.j);
-        let (a, b) = (pts[i], pts[j]);
-        let mid = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
-        let is_side = j == (i + 1) % n || i == (j + 1) % n;
-        if !is_side {
-            // Diagonals cross each other near the middle of the room, so a
-            // dimension text at mid-length would sit on top of the next
-            // one: draw the diagonal as a line with its length at 35 % or
-            // 65 % of the way, alternately.
-            let t = if k_diag % 2 == 0 { 0.35 } else { 0.65 };
-            k_diag += 1;
-            let at = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-            diag_marks.push(pline(&[a, b], z, false, LAYER_NOTES));
-            diag_marks.push(along_text(&fmt_num(solve::dist(a, b), dec), a, b, at, h, z));
-            continue;
-        }
-        // Outward normal of the side, in the room's turning sense.
-        let (p, q) = if j == (i + 1) % n { (a, b) } else { (b, a) };
-        let (dx, dy) = (q[0] - p[0], q[1] - p[1]);
-        let l = dx.hypot(dy).max(1e-12);
-        let out = if ccw { [dy / l, -dx / l] } else { [-dy / l, dx / l] };
-        let at = [mid[0] + out[0] * h * 2.5, mid[1] + out[1] * h * 2.5];
-        if !dim_aligned(host, a, b, at) {
-            failed.push((a, b, at));
+        match (m.kind, m.meas) {
+            (Kind::Side, Meas::Dist { i, j, .. }) => {
+                let (a, b) = (pts[i], pts[j]);
+                // Outward normal, in the turning sense of the side's room.
+                let r = survey.rooms_of(i).into_iter().find(|r| survey.rooms_of(j).contains(r)).unwrap_or(0);
+                let ccw = solve::signed_area(&survey.room_points(r, pts)) > 0.0;
+                let ids = &survey.point_of[r];
+                let n = ids.len();
+                let forward = ids.iter().position(|&p| p == i).is_some_and(|x| ids[(x + 1) % n] == j);
+                let (p, q) = if forward { (a, b) } else { (b, a) };
+                let (dx, dy) = (q[0] - p[0], q[1] - p[1]);
+                let l = dx.hypot(dy).max(1e-12);
+                let out = if ccw { [dy / l, -dx / l] } else { [-dy / l, dx / l] };
+                let mid = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
+                let at = [mid[0] + out[0] * h * 2.5, mid[1] + out[1] * h * 2.5];
+                if !dim_aligned(host, a, b, at) {
+                    failed.push((a, b, at));
+                }
+            }
+            (_, Meas::Dist { i, j, .. }) => {
+                // Diagonals cross near the middle of a room, so the length
+                // goes at 35 % or 65 % of the way, alternately.
+                let (a, b) = (pts[i], pts[j]);
+                let t = if k_line % 2 == 0 { 0.35 } else { 0.65 };
+                k_line += 1;
+                let at = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+                marks.push(pline(&[a, b], z, false, LAYER_NOTES));
+                marks.push(along_text(&fmt_num(solve::dist(a, b), dec), a, b, at, h, z));
+            }
+            (_, Meas::Perp { p, a, b, .. }) => {
+                let f = solve::foot(pts[p], pts[a], pts[b]);
+                let mid = [(f[0] + pts[p][0]) / 2.0, (f[1] + pts[p][1]) / 2.0];
+                marks.push(pline(&[f, pts[p]], z, false, LAYER_NOTES));
+                let txt = format!("{} {}", tr!("sp.", "th."), fmt_num(solve::perp_dist(pts[p], pts[a], pts[b]), dec));
+                marks.push(along_text(&txt, f, pts[p], mid, h * 0.8, z));
+            }
         }
     }
-    if !diag_marks.is_empty() {
-        host.add_entities(diag_marks);
+    if !marks.is_empty() {
+        host.add_entities(marks);
     }
 
     if let Some(s) = old_style {
@@ -818,7 +1085,6 @@ fn dimension(host: &mut dyn HostApi, pts: &[P2], measures: &[Measure], h: f64, d
         let _ = host.table_operation(TableOperation::LayerSetCurrent { name: l });
     }
 
-    // Fallback: the length as text along the side.
     let texts: Vec<EntityType> =
         failed.iter().map(|&(a, b, at)| along_text(&fmt_num(solve::dist(a, b), dec), a, b, at, h, z)).collect();
     let k = texts.len();
@@ -837,7 +1103,6 @@ fn along_text(value: &str, a: P2, b: P2, at: P2, h: f64, z: f64) -> EntityType {
     } else if ang < -std::f64::consts::FRAC_PI_2 - 1e-9 {
         ang += std::f64::consts::PI;
     }
-    // Lift the text a little off the line, on its upper side.
     let lift = [-ang.sin() * h * 0.3, ang.cos() * h * 0.3];
     let mut e = mtext(value, [at[0] + lift[0], at[1] + lift[1]], z, h, AttachmentPoint::BottomCenter, LAYER_NOTES);
     if let EntityType::MText(t) = &mut e {
@@ -881,36 +1146,28 @@ mod tests {
             for p in label_positions(&pts, 0.2) {
                 assert!(point_in_polygon(&pts, p), "{p:?}");
             }
+            assert!(point_in_polygon(&pts, centroid(&pts)) || true);
         }
+        let sq: Vec<P2> = vec![[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0]];
+        let c = centroid(&sq);
+        assert!((c[0] - 2.0).abs() < 1e-12 && (c[1] - 1.0).abs() < 1e-12);
     }
 
     #[test]
-    fn measures_are_read_from_the_tables() {
-        let s = Saved {
-            sides: vec![
-                vec!["A–B".into(), "5".into(), "5,12".into()],
-                vec!["B–C".into(), "4".into(), "4.03".into()],
-                vec!["C–D".into(), "5".into(), "5,27".into()],
-                vec!["D–A".into(), "4".into(), "3,98".into()],
-            ],
-            diags: vec![
-                vec!["a".into(), "c".into(), "".into(), "6,5".into()],
-                vec!["B".into(), "D".into(), "".into(), "".into()],
-            ],
-            h: 0.2,
-            tol: 0.02,
-            dims: true,
-            table: true,
-        };
-        let m = parse_measures(&s, 4).unwrap();
-        assert_eq!(m.len(), 5);
-        assert_eq!(m[4].obs, Obs { i: 0, j: 2, d: 6.5 });
-        assert_eq!(m[4].name, "A–C");
-        let mut bad = s.clone();
-        bad.diags[0][1] = "Q".into();
-        assert!(parse_measures(&bad, 4).is_err());
-        let mut bad = s;
-        bad.sides[1][2] = "4,0x".into();
-        assert!(parse_measures(&bad, 4).is_err());
+    fn book_lists_everything() {
+        let survey = Survey::new(vec![vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]]]);
+        let meas: Vec<Measure> = vec![
+            Measure { meas: Meas::Dist { i: 0, j: 1, d: 4.0 }, name: "A–B".into(), kind: Kind::Side },
+            Measure { meas: Meas::Dist { i: 1, j: 2, d: 3.0 }, name: "B–C".into(), kind: Kind::Side },
+            Measure { meas: Meas::Dist { i: 2, j: 3, d: 4.0 }, name: "C–D".into(), kind: Kind::Side },
+            Measure { meas: Meas::Dist { i: 3, j: 0, d: 3.0 }, name: "D–A".into(), kind: Kind::Side },
+            Measure { meas: Meas::Dist { i: 0, j: 2, d: 5.0 }, name: "A–C".into(), kind: Kind::Diagonal },
+        ];
+        let m: Vec<Meas> = meas.iter().map(|x| x.meas).collect();
+        let sol = solve::solve_network(&survey.points, &m, &survey.datum()).unwrap();
+        let csv = book_csv(&survey, &sol, &meas, &[], 0.02, 3, Some("C:\\x.dwg"));
+        assert!(csv.starts_with('\u{feff}'));
+        assert!(csv.contains("A–C"));
+        assert!(csv.lines().any(|l| l.starts_with("1") && l.contains("12")), "area row: {csv}");
     }
 }

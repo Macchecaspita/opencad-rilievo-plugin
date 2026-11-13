@@ -1,13 +1,24 @@
 //! The survey maths, free of any host type so it can be unit-tested alone.
 //!
-//! A room is a closed polygon of `n` vertices. In the field one measures its
-//! sides and some diagonals with a tape or a laser meter; every measure is a
-//! distance between two vertices. Fixing vertex 0 and the direction of the
-//! side 0→1 removes the free movement on the sheet (2 shifts + 1 rotation),
-//! so the shape has `2n − 3` unknowns and needs at least that many distances:
-//! the `n` sides plus `n − 3` diagonals. More measures than that are a
-//! check: the shape is then found by least squares and every measure gets
-//! its residual (computed − measured), as in a Pregeo adjustment.
+//! The unknowns are plan points (the corners of one or more rooms). Every
+//! measure ties some of them together:
+//!
+//! * [`Meas::Dist`] — a distance between two points, taken with a tape or a
+//!   laser meter: a side, a diagonal, or a measure from one room into the
+//!   next through a door;
+//! * [`Meas::Perp`] — the distance of a point from the line through two
+//!   others: the thickness of a wall, from a side of one room to a corner of
+//!   the room behind it.
+//!
+//! Points tied together by measures form a *group*. In each group the
+//! first point stays where it was drawn and the direction to the second one
+//! is kept, which removes the free movement on the sheet (2 shifts + 1
+//! rotation): a group of `m` points has `2m − 3` unknowns and needs at
+//! least that many measures. A room of `n` corners needs its `n` sides and
+//! `n − 3` diagonals; every further room joined to it needs its own measures
+//! plus at least 3 linking ones. Extra measures are checks: the shape is
+//! then found by least squares and every measure gets its residual
+//! (computed − measured), as in a Pregeo adjustment.
 //!
 //! The solution starts from the drawn shape (scaled to the measures), so
 //! the result keeps the drawn arrangement — a measured triangle is never
@@ -15,7 +26,7 @@
 
 pub type P2 = [f64; 2];
 
-/// One measured distance between vertices `i` and `j`.
+/// One measured distance between points `i` and `j` (single-room helper).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Obs {
     pub i: usize,
@@ -23,37 +34,102 @@ pub struct Obs {
     pub d: f64,
 }
 
+/// A measure between plan points.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Meas {
+    /// Distance between points `i` and `j`.
+    Dist { i: usize, j: usize, d: f64 },
+    /// Distance of point `p` from the line through `a` and `b` (a wall
+    /// thickness).
+    Perp { p: usize, a: usize, b: usize, d: f64 },
+}
+
+impl Meas {
+    pub fn value(&self) -> f64 {
+        match *self {
+            Meas::Dist { d, .. } | Meas::Perp { d, .. } => d,
+        }
+    }
+
+    pub fn points(&self) -> Vec<usize> {
+        match *self {
+            Meas::Dist { i, j, .. } => vec![i, j],
+            Meas::Perp { p, a, b, .. } => vec![p, a, b],
+        }
+    }
+
+    /// The value the measure has on `pts`.
+    pub fn compute(&self, pts: &[P2]) -> f64 {
+        match *self {
+            Meas::Dist { i, j, .. } => dist(pts[i], pts[j]),
+            Meas::Perp { p, a, b, .. } => perp_dist(pts[p], pts[a], pts[b]),
+        }
+    }
+
+    /// Value and partial derivatives `(point, [d/dx, d/dy])`.
+    fn linearize(&self, pts: &[P2], tiny: f64) -> (f64, Vec<(usize, [f64; 2])>) {
+        match *self {
+            Meas::Dist { i, j, .. } => {
+                let (a, b) = (pts[i], pts[j]);
+                let f = dist(a, b).max(tiny);
+                let g = [(b[0] - a[0]) / f, (b[1] - a[1]) / f];
+                (f, vec![(i, [-g[0], -g[1]]), (j, g)])
+            }
+            Meas::Perp { p, a, b, .. } => {
+                let (pp, pa, pb) = (pts[p], pts[a], pts[b]);
+                let u = [pb[0] - pa[0], pb[1] - pa[1]];
+                let l = (u[0] * u[0] + u[1] * u[1]).sqrt().max(tiny);
+                // c = u × (p − a); f = |c| / l
+                let c = u[0] * (pp[1] - pa[1]) - u[1] * (pp[0] - pa[0]);
+                let s = if c < 0.0 { -1.0 } else { 1.0 };
+                let f = c.abs() / l;
+                let dc_p = [-u[1], u[0]];
+                let dc_a = [-(pp[1] - pb[1]), pp[0] - pb[0]];
+                let dc_b = [pp[1] - pa[1], -(pp[0] - pa[0])];
+                let dl_a = [-u[0] / l, -u[1] / l];
+                let dl_b = [u[0] / l, u[1] / l];
+                let g = |dc: [f64; 2], dl: [f64; 2]| {
+                    [s * dc[0] / l - f * dl[0] / l, s * dc[1] / l - f * dl[1] / l]
+                };
+                (f, vec![(p, g(dc_p, [0.0, 0.0])), (a, g(dc_a, dl_a)), (b, g(dc_b, dl_b))])
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Solution {
-    /// The adjusted vertices, in the drawn order.
+    /// The adjusted points, in the given order.
     pub pts: Vec<P2>,
-    /// Computed − measured, one per observation, in the given order.
+    /// Computed − measured, one per measure, in the given order.
     pub residuals: Vec<f64>,
-    /// Measures beyond the minimum (0: no check is possible).
+    /// Measures beyond the minimum, over all groups (0: no check).
     pub redundancy: usize,
     /// Standard deviation of a single measure, when `redundancy > 0`.
     pub sigma0: Option<f64>,
+    /// Number of independent groups solved.
+    pub groups: usize,
     pub iterations: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SolveError {
-    /// Fewer than 3 vertices.
+    /// Fewer than 3 points.
     TooFewPoints,
-    /// A measure joins a vertex to itself, names a missing vertex or is not
-    /// a positive number (index into the observations).
+    /// A measure names a missing point, joins a point to itself or is not a
+    /// positive number (index into the measures).
     BadObs(usize),
-    /// Fewer measures than unknowns.
-    NotEnough { needed: usize, have: usize },
-    /// Enough measures, but some part of the shape can still move: the
-    /// diagonals do not brace every part of the room.
-    NotRigid,
+    /// Fewer measures than unknowns in a group (its points listed).
+    NotEnough { needed: usize, have: usize, group: Vec<usize> },
+    /// Enough measures, but part of the group can still move: the measures
+    /// do not brace it (its points listed).
+    NotRigid { group: Vec<usize> },
     /// The measures contradict each other too much to find a shape (for
     /// example a diagonal longer than two sides together).
     NoConvergence,
 }
 
-/// Name of vertex `i`: A … Z, then AA, AB, …
+/// Name of corner `i`: A … Z, then AA, AB, …
 pub fn label(i: usize) -> String {
     let mut n = i;
     let mut s = Vec::new();
@@ -67,7 +143,7 @@ pub fn label(i: usize) -> String {
     s.iter().rev().collect()
 }
 
-/// Index of a vertex name (`"A"` → 0, `"AA"` → 26); case-insensitive.
+/// Index of a corner name (`"A"` → 0, `"AA"` → 26); case-insensitive.
 pub fn parse_label(s: &str) -> Option<usize> {
     let s = s.trim();
     if s.is_empty() || !s.chars().all(|c| c.is_ascii_alphabetic()) {
@@ -85,29 +161,41 @@ pub fn dist(a: P2, b: P2) -> f64 {
     (b[0] - a[0]).hypot(b[1] - a[1])
 }
 
+/// Distance of `p` from the line through `a` and `b`.
+pub fn perp_dist(p: P2, a: P2, b: P2) -> f64 {
+    let u = [b[0] - a[0], b[1] - a[1]];
+    let l = u[0].hypot(u[1]);
+    if l <= 0.0 {
+        return dist(p, a);
+    }
+    (u[0] * (p[1] - a[1]) - u[1] * (p[0] - a[0])).abs() / l
+}
+
+/// Foot of the perpendicular from `p` on the line through `a` and `b`.
+pub fn foot(p: P2, a: P2, b: P2) -> P2 {
+    let u = [b[0] - a[0], b[1] - a[1]];
+    let l2 = u[0] * u[0] + u[1] * u[1];
+    if l2 <= 0.0 {
+        return a;
+    }
+    let t = ((p[0] - a[0]) * u[0] + (p[1] - a[1]) * u[1]) / l2;
+    [a[0] + t * u[0], a[1] + t * u[1]]
+}
+
 pub fn signed_area(p: &[P2]) -> f64 {
     let n = p.len();
-    (0..n).map(|i| {
-        let (a, b) = (p[i], p[(i + 1) % n]);
-        a[0] * b[1] - b[0] * a[1]
-    }).sum::<f64>() / 2.0
+    (0..n)
+        .map(|i| {
+            let (a, b) = (p[i], p[(i + 1) % n]);
+            a[0] * b[1] - b[0] * a[1]
+        })
+        .sum::<f64>()
+        / 2.0
 }
 
-/// Minimum number of measures for `n` vertices.
+/// Minimum number of measures for a group of `n` points.
 pub fn needed(n: usize) -> usize {
     (2 * n).saturating_sub(3)
-}
-
-/// Unknown layout: x[0] = distance of vertex 1 from vertex 0 along the drawn
-/// direction; then (x, y) of vertices 2 … n−1.
-fn unpack(x: &[f64], p0: P2, u: P2, n: usize) -> Vec<P2> {
-    let mut pts = Vec::with_capacity(n);
-    pts.push(p0);
-    pts.push([p0[0] + x[0] * u[0], p0[1] + x[0] * u[1]]);
-    for k in 2..n {
-        pts.push([x[2 * k - 3], x[2 * k - 2]]);
-    }
-    pts
 }
 
 /// Solve the dense system `a · x = b` (Gauss, partial pivoting). `None` when
@@ -140,69 +228,164 @@ fn gauss(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Option<Vec<f64>> {
     Some(x)
 }
 
-/// Adjust the drawn polygon `drawn` to the measured distances `obs`.
+/// Groups of points tied together by measures (union–find). Each group is
+/// sorted; groups are ordered by their first point.
+pub fn groups(n: usize, meas: &[Meas]) -> Vec<Vec<usize>> {
+    let mut parent: Vec<usize> = (0..n).collect();
+    fn find(p: &mut Vec<usize>, x: usize) -> usize {
+        let mut r = x;
+        while p[r] != r {
+            r = p[r];
+        }
+        let mut y = x;
+        while p[y] != r {
+            let next = p[y];
+            p[y] = r;
+            y = next;
+        }
+        r
+    }
+    for m in meas {
+        let pts = m.points();
+        for w in pts.windows(2) {
+            let (a, b) = (find(&mut parent, w[0]), find(&mut parent, w[1]));
+            if a != b {
+                parent[a.max(b)] = a.min(b);
+            }
+        }
+    }
+    let mut out: Vec<Vec<usize>> = Vec::new();
+    let mut index = std::collections::HashMap::new();
+    for i in 0..n {
+        let r = find(&mut parent, i);
+        let k = *index.entry(r).or_insert_with(|| {
+            out.push(Vec::new());
+            out.len() - 1
+        });
+        out[k].push(i);
+    }
+    out
+}
+
+/// Single room: adjust the drawn polygon to measured distances.
 pub fn solve(drawn: &[P2], obs: &[Obs]) -> Result<Solution, SolveError> {
-    let n = drawn.len();
+    let meas: Vec<Meas> = obs.iter().map(|o| Meas::Dist { i: o.i, j: o.j, d: o.d }).collect();
+    solve_network(drawn, &meas, &[])
+}
+
+/// Adjust the drawn points `init` to the measures. `datum_hint` may name,
+/// for a group, the pair (fixed point, direction point) to use; otherwise
+/// the group's first point is fixed and the direction to the first point it
+/// is measured to is kept.
+pub fn solve_network(init: &[P2], meas: &[Meas], datum_hint: &[(usize, usize)]) -> Result<Solution, SolveError> {
+    let n = init.len();
     if n < 3 {
         return Err(SolveError::TooFewPoints);
     }
-    for (k, o) in obs.iter().enumerate() {
-        if o.i >= n || o.j >= n || o.i == o.j || !(o.d.is_finite() && o.d > 0.0) {
+    for (k, m) in meas.iter().enumerate() {
+        let pts = m.points();
+        let distinct = pts.iter().enumerate().all(|(x, a)| pts.iter().skip(x + 1).all(|b| a != b));
+        if pts.iter().any(|&p| p >= n) || !distinct || !(m.value().is_finite() && m.value() > 0.0) {
             return Err(SolveError::BadObs(k));
         }
     }
-    let unknowns = needed(n);
-    if obs.len() < unknowns {
-        return Err(SolveError::NotEnough { needed: unknowns, have: obs.len() });
-    }
 
-    // Start: the drawn shape scaled about vertex 0 to the measures' size.
-    let (sum_m, sum_d) = obs.iter().fold((0.0, 0.0), |(m, d), o| (m + o.d, d + dist(drawn[o.i], drawn[o.j])));
-    let s = if sum_d > 0.0 { sum_m / sum_d } else { 1.0 };
-    let p0 = drawn[0];
-    let l01 = dist(drawn[0], drawn[1]);
-    if l01 <= 0.0 {
-        return Err(SolveError::NotRigid);
-    }
-    let u = [(drawn[1][0] - p0[0]) / l01, (drawn[1][1] - p0[1]) / l01];
-    let mut x = vec![0.0; unknowns];
-    x[0] = l01 * s;
-    for k in 2..n {
-        x[2 * k - 3] = p0[0] + (drawn[k][0] - p0[0]) * s;
-        x[2 * k - 2] = p0[1] + (drawn[k][1] - p0[1]) * s;
-    }
-    let size = sum_m / obs.len() as f64;
-
-    // Column of a vertex's coordinates in the unknown vector.
-    let cols = |v: usize| -> Option<(usize, usize)> {
-        if v >= 2 { Some((2 * v - 3, 2 * v - 2)) } else { None }
-    };
-
+    let mut pts = init.to_vec();
     let mut iterations = 0;
+    let mut redundancy = 0;
+    let all_groups = groups(n, meas);
+    for group in &all_groups {
+        let local: Vec<usize> = meas
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| group.binary_search(&m.points()[0]).is_ok())
+            .map(|(k, _)| k)
+            .collect();
+        let unknowns = needed(group.len());
+        if group.len() < 3 || local.len() < unknowns {
+            return Err(SolveError::NotEnough { needed: unknowns.max(3), have: local.len(), group: group.clone() });
+        }
+        let gm: Vec<Meas> = local.iter().map(|&k| meas[k]).collect();
+        let (p0, p1) = datum_hint
+            .iter()
+            .copied()
+            .find(|(a, b)| group.contains(a) && group.contains(b) && a != b)
+            .unwrap_or_else(|| {
+                let p0 = group[0];
+                let p1 = gm
+                    .iter()
+                    .filter_map(|m| match *m {
+                        Meas::Dist { i, j, .. } if i == p0 => Some(j),
+                        Meas::Dist { i, j, .. } if j == p0 => Some(i),
+                        _ => None,
+                    })
+                    .min()
+                    .unwrap_or(group[1]);
+                (p0, p1)
+            });
+        let (sol, it) = solve_group(&mut pts, group, &gm, p0, p1)?;
+        let _ = sol;
+        iterations = iterations.max(it);
+        redundancy += local.len() - unknowns;
+    }
+
+    let residuals: Vec<f64> = meas.iter().map(|m| m.compute(&pts) - m.value()).collect();
+    let sigma0 = (redundancy > 0).then(|| (residuals.iter().map(|v| v * v).sum::<f64>() / redundancy as f64).sqrt());
+    Ok(Solution { pts, residuals, redundancy, sigma0, groups: all_groups.len(), iterations })
+}
+
+/// Gauss–Newton on one group; writes the result into `pts`.
+fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], p0: usize, p1: usize) -> Result<((), usize), SolveError> {
+    let m = group.len();
+    let unknowns = needed(m);
+    let fixed = pts[p0];
+    let l01 = dist(pts[p0], pts[p1]);
+    if l01 <= 0.0 {
+        return Err(SolveError::NotRigid { group: group.to_vec() });
+    }
+    let u = [(pts[p1][0] - fixed[0]) / l01, (pts[p1][1] - fixed[1]) / l01];
+
+    // Start: the drawn group scaled about p0 to the measures' size.
+    let (sum_m, sum_d) = meas.iter().fold((0.0, 0.0), |(a, b), x| (a + x.value(), b + x.compute(pts)));
+    let s = if sum_d > 0.0 { sum_m / sum_d } else { 1.0 };
+    for &p in group {
+        pts[p] = [fixed[0] + (pts[p][0] - fixed[0]) * s, fixed[1] + (pts[p][1] - fixed[1]) * s];
+    }
+    let size = (sum_m / meas.len() as f64).max(1e-12);
+
+    // Unknown columns: p1 → one (distance along u); other free points → two.
+    let mut col: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+    let mut next = 1;
+    for &p in group {
+        if p != p0 && p != p1 {
+            col.insert(p, next);
+            next += 2;
+        }
+    }
+    debug_assert_eq!(next, unknowns);
+
+    let mut last_ok = true;
     let mut converged = false;
-    let mut last_rank_ok = true;
-    for it in 1..=100 {
+    let mut iterations = 0;
+    for it in 1..=200 {
         iterations = it;
-        let pts = unpack(&x, p0, u, n);
         let mut nm = vec![vec![0.0; unknowns]; unknowns];
         let mut rhs = vec![0.0; unknowns];
-        for o in obs {
-            let (a, b) = (pts[o.i], pts[o.j]);
-            let f = dist(a, b).max(size * 1e-9);
-            let g = [(b[0] - a[0]) / f, (b[1] - a[1]) / f];
-            // Row of the Jacobian, sparse: (column, value).
-            let mut row: Vec<(usize, f64)> = Vec::with_capacity(4);
-            for (v, sign) in [(o.i, -1.0), (o.j, 1.0)] {
-                match (v, cols(v)) {
-                    (_, Some((cx, cy))) => {
-                        row.push((cx, sign * g[0]));
-                        row.push((cy, sign * g[1]));
-                    }
-                    (1, None) => row.push((0, sign * (g[0] * u[0] + g[1] * u[1]))),
-                    _ => {}
+        for x in meas {
+            let (f, parts) = x.linearize(pts, size * 1e-9);
+            let mut row: Vec<(usize, f64)> = Vec::with_capacity(6);
+            for (p, g) in parts {
+                if p == p0 {
+                    continue;
+                }
+                if p == p1 {
+                    row.push((0, g[0] * u[0] + g[1] * u[1]));
+                } else if let Some(&c) = col.get(&p) {
+                    row.push((c, g[0]));
+                    row.push((c + 1, g[1]));
                 }
             }
-            let w = o.d - f; // misclosure
+            let w = x.value() - f;
             for &(c1, v1) in &row {
                 rhs[c1] += v1 * w;
                 for &(c2, v2) in &row {
@@ -211,33 +394,29 @@ pub fn solve(drawn: &[P2], obs: &[Obs]) -> Result<Solution, SolveError> {
             }
         }
         let Some(dx) = gauss(nm, rhs) else {
-            last_rank_ok = false;
+            last_ok = false;
             break;
         };
-        // Damp very large steps so a poor start cannot fold the shape.
-        let big = dx.iter().fold(0.0f64, |m, v| m.max(v.abs()));
+        let big = dx.iter().fold(0.0f64, |a, v| a.max(v.abs()));
         let k = if big > size { size / big } else { 1.0 };
-        for (xi, di) in x.iter_mut().zip(&dx) {
-            *xi += k * di;
+        let t = dist(fixed, pts[p1]) + k * dx[0];
+        pts[p1] = [fixed[0] + t * u[0], fixed[1] + t * u[1]];
+        for (&p, &c) in &col {
+            pts[p][0] += k * dx[c];
+            pts[p][1] += k * dx[c + 1];
         }
-        if big < size * 1e-12 + 1e-12 {
+        if big < size * 1e-11 {
             converged = true;
             break;
         }
     }
-    if !last_rank_ok {
-        return Err(SolveError::NotRigid);
+    if !last_ok {
+        return Err(SolveError::NotRigid { group: group.to_vec() });
     }
     if !converged {
         return Err(SolveError::NoConvergence);
     }
-
-    let pts = unpack(&x, p0, u, n);
-    let residuals: Vec<f64> = obs.iter().map(|o| dist(pts[o.i], pts[o.j]) - o.d).collect();
-    let redundancy = obs.len() - unknowns;
-    let sigma0 = (redundancy > 0)
-        .then(|| (residuals.iter().map(|v| v * v).sum::<f64>() / redundancy as f64).sqrt());
-    Ok(Solution { pts, residuals, redundancy, sigma0, iterations })
+    Ok(((), iterations))
 }
 
 /// Whether the segment p–q crosses the segment a–b at an inner point.
@@ -338,9 +517,7 @@ mod tests {
 
     #[test]
     fn out_of_square_room_is_recovered() {
-        // True room: a slightly skewed quadrilateral, 5.12 × 4.03 or so.
         let truth: Vec<P2> = vec![[0.0, 0.0], [5.12, 0.0], [5.20, 4.03], [-0.07, 3.98]];
-        // Drawn by eye as a rectangle, at the wrong size, somewhere else.
         let drawn: Vec<P2> = vec![[100.0, 50.0], [105.0, 50.0], [105.0, 54.0], [100.0, 54.0]];
         let mut pairs = sides(4);
         pairs.push((0, 2));
@@ -350,10 +527,8 @@ mod tests {
             assert!((dist(sol.pts[i], sol.pts[j]) - dist(truth[i], truth[j])).abs() < 1e-9, "{k}");
             assert!(sol.residuals[k].abs() < 1e-9);
         }
-        // Vertex A stays put, AB keeps its drawn direction.
         assert_eq!(sol.pts[0], drawn[0]);
         assert!((sol.pts[1][1] - 50.0).abs() < 1e-12);
-        // Same orientation as drawn.
         assert!(signed_area(&sol.pts) > 0.0);
     }
 
@@ -364,12 +539,11 @@ mod tests {
         pairs.push((0, 2));
         pairs.push((1, 3));
         let mut obs = obs_of(&truth, &pairs);
-        obs[5].d += 0.02; // a 2 cm error on the second diagonal
+        obs[5].d += 0.02;
         let sol = solve(&truth, &obs).unwrap();
         assert_eq!(sol.redundancy, 1);
         let s0 = sol.sigma0.unwrap();
         assert!(s0 > 0.001 && s0 < 0.05, "{s0}");
-        // The bad diagonal carries the largest residual.
         let worst = sol.residuals.iter().enumerate().max_by(|a, b| a.1.abs().total_cmp(&b.1.abs())).unwrap().0;
         assert!(worst == 4 || worst == 5);
     }
@@ -380,16 +554,10 @@ mod tests {
         let drawn: Vec<P2> = vec![[0.0, 0.0], [6.0, 0.0], [6.0, 2.0], [3.0, 2.0], [3.0, 5.0], [0.0, 5.0]];
         let diags = suggested_diagonals(&drawn);
         assert_eq!(diags.len(), 3);
-        // No diagonal through the reflex corner's outside: (2,4) would cut
-        // across the missing quarter.
         assert!(!diags.contains(&(2, 4)));
         let mut pairs = sides(6);
         pairs.extend(&diags);
         let sol = solve(&drawn, &obs_of(&truth, &pairs)).unwrap();
-        for &(i, j) in &pairs {
-            assert!((dist(sol.pts[i], sol.pts[j]) - dist(truth[i], truth[j])).abs() < 1e-8);
-        }
-        // Every vertex lands on the truth (same datum: A and AB on the x axis).
         for (a, b) in sol.pts.iter().zip(&truth) {
             assert!(dist(*a, *b) < 1e-7, "{a:?} {b:?}");
         }
@@ -408,19 +576,17 @@ mod tests {
     fn missing_diagonal_is_reported() {
         let p: Vec<P2> = vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]];
         let e = solve(&p, &obs_of(&p, &sides(4))).unwrap_err();
-        assert_eq!(e, SolveError::NotEnough { needed: 5, have: 4 });
+        assert_eq!(e, SolveError::NotEnough { needed: 5, have: 4, group: vec![0, 1, 2, 3] });
     }
 
     #[test]
     fn unbraced_room_is_not_rigid() {
-        // Pentagon: 5 sides + 2 diagonals, but both diagonals brace the same
-        // triangle-free part twice (A–C measured twice) — shape can move.
         let p: Vec<P2> = vec![[0.0, 0.0], [4.0, 0.0], [5.0, 3.0], [2.0, 5.0], [-1.0, 3.0]];
         let mut pairs = sides(5);
         pairs.push((0, 2));
         pairs.push((0, 2));
         let e = solve(&p, &obs_of(&p, &pairs)).unwrap_err();
-        assert_eq!(e, SolveError::NotRigid);
+        assert!(matches!(e, SolveError::NotRigid { .. }));
     }
 
     #[test]
@@ -441,7 +607,6 @@ mod tests {
 
     #[test]
     fn many_sided_room_converges() {
-        // 10-gon, irregular, drawn with errors of a few percent.
         let truth: Vec<P2> = (0..10)
             .map(|k| {
                 let a = k as f64 * std::f64::consts::TAU / 10.0;
@@ -456,5 +621,106 @@ mod tests {
         for &(i, j) in &pairs {
             assert!((dist(sol.pts[i], sol.pts[j]) - dist(truth[i], truth[j])).abs() < 1e-7);
         }
+    }
+
+    #[test]
+    fn perp_derivatives_match_numeric() {
+        let pts: Vec<P2> = vec![[0.3, 2.1], [0.0, 0.0], [4.0, 0.5]];
+        let m = Meas::Perp { p: 0, a: 1, b: 2, d: 1.0 };
+        let (f, parts) = m.linearize(&pts, 1e-12);
+        assert!((f - perp_dist(pts[0], pts[1], pts[2])).abs() < 1e-12);
+        let h = 1e-6;
+        for (p, g) in parts {
+            for c in 0..2 {
+                let mut q = pts.clone();
+                q[p][c] += h;
+                let up = m.compute(&q);
+                q[p][c] -= 2.0 * h;
+                let dn = m.compute(&q);
+                let num = (up - dn) / (2.0 * h);
+                assert!((num - g[c]).abs() < 1e-6, "point {p} coord {c}: {num} vs {}", g[c]);
+            }
+        }
+    }
+
+    /// Two rooms side by side with a 0.30 wall between them, joined by the
+    /// wall thickness and two measures through the door.
+    fn two_rooms() -> (Vec<P2>, Vec<P2>) {
+        // Room 1: 0..4 × 0..3 (slightly skewed); room 2 behind the wall at x = 4.30.
+        let truth: Vec<P2> = vec![
+            [0.0, 0.0], [4.0, 0.0], [4.02, 3.0], [0.0, 3.01],
+            [4.32, 0.0], [7.5, 0.05], [7.48, 3.02], [4.34, 3.0],
+        ];
+        // Drawn by eye: square, wrong sizes, wall too thin.
+        let drawn: Vec<P2> = vec![
+            [0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0],
+            [4.2, 0.0], [7.0, 0.0], [7.0, 3.0], [4.2, 3.0],
+        ];
+        (truth, drawn)
+    }
+
+    fn room_meas(truth: &[P2], off: usize) -> Vec<Meas> {
+        let mut v: Vec<Meas> = (0..4)
+            .map(|i| {
+                let (a, b) = (off + i, off + (i + 1) % 4);
+                Meas::Dist { i: a, j: b, d: dist(truth[a], truth[b]) }
+            })
+            .collect();
+        v.push(Meas::Dist { i: off, j: off + 2, d: dist(truth[off], truth[off + 2]) });
+        v
+    }
+
+    #[test]
+    fn two_rooms_joined_by_wall_and_door() {
+        let (truth, drawn) = two_rooms();
+        let mut meas = room_meas(&truth, 0);
+        meas.extend(room_meas(&truth, 4));
+        // Wall thickness: corner 2A (4) from side 1B–1C (1,2).
+        meas.push(Meas::Perp { p: 4, a: 1, b: 2, d: perp_dist(truth[4], truth[1], truth[2]) });
+        // Through the door: 1B–2D and 1C–2A.
+        meas.push(Meas::Dist { i: 1, j: 7, d: dist(truth[1], truth[7]) });
+        meas.push(Meas::Dist { i: 2, j: 4, d: dist(truth[2], truth[4]) });
+        let sol = solve_network(&drawn, &meas, &[(0, 1)]).unwrap();
+        assert_eq!(sol.groups, 1);
+        assert_eq!(sol.redundancy, 0);
+        for (a, b) in sol.pts.iter().zip(&truth) {
+            assert!(dist(*a, *b) < 1e-7, "{a:?} {b:?}");
+        }
+    }
+
+    #[test]
+    fn two_rooms_with_a_check_measure() {
+        let (truth, drawn) = two_rooms();
+        let mut meas = room_meas(&truth, 0);
+        meas.extend(room_meas(&truth, 4));
+        meas.push(Meas::Perp { p: 4, a: 1, b: 2, d: perp_dist(truth[4], truth[1], truth[2]) });
+        meas.push(Meas::Perp { p: 7, a: 1, b: 2, d: perp_dist(truth[7], truth[1], truth[2]) + 0.01 });
+        meas.push(Meas::Dist { i: 1, j: 7, d: dist(truth[1], truth[7]) });
+        meas.push(Meas::Dist { i: 2, j: 4, d: dist(truth[2], truth[4]) });
+        let sol = solve_network(&drawn, &meas, &[(0, 1)]).unwrap();
+        assert_eq!(sol.redundancy, 1);
+        assert!(sol.sigma0.unwrap() > 1e-4, "{:?} {:?}", sol.sigma0, sol.residuals);
+    }
+
+    #[test]
+    fn rooms_not_joined_are_solved_apart() {
+        let (truth, drawn) = two_rooms();
+        let mut meas = room_meas(&truth, 0);
+        meas.extend(room_meas(&truth, 4));
+        let sol = solve_network(&drawn, &meas, &[(0, 1), (4, 5)]).unwrap();
+        assert_eq!(sol.groups, 2);
+        // Room 2 keeps its own corner A where drawn.
+        assert_eq!(sol.pts[4], drawn[4]);
+    }
+
+    #[test]
+    fn two_links_are_not_enough() {
+        let (truth, drawn) = two_rooms();
+        let mut meas = room_meas(&truth, 0);
+        meas.extend(room_meas(&truth, 4));
+        meas.push(Meas::Perp { p: 4, a: 1, b: 2, d: perp_dist(truth[4], truth[1], truth[2]) });
+        meas.push(Meas::Dist { i: 2, j: 4, d: dist(truth[2], truth[4]) });
+        let e = solve_network(&drawn, &meas, &[(0, 1)]).unwrap_err();
+        assert!(matches!(e, SolveError::NotEnough { needed: 13, have: 12, .. }), "{e:?}");
     }
 }

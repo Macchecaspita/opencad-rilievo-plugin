@@ -12,6 +12,37 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.2.0] - 2026-11-13
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Vani collegati**: in *Misure e diagonali* si possono cliccare più vani uno dopo
+  l'altro (l'ordine dà il numero del vano). I vertici si chiamano 1A, 1B … 2A …;
+  tutti i vani vengono ricalcolati insieme in un'unica compensazione ai minimi
+  quadrati. Ogni vano collegato vuole almeno 3 misure di collegamento; i vani non
+  collegati vengono calcolati ciascuno per conto suo. Vani disegnati a contatto
+  (senza muro) condividono i vertici.
+- **Spessori dei muri**: nella tabella *Diagonali, collegamenti e spessori* un lato
+  (es. `1B-1C`) e un vertice dell'altro vano (es. `2A`) danno la distanza del vertice
+  dalla parete. Anche le **misure attraverso le porte** (es. `1B` → `2D`) si scrivono
+  lì. Nel disegno compaiono come linee con la loro misura.
+- **Libretto delle misure** (`RV_LIBRETTO`, pulsante *Libretto misure*): salva
+  l'ultimo calcolo in un file CSV per Excel o LibreOffice Calc, con misure,
+  calcolate, scarti, σ₀, coordinate dei vertici, superfici e perimetri dei vani. Si
+  può anche spuntare *Salva anche il libretto* nella finestra delle misure.
+- **Aiuto in ogni finestra**: la finestra delle misure ha una sezione apribile
+  *Come misurare* (lati, diagonali, controllo, vani collegati, spessori, unità) e
+  una spiegazione sopra ogni tabella e opzione; i messaggi della riga di comando
+  guidano passo passo nella scelta dei vani; gli errori dicono cosa correggere e la
+  finestra si riapre con le misure già scritte.
+
+### Modificato
+- La guida (`RV_GUIDE`) comprende vani collegati e libretto, con l'avvertenza
+  sull'uso hobbistico.
+
 ## [0.1.0] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

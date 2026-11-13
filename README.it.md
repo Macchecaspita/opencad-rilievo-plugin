@@ -22,6 +22,11 @@ aggiunge la scheda **Rilievo** per il rilievo architettonico a misure dirette
    **compensato ai minimi quadrati** quando ci sono misure in più, con lo **scarto**
    di ogni misura e lo scarto quadratico medio σ₀ — come una compensazione Pregeo.
 
+Si possono rilevare anche **più vani collegati**: si cliccano uno dopo l'altro, i
+vertici diventano 1A, 1B … 2A …, e i vani si legano tra loro con gli **spessori dei
+muri** e le **misure attraverso le porte**; tutto viene compensato insieme. L'ultimo
+calcolo si salva come **libretto delle misure** (CSV per Excel o Calc).
+
 Il risultato va sul layer **RILIEVO_CORRETTO** (vertice A fermo, lato A–B nella
 direzione disegnata); il disegno originale resta per confronto. Sul layer
 **RILIEVO_QUOTE** vanno lettere, quote dei lati (stile di quota **RILIEVO**),
@@ -35,8 +40,9 @@ italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
 
 | Comando | Pulsante | Cosa fa |
 |---|---|---|
-| `RV_VANO` | **Misure e diagonali** | seleziona il vano (o clicca dentro), scrive le lettere, apre la tabella delle misure e ricalcola |
-| `RV_ETICHETTE` | **Lettere vertici** | scrive solo le lettere A, B, C … sui vertici (layer RILIEVO_ETICHETTE) |
+| `RV_VANO` | **Misure e diagonali** | clicca uno o più vani, Invio: scrive le lettere, apre la tabella delle misure e ricalcola |
+| `RV_ETICHETTE` | **Lettere vertici** | scrive solo le lettere sui vertici (layer RILIEVO_ETICHETTE), per l'eidotipo |
+| `RV_LIBRETTO` | **Libretto misure** | salva l'ultimo calcolo in CSV: misure, scarti, σ₀, coordinate, superfici |
 | `RV_GUIDE` | **Guida** | breve guida |
 | `RV_LANG IT\|EN\|AUTO` | | lingua dei messaggi |
 
@@ -50,6 +56,11 @@ italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
 - Le misure vanno nelle unità del disegno (metri, centimetri o millimetri); la
   virgola decimale va bene. Altezza dei testi e tolleranza sono proposte in base
   alla grandezza del vano e si possono cambiare.
+- **Vani collegati**: ogni vano oltre al primo vuole almeno **3 misure di
+  collegamento** verso vertici diversi, per esempio lo spessore del muro (lato
+  `1B-1C` e vertice `2A`) più due misure attraverso la porta (`1B`→`2D`, `1C`→`2A`).
+  Con 4 o più misure anche il collegamento è controllato.
+- Nella finestra delle misure, la sezione **Come misurare** spiega ogni colonna.
 - Se le misure non bastano o non stanno insieme, la finestra si riapre con quello
   che avevi scritto e il motivo in cima (per esempio quali diagonali aggiungere).
 
@@ -106,8 +117,9 @@ src/lib.rs       manifest, punto d'ingresso del plugin
 src/i18n.rs      scelta inglese / italiano
 src/ribbon.rs    scheda Rilievo della barra multifunzione
 src/commands.rs  comandi RV_*, layer, quote, tabella
-src/tools.rs     selezione del vano, finestra delle misure, guida
-src/solve.rs     calcolo puro: compensazione lati + diagonali, diagonali proposte (con test)
+src/tools.rs     selezione dei vani, finestra delle misure con aiuto, libretto, guida
+src/solve.rs     calcolo puro: compensazione a rete (distanze e spessori), diagonali proposte (con test)
+src/survey.rs    più vani: nomi dei vertici, lettura delle tabelle (con test)
 scripts/release.ps1  pubblicazione di una nuova versione
 icons/           icone SVG della scheda
 ```

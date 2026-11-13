@@ -8,7 +8,11 @@
 //! with a residual for every measure when there are more. The result goes on
 //! its own layer with dimensions and a table of measures and residuals.
 //!
-//! The maths ([`solve`]) is host-free and unit-tested on its own;
+//! Several rooms can be surveyed together, linked by wall thicknesses and
+//! measures through the doors, and the result saved as a measures book.
+//!
+//! The maths ([`solve`]) and the survey model ([`survey`]) are host-free and
+//! unit-tested on their own;
 //! [`commands`] and [`tools`] are the glue to the host.
 
 use ocs_plugin_api::host::{BuiltinPlugin, HostApi};
@@ -20,6 +24,7 @@ pub mod i18n;
 pub mod commands;
 mod ribbon;
 pub mod solve;
+pub mod survey;
 pub mod tools;
 
 /// Reverse-DNS plugin id; also the folder name under `plugins/`.

@@ -19,14 +19,19 @@ laser meter:
    measures, **least-squares adjusted** when there are more, with the **residual**
    of every measure and the standard deviation σ₀.
 
+Several **linked rooms** can be surveyed together (corners 1A, 1B … 2A …), tied by
+**wall thicknesses** and **measures through doors** and adjusted at once; the last
+calculation can be saved as a **measures book** (CSV for Excel or Calc). Every
+dialog has its own help ("How to measure").
+
 The result goes on layer **RILIEVO_CORRETTO** (corner A fixed, side A–B in the
 drawn direction); the original stays for comparison. Layer **RILIEVO_QUOTE** gets
 the letters, side dimensions (dimension style **RILIEVO**), diagonals with their
 length and a *measured / computed / residual* table, with residuals over the
 tolerance in red.
 
-Commands: `RV_VANO` (sides and diagonals), `RV_ETICHETTE` (corner letters),
-`RV_GUIDE`, `RV_LANG IT|EN|AUTO`.
+Commands: `RV_VANO` (sides, diagonals, links), `RV_ETICHETTE` (corner letters),
+`RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_LANG IT|EN|AUTO`.
 
 Build with `cargo build --release`; install the library and `plugin.toml` in
 `<config>/OpenCADStudio/plugins/opencad.rilievovani/`, or add the repository
