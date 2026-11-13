@@ -1,0 +1,91 @@
+# Push a tag `v*` to publish a release the Open CAD Studio Plugin Manager
+# can install: one library per platform (the platform in the asset name)
+# plus plugin.toml.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            lib: libopencad_rilievo_plugin.so
+            asset: opencad.rilievovani-linux-x86_64.so
+          - os: windows-latest
+            lib: opencad_rilievo_plugin.dll
+            asset: opencad.rilievovani-windows-x86_64.dll
+          - os: macos-latest
+            lib: libopencad_rilievo_plugin.dylib
+            asset: opencad.rilievovani-macos-aarch64.dylib
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned toolchain
+        shell: bash
+        run: rustup toolchain install "$(grep -m1 '^channel' rust-toolchain.toml | cut -d'"' -f2)" --profile minimal
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --release
+      - run: cargo build --release
+      - name: Stage asset
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/release/${{ matrix.lib }}" "dist/${{ matrix.asset }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Check versions match the tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          p=$(grep -m1 '^version' plugin.toml | cut -d'"' -f2)
+          c=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          [ "$p" = "$tag" ] || { echo "::error::plugin.toml version $p != tag $GITHUB_REF_NAME"; exit 1; }
+          [ "$c" = "$tag" ] || { echo "::error::Cargo.toml version $c != tag $GITHUB_REF_NAME"; exit 1; }
+      - name: Release notes from CHANGELOG.md
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          # The lines between "## [<version>]" and the next "## [" heading.
+          awk -v v="$tag" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md | tr -d '\r' | sed '/./,$!d' > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::CHANGELOG.md has no section '## [$tag]'"
+            exit 1
+          fi
+          {
+            echo
+            echo "---"
+            echo "**Installazione:** in Open CAD Studio, comando \`PLUGINS\` → *Add repository* → \`${GITHUB_REPOSITORY}\` → scegli **${GITHUB_REF_NAME}** → *Install*, poi riavvia."
+          } >> notes.md
+          cat notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir dist
+          cp artifacts/*/* dist/
+          cp plugin.toml dist/
+          # Versions 0.x are marked "in fase di test" in the title.
+          title="Rilievo Vani ${GITHUB_REF_NAME}"
+          case "$GITHUB_REF_NAME" in v0.*) title="$title (versione di test)";; esac
+          gh release create "${GITHUB_REF_NAME}" dist/* --title "$title" --notes-file notes.md --latest
