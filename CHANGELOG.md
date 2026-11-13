@@ -12,6 +12,19 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.3.1] - 2026-11-13
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- Nella 0.3.0 la finestra delle misure era diventata troppo alta: Open CAD Studio
+  la tagliava e la tabella dei lati compariva vuota. Ora la finestra è divisa in
+  due pagine: **1/2 lati e diagonali**, poi con *Avanti* **2/2 vincoli, porte e
+  finestre e opzioni**, da cui *Calcola* oppure *Indietro* (le misure scritte
+  restano).
+
 ## [0.3.0] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

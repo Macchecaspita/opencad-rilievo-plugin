@@ -340,75 +340,81 @@ fn how_to_measure(multi: bool) -> Vec<String> {
 
 // ── Measures dialog ─────────────────────────────────────────────────────────
 
+/// The measures dialog, in two pages so that each stays short enough for
+/// the host's dialog window: 1. sides and diagonals (the measures), 2.
+/// constraints, doors and windows, options. "Back" on page 2 returns to
+/// page 1 with everything typed kept.
 pub struct MeasureDialog {
     handles: Vec<Handle>,
     n_sides: usize,
-    def: DialogDef,
-    done: bool,
+    multi: bool,
+    n_rooms: usize,
+    ranges: String,
+    need: usize,
+    msg: Option<String>,
+    saved: Saved,
+    page: u8,
 }
 
 impl MeasureDialog {
     /// `saved`: what the user typed last time for these rooms (kept when the
     /// calculation failed, so nothing has to be typed again).
     pub fn new(handles: Vec<Handle>, survey: &Survey, saved: &Saved, msg: Option<String>) -> Self {
-        let multi = survey.multi();
-        let need: usize = survey.rooms.iter().map(|r| r.len().saturating_sub(3)).sum();
-        let links = if multi { 3 * (survey.rooms.len() - 1) } else { 0 };
+        MeasureDialog {
+            handles,
+            n_sides: survey.rooms.iter().map(|r| r.len()).sum(),
+            multi: survey.multi(),
+            n_rooms: survey.rooms.len(),
+            ranges: survey.ranges(),
+            need: survey.rooms.iter().map(|r| r.len().saturating_sub(3)).sum(),
+            msg,
+            saved: saved.clone(),
+            page: 1,
+        }
+    }
+
+    fn page1(&self) -> DialogDef {
+        let (multi, need, ranges) = (self.multi, self.need, &self.ranges);
+        let links = if multi { 3 * (self.n_rooms - 1) } else { 0 };
         let title = if multi {
-            tr!(format!("Rilievo di {} vani collegati", survey.rooms.len()), format!("Survey of {} linked rooms", survey.rooms.len()))
+            tr!(
+                format!("Rilievo di {} vani collegati — 1/2: misure", self.n_rooms),
+                format!("Survey of {} linked rooms — 1/2: measures", self.n_rooms)
+            )
         } else {
-            tr!("Rilievo vano: lati e diagonali".to_string(), "Room survey: sides and diagonals".to_string())
+            tr!("Rilievo vano — 1/2: lati e diagonali".to_string(), "Room survey — 1/2: sides and diagonals".to_string())
         };
         let mut def = DialogDef::new(title);
-        if let Some(m) = msg {
+        if let Some(m) = &self.msg {
             def = def.with_control(info(tr!(
-                format!("⚠ Da correggere: {m}. Le misure che avevi scritto sono rimaste: correggi e premi di nuovo Calcola."),
-                format!("⚠ To fix: {m}. The measures you typed are still here: fix them and press Compute again.")
+                format!("⚠ Da correggere: {m}. Le misure scritte sono rimaste: correggi e premi di nuovo Calcola."),
+                format!("⚠ To fix: {m}. The measures typed are still here: fix them and press Compute again.")
             )));
         }
         let summary = if multi {
             tr!(
                 format!(
-                    "Vertici: {} (lettere scritte sul disegno). Servono tutti i lati, almeno {need} diagonali (o vincoli) e \
-                     almeno {links} misure di collegamento tra i vani, oppure una porta comune per ogni vano collegato. Ogni \
-                     misura in più fa da controllo.",
-                    survey.ranges()
+                    "Vertici: {ranges}. Servono tutti i lati, almeno {need} diagonali (o vincoli, a pagina 2) e almeno \
+                     {links} misure di collegamento, oppure una porta comune per ogni vano collegato."
                 ),
                 format!(
-                    "Corners: {} (letters written on the drawing). All sides are needed, at least {need} diagonals (or \
-                     constraints) and at least {links} measures linking the rooms, or one shared door per linked room. \
-                     Every extra measure is a check.",
-                    survey.ranges()
+                    "Corners: {ranges}. All sides are needed, at least {need} diagonals (or constraints, on page 2) and at \
+                     least {links} linking measures, or one shared door per linked room."
                 )
             )
         } else {
             tr!(
-                format!(
-                    "Vertici: {} (lettere scritte sul disegno). Servono tutti i lati e almeno {need} diagonali o vincoli \
-                     (per esempio un angolo retto); ogni misura in più fa da controllo e viene compensata ai minimi quadrati.",
-                    survey.ranges()
-                ),
-                format!(
-                    "Corners: {} (letters written on the drawing). All sides are needed plus at least {need} diagonals or \
-                     constraints (for example a square corner); every extra measure is a check, adjusted by least squares.",
-                    survey.ranges()
-                )
+                format!("Vertici: {ranges}. Servono tutti i lati e almeno {need} diagonali (o vincoli, a pagina 2); ogni misura in più fa da controllo."),
+                format!("Corners: {ranges}. All sides are needed plus at least {need} diagonals (or constraints, on page 2); every extra measure is a check.")
             )
         };
-        def = def
-            .with_control(info(summary))
+        def.with_control(info(summary))
             .with_control(help_section("help", tr!("Come misurare (aiuto) ▸", "How to measure (help) ▸"), how_to_measure(multi)))
             .with_control(DialogControl::Table {
                 id: "sides".into(),
-                label: Some(
-                    tr!(
-                        "Lati — scrivi la misura nella colonna Misurato (la colonna Disegnato è solo un riferimento)",
-                        "Sides — type the measure in the Measured column (Drawn is only for reference)"
-                    )
-                    .into(),
-                ),
+                label: Some(tr!("Lati — scrivi la misura in Misurato", "Sides — type the measure in Measured").into()),
                 headers: vec![tr!("Lato", "Side").into(), tr!("Disegnato", "Drawn").into(), tr!("Misurato", "Measured").into()],
-                rows: saved.sides.clone(),
+                rows: self.saved.sides.clone(),
                 allow_add: false,
                 allow_delete: false,
             })
@@ -416,16 +422,12 @@ impl MeasureDialog {
                 id: "others".into(),
                 label: Some(if multi {
                     tr!(
-                        "Diagonali, collegamenti e spessori — due vertici (1A, 2C) per una distanza; un lato (1B-1C) e un vertice (2A) per lo spessore di un muro",
-                        "Diagonals, links and thicknesses — two corners (1A, 2C) for a distance; a side (1B-1C) and a corner (2A) for a wall thickness"
+                        "Diagonali, collegamenti e spessori — due vertici (1A, 2C), oppure un lato e un vertice (1B-1C, 2A) per uno spessore",
+                        "Diagonals, links and thicknesses — two corners (1A, 2C), or a side and a corner (1B-1C, 2A) for a thickness"
                     )
                     .into()
                 } else {
-                    tr!(
-                        "Diagonali — quelle proposte corrono dentro il vano; aggiungi una riga per misurarne altre (due lettere in Da e A)",
-                        "Diagonals — the proposed ones run inside the room; add a row to measure more (two letters in From and To)"
-                    )
-                    .into()
+                    tr!("Diagonali — aggiungi una riga per misurarne altre", "Diagonals — add a row to measure more").into()
                 }),
                 headers: vec![
                     tr!("Da", "From").into(),
@@ -433,16 +435,24 @@ impl MeasureDialog {
                     tr!("Disegnata", "Drawn").into(),
                     tr!("Misurata", "Measured").into(),
                 ],
-                rows: saved.others.clone(),
+                rows: self.saved.others.clone(),
                 allow_add: true,
                 allow_delete: true,
             })
+            .submit_label(tr!("Avanti ▸", "Next ▸"))
+            .cancel_label(tr!("Annulla", "Cancel"))
+            .width(640.0)
+    }
+
+    fn page2(&self) -> DialogDef {
+        let saved = &self.saved;
+        DialogDef::new(tr!("Rilievo — 2/2: vincoli, porte e finestre, opzioni", "Survey — 2/2: constraints, doors and windows, options"))
             .with_control(DialogControl::Table {
                 id: "constraints".into(),
                 label: Some(
                     tr!(
-                        "Vincoli (facoltativi, ognuno vale una misura) — uno spigolo e l'angolo in gradi (C, 90), oppure un lato e orizzontale / verticale (A-B, orizzontale)",
-                        "Constraints (optional, each counts as a measure) — a corner and its angle in degrees (C, 90), or a side and horizontal / vertical (A-B, horizontal)"
+                        "Vincoli (facoltativi, ognuno vale una misura): spigolo e angolo (C, 90) oppure lato e orizzontale / verticale (A-B, orizzontale)",
+                        "Constraints (optional, each counts as a measure): corner and angle (C, 90) or side and horizontal / vertical (A-B, horizontal)"
                     )
                     .into(),
                 ),
@@ -455,8 +465,8 @@ impl MeasureDialog {
                 id: "openings".into(),
                 label: Some(
                     tr!(
-                        "Porte e finestre (facoltative) — lato, tipo (porta, finestra, apertura), distanza dal primo spigolo del lato e larghezza. Stesso nome in due vani = porta comune: con lo spessore del muro collega i vani",
-                        "Doors and windows (optional) — side, kind (door, window, opening), distance from the side's first corner and width. Same name in two rooms = shared door: with the wall thickness it links the rooms"
+                        "Porte e finestre (facoltative): distanza dal primo spigolo del lato e larghezza; stesso nome in due vani = porta comune",
+                        "Doors and windows (optional): distance from the side's first corner and width; same name in two rooms = shared door"
                     )
                     .into(),
                 ),
@@ -473,50 +483,24 @@ impl MeasureDialog {
                 allow_delete: true,
             })
             .with_control(DialogControl::row(vec![
-                number("h", tr!("Altezza testi e quote", "Text and dimension height"), saved.h),
+                number("h", tr!("Altezza testi", "Text height"), saved.h),
                 number("tol", tr!("Tolleranza scarti", "Residual tolerance"), saved.tol),
+                DialogControl::Choice {
+                    id: "unit".into(),
+                    label: tr!("Unità del disegno", "Drawing unit").into(),
+                    options: vec![tr!("metri", "metres").into(), tr!("centimetri", "centimetres").into(), tr!("millimetri", "millimetres").into()],
+                    default_index: saved.unit.min(2),
+                },
             ]))
-            .with_control(info(
-                tr!(
-                    "Altezza testi: nelle unità del disegno (0,20 = 20 cm se disegni in metri). Tolleranza: lo scarto oltre il \
-                     quale una misura viene segnalata in rosso (di solito 1–2 cm).",
-                    "Text height: in drawing units (0.20 = 20 cm when drawing in metres). Tolerance: the residual beyond which \
-                     a measure is flagged in red (usually 1–2 cm)."
-                )
-                .to_string(),
-            ))
-            .with_control(DialogControl::Choice {
-                id: "unit".into(),
-                label: tr!("Unità del disegno (per le superfici in m²)", "Drawing unit (for areas in m²)").into(),
-                options: vec![
-                    tr!("metri", "metres").into(),
-                    tr!("centimetri", "centimetres").into(),
-                    tr!("millimetri", "millimetres").into(),
-                ],
-                default_index: saved.unit.min(2),
-            })
             .with_control(DialogControl::row(vec![
-                checkbox("dims", tr!("Quota lati, diagonali e spessori", "Dimension sides, diagonals and thicknesses"), saved.dims),
-                checkbox("table", tr!("Tabella misure e scarti", "Table of measures and residuals"), saved.table),
+                checkbox("dims", tr!("Quote", "Dimensions"), saved.dims),
+                checkbox("table", tr!("Tabella scarti", "Residuals table"), saved.table),
+                checkbox("csv", tr!("Salva libretto (CSV)", "Save book (CSV)"), saved.csv),
             ]))
-            .with_control(checkbox(
-                "csv",
-                tr!("Salva anche il libretto delle misure (CSV per Excel / Calc)", "Also save the measures book (CSV for Excel / Calc)"),
-                saved.csv,
-            ))
             .with_control(csv_picker(&saved.csv_path))
-            .with_control(info(
-                tr!(
-                    "Il risultato va sul layer RILIEVO_CORRETTO; il disegno originale resta per confronto. Annulla (Ctrl+Z) toglie tutto in un passo.",
-                    "The result goes on layer RILIEVO_CORRETTO; the original drawing stays for comparison. Undo (Ctrl+Z) removes it all in one step."
-                )
-                .to_string(),
-            ))
             .submit_label(tr!("Calcola", "Compute"))
-            .cancel_label(tr!("Annulla", "Cancel"))
-            .width(680.0);
-        let n_sides = survey.rooms.iter().map(|r| r.len()).sum();
-        MeasureDialog { handles, n_sides, def, done: false }
+            .cancel_label(tr!("◂ Indietro", "◂ Back"))
+            .width(640.0)
     }
 }
 
@@ -535,34 +519,64 @@ impl InteractiveCommand for MeasureDialog {
         CommandStep::Cancel
     }
     fn modal_dialog(&self) -> Option<DialogDef> {
-        (!self.done).then(|| self.def.clone())
+        match self.page {
+            1 => Some(self.page1()),
+            2 => Some(self.page2()),
+            _ => None,
+        }
     }
     fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
-        self.done = true;
-        let DialogResponse::Submitted(m) = response else {
-            return CommandStep::Cancel;
-        };
-        let base = commands::saved_for(&self.handles);
-        let mut sides = get_table(&m, "sides").unwrap_or_else(|| base.as_ref().map(|s| s.sides.clone()).unwrap_or_default());
-        sides.truncate(self.n_sides);
-        let saved = Saved {
-            sides,
-            others: get_table(&m, "others").unwrap_or_default(),
-            h: get_num(&m, "h").filter(|v| *v > 0.0).unwrap_or_else(|| base.as_ref().map_or(1.0, |s| s.h)),
-            tol: get_num(&m, "tol").filter(|v| *v >= 0.0).unwrap_or_else(|| base.as_ref().map_or(0.0, |s| s.tol)),
-            dims: get_bool(&m, "dims", true),
-            table: get_bool(&m, "table", true),
-            csv: get_bool(&m, "csv", false),
-            csv_path: get_path(&m, "csv_path").or_else(|| base.as_ref().map(|s| s.csv_path.clone())).unwrap_or_default(),
-            constraints: get_table(&m, "constraints").unwrap_or_default(),
-            openings: get_table(&m, "openings").unwrap_or_default(),
-            unit: match m.get("unit") {
-                Some(DialogValue::Choice { index, .. }) => *index,
-                _ => base.as_ref().map_or(0, |s| s.unit),
-            },
-        };
-        commands::set_pending(self.handles.clone(), saved);
-        CommandStep::Dispatch("RV_VANOAPPLY".into())
+        match (self.page, response) {
+            (1, DialogResponse::Submitted(m)) => {
+                if let Some(mut sides) = get_table(&m, "sides") {
+                    sides.truncate(self.n_sides);
+                    self.saved.sides = sides;
+                }
+                if let Some(others) = get_table(&m, "others") {
+                    self.saved.others = others;
+                }
+                self.page = 2;
+                CommandStep::NeedPoint
+            }
+            (1, _) => {
+                self.page = 0;
+                CommandStep::Cancel
+            }
+            (2, DialogResponse::Submitted(m)) => {
+                let s = &mut self.saved;
+                if let Some(t) = get_table(&m, "constraints") {
+                    s.constraints = t;
+                }
+                if let Some(t) = get_table(&m, "openings") {
+                    s.openings = t;
+                }
+                if let Some(v) = get_num(&m, "h").filter(|v| *v > 0.0) {
+                    s.h = v;
+                }
+                if let Some(v) = get_num(&m, "tol").filter(|v| *v >= 0.0) {
+                    s.tol = v;
+                }
+                if let Some(DialogValue::Choice { index, .. }) = m.get("unit") {
+                    s.unit = *index;
+                }
+                s.dims = get_bool(&m, "dims", s.dims);
+                s.table = get_bool(&m, "table", s.table);
+                s.csv = get_bool(&m, "csv", s.csv);
+                if let Some(p) = get_path(&m, "csv_path") {
+                    s.csv_path = p;
+                }
+                self.page = 0;
+                commands::set_pending(self.handles.clone(), self.saved.clone());
+                CommandStep::Dispatch("RV_VANOAPPLY".into())
+            }
+            (2, _) => {
+                // "Back": the host sends no values with it, so page 2 keeps
+                // what it had when it was opened.
+                self.page = 1;
+                CommandStep::NeedPoint
+            }
+            _ => CommandStep::Cancel,
+        }
     }
 }
 
@@ -753,5 +767,57 @@ impl InteractiveCommand for GuideDialog {
     fn on_dialog_response(&mut self, _response: DialogResponse) -> CommandStep {
         self.done = true;
         CommandStep::Done
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn saved(n: usize) -> Saved {
+        Saved {
+            sides: (0..n).map(|i| vec![format!("{i}"), "1".into(), String::new()]).collect(),
+            others: vec![],
+            h: 0.2,
+            tol: 0.02,
+            dims: true,
+            table: true,
+            csv: false,
+            csv_path: String::new(),
+            constraints: vec![],
+            openings: vec![],
+            unit: 0,
+        }
+    }
+
+    #[test]
+    fn two_pages_forth_and_back() {
+        let survey = Survey::new(vec![vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]]]);
+        let mut d = MeasureDialog::new(vec![Handle::new(0x2A)], &survey, &saved(4), None);
+        let p1 = d.modal_dialog().unwrap();
+        assert!(p1.title.contains("1/2"));
+        // Page 1 has only the two measure tables (and short texts).
+        let mut m = HashMap::new();
+        m.insert("sides".to_string(), DialogValue::Table(vec![vec!["A–B".into(), "4".into(), "4,01".into()]; 4]));
+        assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m)), CommandStep::NeedPoint));
+        assert!(d.modal_dialog().unwrap().title.contains("2/2"));
+        // Back keeps page 1's values.
+        assert!(matches!(d.on_dialog_response(DialogResponse::Cancelled), CommandStep::NeedPoint));
+        assert_eq!(d.saved.sides[0][2], "4,01");
+        assert!(d.modal_dialog().unwrap().title.contains("1/2"));
+        // Forth again, then compute.
+        d.on_dialog_response(DialogResponse::Submitted(HashMap::new()));
+        let mut m = HashMap::new();
+        m.insert("constraints".to_string(), DialogValue::Table(vec![vec!["A".into(), "90".into()]]));
+        assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m)), CommandStep::Dispatch(ref c) if c == "RV_VANOAPPLY"));
+        assert!(d.modal_dialog().is_none());
+    }
+
+    #[test]
+    fn cancel_on_page_one_ends() {
+        let survey = Survey::new(vec![vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]]]);
+        let mut d = MeasureDialog::new(vec![Handle::new(0x2A)], &survey, &saved(3), None);
+        assert!(matches!(d.on_dialog_response(DialogResponse::Cancelled), CommandStep::Cancel));
+        assert!(d.modal_dialog().is_none());
     }
 }
