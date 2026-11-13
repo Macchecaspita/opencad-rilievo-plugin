@@ -22,7 +22,8 @@ pub struct Placed {
 
 /// Approximate radius of the circle around a text of `chars` characters.
 fn radius(chars: usize, h: f64) -> f64 {
-    let hw = 0.36 * h * chars.max(1) as f64 + 0.15 * h;
+    // CAD fonts are wide: about one text height per character.
+    let hw = 0.5 * h * chars.max(1) as f64 + 0.2 * h;
     hw.max(0.6 * h)
 }
 

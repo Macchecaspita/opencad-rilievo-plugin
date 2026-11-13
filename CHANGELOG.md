@@ -12,6 +12,25 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.5.1] - 2026-11-13
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- Testi illeggibili quando il disegno a occhio è a una scala diversa dalle misure:
+  altezza dei testi e tolleranza ora si adattano ai vani **calcolati** (e il
+  plugin lo dice sulla riga di comando).
+- I testi non vanno più a capo a ogni parola (la casella di testo era larga 10
+  unità per impostazione predefinita).
+- Tabella delle misure con colonne larghe quanto i numeri, per i caratteri larghi
+  del CAD; lettere degli spigoli più distanziate.
+- Niente quote sui lati cortissimi (riseghe di pochi centimetri) e niente misura
+  scritta sulle diagonali corte: i valori sono comunque nella tabella.
+- Con il calcolo completato dal disegno non compare più anche "Nessuna misura di
+  controllo".
+
 ## [0.5.0] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

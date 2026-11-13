@@ -507,7 +507,9 @@ fn ensure_layer(host: &mut dyn HostApi, name: &str, aci: i16) {
 }
 
 fn mtext(value: &str, at: P2, z: f64, h: f64, att: AttachmentPoint, layer: &str) -> EntityType {
-    let mut t = MText::with_value(value, Vector3::new(at[0], at[1], z)).with_height(h);
+    // Width 0: one line, no wrapping (the default box is 10 units wide and
+    // breaks a sentence into one word per line).
+    let mut t = MText::with_value(value, Vector3::new(at[0], at[1], z)).with_height(h).with_width(0.0);
     t.attachment_point = att;
     t.common.layer = layer.to_string();
     EntityType::MText(Box::new(t))
@@ -803,6 +805,35 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
         }
     };
 
+    // Text height and tolerance suited to the computed rooms: the dialog
+    // proposed them from the drawing by eye, which may be at another scale.
+    let adjusted_pts: Vec<Vec<P2>> = (0..rooms.len()).map(|r| survey.room_points(r, &sol.pts)).collect();
+    let (h_auto, tol_auto) = adjusted_pts.iter().map(|p| default_sizes(p)).fold((0.0f64, 0.0f64), |a, b| (a.0.max(b.0), a.1.max(b.1)));
+    let mut saved = saved;
+    let mut resized = false;
+    if h_auto > 0.0 && !(saved.h >= h_auto / 3.0 && saved.h <= h_auto * 3.0) {
+        saved.h = h_auto;
+        resized = true;
+    }
+    if tol_auto > 0.0 && !(saved.tol >= tol_auto / 5.0 && saved.tol <= tol_auto * 5.0) {
+        saved.tol = tol_auto;
+        resized = true;
+    }
+    if resized {
+        remember(hs, saved.clone());
+        host.push_info(&tr!(
+            format!(
+                "RV_VANO: il disegno a occhio era a una scala diversa dalle misure: altezza testi {} e tolleranza {} adattate ai vani calcolati.",
+                fmt_num(saved.h, 3),
+                fmt_num(saved.tol, 3)
+            ),
+            format!(
+                "RV_VANO: the drawing by eye was at another scale than the measures: text height {} and tolerance {} fitted to the computed rooms.",
+                fmt_num(saved.h, 3),
+                fmt_num(saved.tol, 3)
+            )
+        ));
+    }
     let th = saved.h.max(1e-9);
     let dec = decimals(saved.tol);
     let z = rooms[0].z;
@@ -869,6 +900,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
             format!("  Misure in più (controllo): {} · scarto quadratico medio σ₀ = {}", sol.redundancy, fmt_num(s0, dec)),
             format!("  Extra (check) measures: {} · standard deviation σ₀ = {}", sol.redundancy, fmt_num(s0, dec))
         )),
+        None if filled.is_some() => {}
         None => lines.push(tr!(
             "  Nessuna misura di controllo: la forma è esatta ma un errore di misura non si vede. Misura una diagonale in più.".to_string(),
             "  No check measure: the shape is exact but a wrong measure cannot show. Measure one more diagonal.".to_string()
@@ -1134,6 +1166,19 @@ pub fn book_csv(
 
 /// The table of measures, right of the rooms: measure, measured, computed
 /// and residual; residuals over the tolerance in red.
+/// The widest number in the table, in characters.
+fn rows_width(sol: &Solution, measures: &[Measure], dec: usize) -> usize {
+    measures
+        .iter()
+        .enumerate()
+        .map(|(k, m)| {
+            let v = sol.residuals.get(k).copied().unwrap_or(0.0);
+            show(m, m.meas.value(), dec).chars().count().max(show(m, m.meas.value() + v, dec).chars().count()).max(show_res(m, v, dec).chars().count())
+        })
+        .max()
+        .unwrap_or(6)
+}
+
 /// Solve with stand-ins from the drawing added (low weight), returning only
 /// the real measures' residuals.
 fn solve_filled(survey: &Survey, meas: &[Meas]) -> Option<Solution> {
@@ -1153,8 +1198,11 @@ fn table(sol: &Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize
     let maxy = sol.pts.iter().map(|p| p[1]).fold(f64::MIN, f64::max);
     let x0 = maxx + h * 5.0;
     let row_h = h * 1.9;
-    let longest = measures.iter().map(|m| m.name.chars().count()).max().unwrap_or(5).max(6) as f64;
-    let col_w = [h * (longest * 0.75 + 1.5), h * 6.5, h * 6.5, h * 6.0];
+    // CAD fonts run about one text height per character, spacing included.
+    let cw = |n: usize| h * (n as f64 * 0.95 + 1.6);
+    let longest = measures.iter().map(|m| m.name.chars().count()).max().unwrap_or(5).max(6);
+    let num_w = rows_width(sol, measures, dec);
+    let col_w = [cw(longest), cw(num_w.max(9)), cw(num_w.max(9)), cw(num_w.max(7))];
     let width: f64 = col_w.iter().sum();
     let mut out = Vec::new();
     let mut y = maxy;
@@ -1203,6 +1251,7 @@ fn table(sol: &Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize
             format!("Misure in più: {} · σ₀ = {}", sol.redundancy, fmt_num(s0, dec)),
             format!("Extra measures: {} · σ₀ = {}", sol.redundancy, fmt_num(s0, dec))
         ),
+        None if filled => String::new(),
         None => tr!("Nessuna misura di controllo".to_string(), "No check measure".to_string()),
     };
     out.push(mtext(&foot, [x0, bottom - row_h * 0.6], z, h * 0.85, AttachmentPoint::MiddleLeft, LAYER_NOTES));
@@ -1212,7 +1261,7 @@ fn table(sol: &Solution, measures: &[Measure], bad: &[usize], h: f64, dec: usize
                 "Misure non sufficienti: forma completata dal disegno (parti non misurate indicative)",
                 "Not enough measures: shape finished from the drawing (unmeasured parts indicative)"
             ),
-            [x0, bottom - row_h * 1.5],
+            [x0, bottom - row_h * 0.6],
             z,
             h * 0.85,
             AttachmentPoint::MiddleLeft,
@@ -1292,6 +1341,11 @@ fn dimension(host: &mut dyn HostApi, survey: &Survey, pts: &[P2], measures: &[Me
                 let l = dx.hypot(dy).max(1e-12);
                 let out = if ccw { [dy / l, -dx / l] } else { [-dy / l, dx / l] };
                 let mid = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
+                // A side shorter than its own number would only make a knot
+                // of arrows: its length is in the table.
+                if solve::dist(a, b) < h * 4.0 {
+                    continue;
+                }
                 let at = [mid[0] + out[0] * h * 2.5, mid[1] + out[1] * h * 2.5];
                 if !dim_aligned(host, a, b, at) {
                     failed.push((a, b, at));
@@ -1306,7 +1360,9 @@ fn dimension(host: &mut dyn HostApi, survey: &Survey, pts: &[P2], measures: &[Me
                 k_line += 1;
                 let at = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
                 marks.push(pline(&[a, b], z, false, LAYER_NOTES));
-                marks.push(along_text(&fmt_num(solve::dist(a, b), dec), a, b, at, h, z));
+                if solve::dist(a, b) >= h * 5.0 {
+                    marks.push(along_text(&fmt_num(solve::dist(a, b), dec), a, b, at, h, z));
+                }
             }
             (_, Meas::Perp { p, a, b, .. }) => {
                 let f = solve::foot(pts[p], pts[a], pts[b]);
