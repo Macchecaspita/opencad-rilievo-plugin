@@ -14,6 +14,10 @@ del rilascio.
 
 ## [0.1.0] - 2026-11-13
 
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Prima versione di prova.
+
 ### Aggiunto
 - **Misure e diagonali** (`RV_VANO`): si seleziona un vano disegnato a occhio come
   polilinea chiusa, si inseriscono lati e diagonali misurati e il vano viene

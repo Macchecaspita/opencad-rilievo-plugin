@@ -2,8 +2,10 @@
 
 **English** · [Italiano](README.it.md)
 
-> **Hobby project, made just for fun.** No warranty (see the GPL-3.0 licence):
-> back up your drawings before using it on real work. Early version (0.x).
+> **Hobby project, made just for fun and not suitable for professional use.**
+> Provided as is, without any warranty (see the GPL-3.0 licence): the author takes
+> no responsibility for its use or for the results. Always check the results and
+> back up your drawings. Early version (0.x).
 
 An [Open CAD Studio](https://github.com/HakanSeven12/OpenCADStudio) add-on that
 adds a **Survey** ribbon tab for architectural surveys measured with a tape or a

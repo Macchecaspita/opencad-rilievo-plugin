@@ -2,9 +2,11 @@
 
 [English](README.md) · **Italiano**
 
-> **Progetto amatoriale, realizzato solo per divertimento.** Viene fornito senza
-> alcuna garanzia (vedi la licenza GPL-3.0): prima di usarlo su lavori reali, fai
-> una copia dei tuoi disegni. Versione iniziale (0.x): le funzioni potrebbero cambiare.
+> **Progetto hobbistico, realizzato solo per divertimento e non adatto a un uso
+> professionale.** Viene fornito così com'è, senza alcuna garanzia (vedi la licenza
+> GPL-3.0): l'autore non si assume alcuna responsabilità per il suo uso né per i
+> risultati ottenuti. Controlla sempre i risultati e fai una copia dei tuoi disegni.
+> Versione iniziale (0.x): le funzioni potrebbero cambiare.
 
 Plugin per [Open CAD Studio](https://github.com/HakanSeven12/OpenCADStudio) che
 aggiunge la scheda **Rilievo** per il rilievo architettonico a misure dirette
