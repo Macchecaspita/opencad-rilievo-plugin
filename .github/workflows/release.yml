@@ -88,4 +88,11 @@ jobs:
           # Versions 0.x are marked "in fase di test" in the title.
           title="Rilievo Vani ${GITHUB_REF_NAME}"
           case "$GITHUB_REF_NAME" in v0.*) title="$title (versione di test)";; esac
-          gh release create "${GITHUB_REF_NAME}" dist/* --title "$title" --notes-file notes.md --latest
+          # The release may already exist when it was drafted on github.com
+          # (that is how the tag gets created): then fill it in.
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release edit "${GITHUB_REF_NAME}" --title "$title" --notes-file notes.md --draft=false --latest
+            gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/* --title "$title" --notes-file notes.md --latest
+          fi
