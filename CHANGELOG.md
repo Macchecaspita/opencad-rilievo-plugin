@@ -12,6 +12,21 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.5.0] - 2026-11-13
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Applica al disegno** (pulsante nel gruppo Vano, comando `RV_APPLICA`): dopo
+  aver controllato il risultato, porta i vertici delle polilinee originali nella
+  posizione calcolata. Restano le stesse polilinee (stesso layer, stesse
+  proprietà); la copia su RILIEVO_CORRETTO viene tolta. Un solo passo di
+  annullamento (Ctrl+Z).
+- Nella pagina 2 della finestra, l'opzione *Modifica subito le polilinee
+  originali* fa lo stesso a ogni calcolo, senza passare dalla copia.
+
 ## [0.4.0] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

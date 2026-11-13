@@ -47,6 +47,8 @@ pub struct Saved {
     pub unit: usize,
     /// When the measures are not enough, finish the shape from the drawing.
     pub fill: bool,
+    /// Move the original polylines to the result straight away.
+    pub replace: bool,
 }
 
 /// Metres per drawing unit, for the areas.
@@ -645,7 +647,7 @@ mod tests {
         others[0][3] = "5,0".into();
         others.push(vec!["1B-1C".into(), "2A".into(), "".into(), "0,30".into()]);
         others.push(vec!["1C".into(), "2a".into(), "".into(), "3,02".into()]);
-        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true };
+        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false };
         let m = s.parse(&saved, &num).unwrap().measures;
         assert_eq!(m.len(), 8 + 3);
         assert_eq!(m[8].kind, Kind::Diagonal);
@@ -673,6 +675,7 @@ mod tests {
             openings: vec![],
             unit: 0,
             fill: true,
+            replace: false,
         };
         let e = s.parse(&saved, &num).unwrap_err();
         assert!(e.contains("1") && e.contains("\"A\""), "{e}");
@@ -703,6 +706,7 @@ mod tests {
             ],
             unit: 0,
             fill: true,
+            replace: false,
         };
         let p = s.parse(&saved, &num).unwrap();
         let kinds: Vec<Kind> = p.measures.iter().map(|m| m.kind).collect();
@@ -738,6 +742,7 @@ mod tests {
             ],
             unit: 0,
             fill: true,
+            replace: false,
         };
         assert!(s.parse(&saved, &num).unwrap_err().contains("P1"));
     }

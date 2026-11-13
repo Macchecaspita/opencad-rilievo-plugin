@@ -576,6 +576,14 @@ impl MeasureDialog {
             ),
             saved.fill,
         ))
+        .with_control(checkbox(
+            "replace",
+            tr!(
+                "Modifica subito le polilinee originali (senza copia su RILIEVO_CORRETTO); altrimenti usa poi Applica al disegno",
+                "Change the original polylines straight away (no copy on RILIEVO_CORRETTO); otherwise use Apply to drawing later"
+            ),
+            saved.replace,
+        ))
         .with_control(DialogControl::row(vec![
             checkbox("dims", tr!("Quote", "Dimensions"), saved.dims),
             checkbox("table", tr!("Tabella scarti", "Residuals table"), saved.table),
@@ -640,6 +648,7 @@ impl MeasureDialog {
         s.table = get_bool(m, "table", s.table);
         s.csv = get_bool(m, "csv", s.csv);
         s.fill = get_bool(m, "fill", s.fill);
+        s.replace = get_bool(m, "replace", s.replace);
         if let Some(p) = get_path(m, "csv_path") {
             s.csv_path = p;
         }
@@ -845,6 +854,17 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
             ),
         ),
         (
+            tr!("Applica al disegno", "Apply to drawing"),
+            tr!(
+                "Controllato il risultato, Applica al disegno (RV_APPLICA) porta i vertici delle polilinee originali nella \
+                 posizione calcolata: restano le stesse polilinee, sullo stesso layer, e la copia su RILIEVO_CORRETTO viene \
+                 tolta. Ctrl+Z annulla. Nella pagina 2 si può scegliere di farlo subito a ogni calcolo.",
+                "Once the result is checked, Apply to drawing (RV_APPLICA) moves the corners of the original polylines to \
+                 the computed position: same polylines, same layer, and the copy on RILIEVO_CORRETTO is removed. Ctrl+Z \
+                 undoes it. On page 2 you can choose to do it at every calculation."
+            ),
+        ),
+        (
             tr!("5. Libretto delle misure", "5. Measures book"),
             tr!(
                 "Libretto misure (RV_LIBRETTO) salva l'ultimo calcolo in un CSV per Excel o Calc: misure, scarti, σ₀, \
@@ -867,8 +887,8 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
         (
             tr!("Comandi", "Commands"),
             tr!(
-                "RV_VANO, RV_ETICHETTE, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|AUTO cambia la lingua.",
-                "RV_VANO, RV_ETICHETTE, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|AUTO changes the language."
+                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|AUTO cambia la lingua.",
+                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|AUTO changes the language."
             ),
         ),
     ]
@@ -933,6 +953,7 @@ mod tests {
             openings: vec![],
             unit: 0,
             fill: true,
+            replace: false,
         }
     }
 

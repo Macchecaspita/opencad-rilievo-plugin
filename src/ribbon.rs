@@ -31,6 +31,7 @@ impl CadModule for RilievoModule {
                     tools: vec![
                         cmd("RV_ETICHETTE", tr!("Lettere vertici", "Corner letters"), include_bytes!("../icons/labels.svg")),
                         cmd("RV_VANO", tr!("Misure e diagonali", "Sides and diagonals"), include_bytes!("../icons/room.svg")),
+                        cmd("RV_APPLICA", tr!("Applica al disegno", "Apply to drawing"), include_bytes!("../icons/apply.svg")),
                         cmd("RV_LIBRETTO", tr!("Libretto misure", "Measures book"), include_bytes!("../icons/book.svg")),
                     ],
                 },

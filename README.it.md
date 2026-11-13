@@ -48,6 +48,7 @@ italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
 |---|---|---|
 | `RV_VANO` | **Misure e diagonali** | clicca uno o più vani, Invio: scrive le lettere, apre la tabella delle misure e ricalcola |
 | `RV_ETICHETTE` | **Lettere vertici** | scrive solo le lettere sui vertici (layer RILIEVO_ETICHETTE), per l'eidotipo |
+| `RV_APPLICA` | **Applica al disegno** | porta le polilinee originali nella forma calcolata (dopo aver controllato il risultato) |
 | `RV_LIBRETTO` | **Libretto misure** | salva l'ultimo calcolo in CSV: misure, scarti, σ₀, coordinate, superfici |
 | `RV_GUIDE` | **Guida** | breve guida |
 | `RV_MANUALE` | **Manuale PDF** | manuale di rilievo di un appartamento, con disegni ([docs/Manuale_rilievo.pdf](docs/Manuale_rilievo.pdf)) |

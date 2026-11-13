@@ -137,6 +137,10 @@ static SAVED: Mutex<Option<HashMap<String, Saved>>> = Mutex::new(None);
 static PENDING: Mutex<Option<(Vec<Handle>, Saved)>> = Mutex::new(None);
 /// The last measures book (CSV text) and its suggested file.
 static LAST_BOOK: Mutex<Option<(String, String)>> = Mutex::new(None);
+/// The last calculation, for "apply to the drawing": per room, the original
+/// polyline, its adjusted corners and the adjusted copy drawn on
+/// RILIEVO_CORRETTO.
+static LAST_RESULT: Mutex<Option<Vec<(Handle, Vec<P2>, Option<Handle>)>>> = Mutex::new(None);
 
 fn key(hs: &[Handle]) -> String {
     hs.iter().map(|h| hex(*h)).collect::<Vec<_>>().join(",")
@@ -282,6 +286,7 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                 apply(host, &hs, saved);
             }
         }
+        "RV_APPLICA" => apply_to_drawing(host, true),
         "RV_LIBRETTO" => match last_book() {
             Some((_, default)) => host.start_interactive(Box::new(tools::BookDialog::new(default))),
             None => host.push_error(tr!(
@@ -341,12 +346,12 @@ fn help(host: &mut dyn HostApi) {
     host.push_output(&tr!(
         format!(
             "Rilievo Vani {}: RV_VANO (misure di lati, diagonali e collegamenti di uno o più vani), RV_ETICHETTE \
-             (lettere sui vertici), RV_LIBRETTO (salva il libretto delle misure), RV_GUIDE (guida), RV_MANUALE (manuale di rilievo in PDF), RV_LANG IT|EN|AUTO.",
+             (lettere sui vertici), RV_APPLICA (porta i vani originali nella forma calcolata), RV_LIBRETTO (salva il libretto delle misure), RV_GUIDE (guida), RV_MANUALE (manuale di rilievo in PDF), RV_LANG IT|EN|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
             "Rilievo Vani {}: RV_VANO (sides, diagonals and links of one or more rooms), RV_ETICHETTE (corner letters), \
-             RV_LIBRETTO (save the measures book), RV_GUIDE (guide), RV_MANUALE (surveying manual, PDF), RV_LANG IT|EN|AUTO.",
+             RV_APPLICA (move the original rooms to the computed shape), RV_LIBRETTO (save the measures book), RV_GUIDE (guide), RV_MANUALE (surveying manual, PDF), RV_LANG IT|EN|AUTO.",
             env!("CARGO_PKG_VERSION")
         )
     ));
@@ -444,6 +449,7 @@ fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
                 openings: Vec::new(),
                 unit: survey::guess_unit(longest),
                 fill: true,
+                replace: false,
             }
         }
     };
@@ -816,7 +822,15 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     if saved.table {
         ents.extend(table(&sol, &measures, &bad, th, dec, z, filled.is_some()));
     }
-    host.add_entities(ents);
+    let added = host.add_entities(ents);
+    *LAST_RESULT.lock().unwrap_or_else(|e| e.into_inner()) = Some(
+        rooms
+            .iter()
+            .zip(&adjusted)
+            .enumerate()
+            .map(|(r, (room, pts))| (room.handle, pts.clone(), added.get(r).copied()))
+            .collect(),
+    );
 
     let mut dims_failed = 0;
     if saved.dims {
@@ -908,12 +922,73 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
             format!("RV_VANO: the CAD did not create {dims_failed} dimensions; the measures are written as text.")
         ));
     }
+    if saved.replace {
+        apply_to_drawing(host, false);
+    } else {
+        host.push_info(tr!(
+            "RV_VANO: controllato il risultato, Applica al disegno (RV_APPLICA) porta le polilinee originali nella forma calcolata.",
+            "RV_VANO: once the result is checked, Apply to drawing (RV_APPLICA) moves the original polylines to the computed shape."
+        ));
+    }
     if saved.csv {
         write_book(host, &path, &book);
     } else {
         host.push_info(tr!(
             "RV_VANO: per salvare il libretto delle misure (CSV) usa Libretto misure (RV_LIBRETTO).",
             "RV_VANO: to save the measures book (CSV) use Measures book (RV_LIBRETTO)."
+        ));
+    }
+}
+
+/// Move the corners of the original polylines to the last calculation's
+/// result, keeping each polyline (handle, layer, properties) and removing
+/// the adjusted copy on RILIEVO_CORRETTO, which would now lie on top of it.
+/// One undo step.
+fn apply_to_drawing(host: &mut dyn HostApi, own_undo: bool) {
+    let Some(last) = LAST_RESULT.lock().unwrap_or_else(|e| e.into_inner()).take() else {
+        host.push_error(tr!(
+            "RV_APPLICA: non c'è un calcolo da applicare. Prima esegui Misure e diagonali (RV_VANO) e controlla il risultato.",
+            "RV_APPLICA: there is no calculation to apply. Run Sides and diagonals (RV_VANO) first and check the result."
+        ));
+        return;
+    };
+    if own_undo {
+        host.begin_undo_group("RV_APPLICA");
+    }
+    let mut done = 0;
+    let mut missing = 0;
+    for (h, pts, copy) in &last {
+        let live = host.entities_batch(&[*h]).ok().and_then(|v| v.into_iter().next().flatten()).or_else(|| host.document().get_entity(*h).cloned());
+        match live {
+            Some(EntityType::LwPolyline(mut p)) => {
+                p.vertices = pts.iter().map(|q| LwVertex::new(Vector2::new(q[0], q[1]))).collect();
+                p.is_closed = true;
+                if host.update_entity(EntityType::LwPolyline(p)) {
+                    done += 1;
+                    if let Some(c) = copy {
+                        host.remove_entity(*c);
+                    }
+                } else {
+                    missing += 1;
+                }
+            }
+            _ => missing += 1,
+        }
+    }
+    if own_undo {
+        host.end_undo_group();
+    }
+    host.set_dirty();
+    if done > 0 {
+        host.push_info(&tr!(
+            format!("RV_APPLICA: {done} polilinee portate nella forma calcolata (Ctrl+Z per annullare)."),
+            format!("RV_APPLICA: {done} polylines moved to the computed shape (Ctrl+Z to undo).")
+        ));
+    }
+    if missing > 0 {
+        host.push_error(&tr!(
+            format!("RV_APPLICA: {missing} polilinee non più nel disegno o non modificabili: restano le copie su {LAYER_ROOM}."),
+            format!("RV_APPLICA: {missing} polylines no longer in the drawing or not editable: the copies on {LAYER_ROOM} stay.")
         ));
     }
 }
@@ -1420,7 +1495,7 @@ mod tests {
         ];
         let m: Vec<Meas> = meas.iter().map(|x| x.meas).collect();
         let sol = solve::solve_network(&survey.points, &m, &survey.datum()).unwrap();
-        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true };
+        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false };
         let csv = book_csv(&survey, &sol, &meas, &[], &[], &saved, 3, Some("C:\\x.dwg"), None);
         assert!(csv.starts_with('\u{feff}'));
         assert!(csv.contains("A–C"));
