@@ -319,8 +319,8 @@ def build():
             "dei muri. Le misure non contano: conta che ogni spigolo vero sia un vertice della polilinea, nell'ordine "
             "giusto. Riseghe, nicchie, pilastri sporgenti e smussi sono vertici anche loro (vano 3 dell'esempio). "
             "Il corridoio è un vano come gli altri."),
-          P("Con <b>Lettere vertici</b> clicca i vani uno dopo l'altro, nell'ordine che vuoi dare ai numeri (per "
-            "esempio partendo dall'ingresso), e premi Invio: compaiono 1A, 1B … 2A … Stampa la pianta: è il tuo eidotipo. "
+          P("Con <b>Lettere vertici</b> seleziona i vani — uno alla volta nell'ordine che vuoi dare ai numeri, "
+            "oppure tutti insieme con una finestra (numerati dall'alto in basso, da sinistra a destra) — e premi Invio: compaiono 1A, 1B … 2A … Stampa la pianta: è il tuo eidotipo. "
             "Se due lettere sono troppo vicine il plugin le sposta e le collega allo spigolo con una linea."),
           table([["Consiglio", "Perché"],
                  [cell("Numera i vani in un ordine che segui anche in cantiere"), cell("Si scrive più in fretta e si sbaglia meno vano.")],

@@ -1,7 +1,7 @@
 [plugin]
 id = "opencad.rilievovani"
 name = "Rilievo Vani"
-version = "0.6.0"
+version = "0.6.1"
 description = "Room survey: adjust a room drawn by eye to the measured sides and diagonals (least squares), with residuals, dimensions and a table of measures. English and Italian."
 author = "Macchecaspita"
 license = "GPL-3.0-only"

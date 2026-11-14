@@ -17,7 +17,6 @@ use crate::commands::{self, Room};
 use crate::solve::{self, P2};
 use crate::survey::{Saved, Survey};
 
-const CYAN: [f32; 4] = [0.43, 0.72, 0.93, 1.0];
 const GREEN: [f32; 4] = [0.45, 0.85, 0.45, 1.0];
 
 /// Arguments of a command handed to the host as a bare verb (see
@@ -61,8 +60,13 @@ fn ring3(pts: &[P2], z: f64) -> Vec<[f64; 3]> {
 
 // ── Pick rooms (closed polylines) ───────────────────────────────────────────
 
+/// Choose the rooms with the CAD's own selection: single picks, or a window
+/// / crossing box dragged over many rooms at once. The CAD highlights what
+/// is selected, and the chosen rooms are also outlined in green, so they
+/// stand out from the ones not chosen yet. Enter confirms.
 pub struct PickRoomTool {
     rooms: Vec<Room>,
+    /// Chosen rooms, in the order that gives their numbers.
     chosen: Vec<usize>,
     /// Command dispatched (deferred) with the rooms' handles.
     verb: &'static str,
@@ -90,15 +94,53 @@ impl PickRoomTool {
             Some(i) => {
                 if let Some(k) = self.chosen.iter().position(|&c| c == i) {
                     self.chosen.remove(k);
-                    self.msg = Some(tr!("vano tolto dalla scelta", "room removed from the choice").into());
                 } else {
                     self.chosen.push(i);
-                    self.msg = Some(tr!(format!("vano {} scelto", self.chosen.len()), format!("room {} chosen", self.chosen.len())));
                 }
+                self.msg = None;
             }
             None => self.msg = Some(tr!("lì non c'è una polilinea chiusa", "no closed polyline there").into()),
         }
         CommandStep::NeedPoint
+    }
+
+    /// Centre of a room's bounding box.
+    fn centre(&self, i: usize) -> P2 {
+        let p = &self.rooms[i].pts;
+        let (x0, x1) = p.iter().fold((f64::MAX, f64::MIN), |a, q| (a.0.min(q[0]), a.1.max(q[0])));
+        let (y0, y1) = p.iter().fold((f64::MAX, f64::MIN), |a, q| (a.0.min(q[1]), a.1.max(q[1])));
+        [(x0 + x1) / 2.0, (y0 + y1) / 2.0]
+    }
+
+    /// Bring the choice in step with the CAD's selection: rooms no longer
+    /// selected are dropped, the others keep their place, and the new ones
+    /// follow — those taken together by a box from the top down, left to
+    /// right, like reading a page.
+    fn sync(&mut self, handles: &[Handle]) {
+        let selected: Vec<usize> = (0..self.rooms.len()).filter(|&i| handles.contains(&self.rooms[i].handle)).collect();
+        self.chosen.retain(|i| selected.contains(i));
+        let mut new: Vec<usize> = selected.into_iter().filter(|i| !self.chosen.contains(i)).collect();
+        let band = new
+            .iter()
+            .map(|&i| {
+                let p = &self.rooms[i].pts;
+                let (y0, y1) = p.iter().fold((f64::MAX, f64::MIN), |a, q| (a.0.min(q[1]), a.1.max(q[1])));
+                y1 - y0
+            })
+            .fold(f64::MAX, f64::min)
+            * 0.5;
+        new.sort_by(|&a, &b| {
+            let (ca, cb) = (self.centre(a), self.centre(b));
+            if (ca[1] - cb[1]).abs() > band {
+                cb[1].total_cmp(&ca[1])
+            } else {
+                ca[0].total_cmp(&cb[0])
+            }
+        });
+        self.chosen.extend(new);
+        let others = handles.len().saturating_sub(self.chosen.len());
+        self.msg = (others > 0 && self.chosen.is_empty())
+            .then(|| tr!("nessuna polilinea chiusa tra gli oggetti selezionati", "no closed polyline among the selected objects").into());
     }
 }
 
@@ -107,25 +149,27 @@ impl InteractiveCommand for PickRoomTool {
         let p = if self.chosen.is_empty() {
             tr!(
                 format!(
-                    "{}: clicca dentro il vano (o sulla sua polilinea chiusa). Per collegare più vani cliccali uno dopo l'altro: \
-                     l'ordine dà il numero del vano. Invio per continuare, Esc per annullare",
+                    "{}: seleziona i vani (polilinee chiuse): un clic sulla linea, oppure una finestra trascinando il mouse \
+                     per prenderne tanti insieme. Invio per continuare, Esc per annullare",
                     self.title
                 ),
                 format!(
-                    "{}: click inside the room (or on its closed polyline). To link several rooms click them one after the \
-                     other: the order gives the room number. Enter to go on, Esc to cancel",
+                    "{}: select the rooms (closed polylines): click a line, or drag a window to take many at once. \
+                     Enter to go on, Esc to cancel",
                     self.title
                 )
             )
         } else {
             tr!(
                 format!(
-                    "{}: {} vani scelti (in verde). Clicca altri vani da collegare, di nuovo su un vano per toglierlo, Invio per continuare",
+                    "{}: {} vani selezionati (evidenziati, bordo verde). Aggiungine altri con clic o finestra, Maiusc+clic \
+                     per toglierne uno, Invio per continuare",
                     self.title,
                     self.chosen.len()
                 ),
                 format!(
-                    "{}: {} rooms chosen (green). Click more rooms to link, a chosen room again to drop it, Enter to go on",
+                    "{}: {} rooms selected (highlighted, green outline). Add more by click or window, Shift+click to drop \
+                     one, Enter to go on",
                     self.title,
                     self.chosen.len()
                 )
@@ -133,24 +177,28 @@ impl InteractiveCommand for PickRoomTool {
         };
         with_msg(&self.msg, p)
     }
+    fn is_selection_gathering(&self) -> bool {
+        true
+    }
+    fn accepts_drag_selection(&self) -> bool {
+        true
+    }
+    fn on_selection_complete(&mut self, handles: Vec<Handle>) -> CommandStep {
+        self.sync(&handles);
+        CommandStep::NeedPoint
+    }
+    // Hosts that send plain clicks instead of selections: a click inside a
+    // room, or on its polyline, toggles it.
     fn on_point(&mut self, pt: [f64; 3]) -> CommandStep {
         let i = self.room_at(pt);
         self.toggle(i)
-    }
-    fn needs_object_pick(&self) -> bool {
-        true
     }
     fn on_object_pick(&mut self, handle: Handle, pt: [f64; 3]) -> CommandStep {
         let i = self.rooms.iter().position(|r| r.handle == handle).or_else(|| self.room_at(pt));
         self.toggle(i)
     }
-    fn on_cursor_move(&mut self, pt: [f64; 3]) -> Vec<PreviewWire> {
-        let mut w: Vec<PreviewWire> =
-            self.chosen.iter().map(|&i| PreviewWire::with_color(ring3(&self.rooms[i].pts, self.rooms[i].z), GREEN)).collect();
-        if let Some(i) = self.room_at(pt).filter(|i| !self.chosen.contains(i)) {
-            w.push(PreviewWire::with_color(ring3(&self.rooms[i].pts, self.rooms[i].z), CYAN));
-        }
-        w
+    fn on_cursor_move(&mut self, _pt: [f64; 3]) -> Vec<PreviewWire> {
+        self.chosen.iter().map(|&i| PreviewWire::with_color(ring3(&self.rooms[i].pts, self.rooms[i].z), GREEN)).collect()
     }
     fn on_enter(&mut self) -> CommandStep {
         if self.chosen.is_empty() {
@@ -1444,9 +1492,9 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
         (
             tr!("2. Lettere vertici", "2. Corner letters"),
             tr!(
-                "Scegli i vani (cliccali uno dopo l'altro, Invio): sugli angoli compaiono A, B, C … o, con più vani, 1A, \
+                "Seleziona i vani (un clic sulla linea, o una finestra per prenderne tanti; Invio): sugli angoli compaiono A, B, C … o, con più vani, 1A, \
                  1B … 2A … Stampa la pianta e usala in cantiere per segnare le misure.",
-                "Choose the rooms (click them one after the other, Enter): A, B, C … or, with several rooms, 1A, 1B … 2A … \
+                "Select the rooms (click a line, or drag a window for many; Enter): A, B, C … or, with several rooms, 1A, 1B … 2A … \
                  appear at the corners. Print the plan and use it on site to note the measures."
             ),
         ),
@@ -1611,6 +1659,31 @@ mod tests {
         let mut m = HashMap::new();
         m.insert("do".to_string(), DialogValue::Choice { index, text: labels[index].clone() });
         m
+    }
+
+    #[test]
+    fn rooms_chosen_by_window_selection() {
+        let room = |h: u64, x: f64, y: f64| Room {
+            handle: Handle::new(h),
+            pts: vec![[x, y], [x + 3.0, y], [x + 3.0, y + 2.0], [x, y + 2.0]],
+            z: 0.0,
+            had_arcs: false,
+        };
+        // Two rows of rooms: 1, 2 on top; 3, 4 below.
+        let rooms = vec![room(1, 4.0, 0.0), room(2, 0.0, 3.0), room(3, 0.0, 0.1), room(4, 4.0, 3.2)];
+        let mut t = PickRoomTool::new(rooms, "RV_VANOOPEN", "RV_VANO");
+        assert!(t.is_selection_gathering() && t.accepts_drag_selection());
+        // One room clicked first, then a window over everything (plus a stray object).
+        t.on_selection_complete(vec![Handle::new(3)]);
+        t.on_selection_complete(vec![Handle::new(1), Handle::new(2), Handle::new(3), Handle::new(4), Handle::new(99)]);
+        let order: Vec<u64> = t.chosen.iter().map(|&i| t.rooms[i].handle.value()).collect();
+        assert_eq!(order, vec![3, 2, 4, 1], "first pick stays first, the rest in reading order");
+        assert_eq!(t.on_cursor_move([0.0; 3]).len(), 4);
+        // One deselected in the CAD.
+        t.on_selection_complete(vec![Handle::new(2), Handle::new(3), Handle::new(1)]);
+        assert_eq!(t.chosen.len(), 3);
+        assert!(matches!(t.on_enter(), CommandStep::Dispatch(ref c) if c == "RV_VANOOPEN"));
+        assert_eq!(take_deferred("RV_VANOOPEN").as_deref(), Some("3,2,1"));
     }
 
     #[test]

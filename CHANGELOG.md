@@ -12,6 +12,22 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.6.1] - 2026-11-14
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Scelta dei vani con la selezione multipla del CAD**: in *Misure e diagonali* e
+  *Lettere vertici* i vani si selezionano con un clic sulla linea oppure con una
+  finestra trascinata sopra tanti vani insieme. Quelli selezionati sono evidenziati
+  dal CAD e contornati in verde finché non si preme Invio, così si distinguono da
+  quelli non ancora scelti; Maiusc+clic ne toglie uno.
+- Numerazione: i vani presi uno alla volta seguono l'ordine dei clic; quelli presi
+  insieme con una finestra sono numerati dall'alto in basso e da sinistra a destra.
+  Gli oggetti che non sono polilinee chiuse vengono ignorati.
+
 ## [0.6.0] - 2026-11-14
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

@@ -271,6 +271,8 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         "RV_ETICHETTE" => start_pick(host, "RV_ETICHETTEAPPLY", "RV_ETICHETTE"),
         "RV_VANOOPEN" => {
             let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            // The rooms were chosen with the CAD's selection: clear it.
+            let _ = host.set_selection(&[]);
             if !hs.is_empty() {
                 open_dialog(host, &hs, None);
             }
@@ -303,6 +305,8 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         }
         "RV_ETICHETTEAPPLY" => {
             let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            // The rooms were chosen with the CAD's selection: clear it.
+            let _ = host.set_selection(&[]);
             if !hs.is_empty() {
                 labels_only(host, &hs);
             }
