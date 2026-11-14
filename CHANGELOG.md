@@ -12,6 +12,20 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.6.2] - 2026-11-14
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- Lettere illeggibili sulle piante con molti lati corti (riseghe, spallette,
+  pilastri): l'altezza dei testi ora segue il lato tipico e non il più lungo, fino
+  a 1/150 del lato maggiore.
+- Sul disegno ogni spigolo porta solo la lettera (`B`), non più numero e lettera
+  (`1B`): il numero è nel titolo del vano. Nelle finestre lo spigolo si scrive
+  sempre `1B` (o solo `B` nella scheda del suo vano).
+
 ## [0.6.1] - 2026-11-14
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

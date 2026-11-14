@@ -223,6 +223,27 @@ pub fn default_sizes(pts: &[P2]) -> (f64, f64) {
     (nice(longest / 30.0), nice(longest / 250.0))
 }
 
+/// Text height and tolerance for a set of rooms. The height follows the
+/// typical side, not the longest: a plan full of short sides (recesses,
+/// jambs, pillars) gets small letters that fit between its corners, a plain
+/// room the same as [`default_sizes`]. Kept between 1/150 and 1/30 of the
+/// longest side.
+pub fn sizes_for(rooms: &[Vec<P2>]) -> (f64, f64) {
+    let mut sides: Vec<f64> = rooms
+        .iter()
+        .flat_map(|p| (0..p.len()).map(move |i| solve::dist(p[i], p[(i + 1) % p.len()])))
+        .filter(|d| *d > 0.0)
+        .collect();
+    if sides.is_empty() {
+        return (1.0, 0.01);
+    }
+    sides.sort_by(f64::total_cmp);
+    let longest = sides[sides.len() - 1];
+    let median = sides[sides.len() / 2];
+    let h = (median * 0.25).clamp(longest / 150.0, longest / 30.0);
+    (nice(h), nice(longest / 250.0))
+}
+
 /// Decimals to show for measures checked to `tol`: one more than the
 /// tolerance needs (0.02 → 3, 20 → 0).
 pub fn decimals(tol: f64) -> usize {
@@ -469,7 +490,7 @@ fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, st
         Some(s) if s.sides.len() == n_sides => s,
         _ => {
             let all: Vec<P2> = rooms.iter().flat_map(|r| r.pts.iter().copied()).collect();
-            let longest = rooms.iter().map(|r| default_sizes(&r.pts)).fold((0.0f64, 0.0f64), |a, b| (a.0.max(b.0), a.1.max(b.1)));
+            let longest = sizes_for(&rooms.iter().map(|r| r.pts.clone()).collect::<Vec<_>>());
             let (h, tol) = if all.is_empty() { (1.0, 0.01) } else { longest };
             let (sides, others) = survey.initial(decimals(tol), &fmt_num);
             let longest = rooms.iter().flat_map(|r| (0..r.pts.len()).map(move |i| solve::dist(r.pts[i], r.pts[(i + 1) % r.pts.len()]))).fold(0.0f64, f64::max);
@@ -511,7 +532,7 @@ fn labels_only(host: &mut dyn HostApi, hs: &[Handle]) {
         return;
     };
     let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
-    let h = saved_for(hs).map(|s| s.h).unwrap_or_else(|| rooms.iter().map(|r| default_sizes(&r.pts).0).fold(0.0, f64::max));
+    let h = saved_for(hs).map(|s| s.h).unwrap_or_else(|| sizes_for(&rooms.iter().map(|r| r.pts.clone()).collect::<Vec<_>>()).0);
     host.begin_undo_group("RV_ETICHETTE");
     write_labels(host, &rooms, &survey, h);
     host.end_undo_group();
@@ -608,7 +629,9 @@ fn label_entities(rooms: &[Vec<P2>], survey: &Survey, h: f64, z: f64, layer: &st
             titles.push((format!("{} m²", fmt_num(area, 2)), at, h * 1.1));
         }
     }
-    let names: Vec<Vec<String>> = rooms.iter().enumerate().map(|(r, pts)| (0..pts.len()).map(|i| survey.corner(r, i)).collect()).collect();
+    // On the drawing the corners carry the letter only: the room's number is
+    // in its title, and "1B" would double the text to fit between corners.
+    let names: Vec<Vec<String>> = rooms.iter().map(|pts| (0..pts.len()).map(solve::label).collect()).collect();
     let mut out: Vec<EntityType> =
         titles.iter().map(|(t, at, hh)| mtext(t, *at, z, *hh, AttachmentPoint::MiddleCenter, layer)).collect();
     for p in labels::place(rooms, &names, letter_h, &titles) {
@@ -640,7 +663,11 @@ fn remove_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey, h: f64
     let mut gone: Vec<Handle> = Vec::new();
     for (r, room) in rooms.iter().enumerate() {
         let hh = h.max(default_sizes(&room.pts).0);
-        let mut targets: Vec<(String, P2)> = (0..room.pts.len()).map(|i| (survey.corner(r, i), room.pts[i])).collect();
+        // Letters as written now (A) and by earlier versions (1A).
+        let mut targets: Vec<(String, P2)> = (0..room.pts.len()).map(|i| (solve::label(i), room.pts[i])).collect();
+        if survey.multi() {
+            targets.extend((0..room.pts.len()).map(|i| (survey.corner(r, i), room.pts[i])));
+        }
         if survey.multi() {
             targets.push((room_title(r), centroid(&room.pts)));
         }
@@ -845,7 +872,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     // Text height and tolerance suited to the computed rooms: the dialog
     // proposed them from the drawing by eye, which may be at another scale.
     let adjusted_pts: Vec<Vec<P2>> = (0..rooms.len()).map(|r| survey.room_points(r, &sol.pts)).collect();
-    let (h_auto, tol_auto) = adjusted_pts.iter().map(|p| default_sizes(p)).fold((0.0f64, 0.0f64), |a, b| (a.0.max(b.0), a.1.max(b.1)));
+    let (h_auto, tol_auto) = sizes_for(&adjusted_pts);
     let mut saved = saved;
     let mut resized = false;
     if h_auto > 0.0 && !(saved.h >= h_auto / 3.0 && saved.h <= h_auto * 3.0) {
@@ -1557,6 +1584,22 @@ mod tests {
         assert_eq!(decimals(0.02), 3);
         assert_eq!(decimals(20.0), 0);
         assert_eq!(decimals(0.005), 4);
+    }
+
+    #[test]
+    fn letters_shrink_on_plans_full_of_short_sides() {
+        let plain: Vec<P2> = vec![[0.0, 0.0], [5.0, 0.0], [5.0, 4.0], [0.0, 4.0]];
+        assert_eq!(sizes_for(&[plain.clone()]).0, default_sizes(&plain).0);
+        // A 10 m wall outline with many 15–30 cm steps.
+        let mut busy: Vec<P2> = vec![[0.0, 0.0], [10.0, 0.0]];
+        for k in 0..10 {
+            let x = 10.0 - k as f64;
+            busy.extend([[x, 0.3], [x - 0.15, 0.3], [x - 0.15, 0.45], [x - 0.85, 0.45], [x - 0.85, 0.3]]);
+        }
+        busy.push([0.0, 0.3]);
+        let (h, _) = sizes_for(&[busy.clone()]);
+        assert!(h <= 0.1 && h >= 10.0 / 150.0, "{h}");
+        assert!(h < default_sizes(&busy).0);
     }
 
     #[test]

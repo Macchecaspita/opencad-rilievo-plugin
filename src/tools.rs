@@ -305,6 +305,15 @@ fn how_to_measure(multi: bool) -> Vec<String> {
     if multi {
         v.push(
             tr!(
+                "NOMI DEGLI SPIGOLI — sul disegno ogni spigolo ha solo la sua lettera e il vano il suo numero: lo spigolo \
+                 B del vano 3 si scrive 3B (nella scheda del vano 3 basta B).",
+                "CORNER NAMES — on the drawing each corner has its letter only and the room its number: corner B of room 3 \
+                 is written 3B (in room 3's page B is enough)."
+            )
+            .to_string(),
+        );
+        v.push(
+            tr!(
                 "COLLEGARE I VANI — una porta tra due vani li collega da sola: cliccando sul muro tra i due, il plugin \
                  riconosce i due lati; servono lo spessore del muro e la distanza della porta dallo spigolo misurata \
                  in tutti e due i vani. Senza porta, usa \"Altre misure tra vani\": due spigoli (1B, 2D) per una \
