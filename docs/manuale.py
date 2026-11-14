@@ -346,7 +346,7 @@ def build():
           Table([[plan_obstacle(), [
               P("Prova prima una diagonale diversa (B–D al posto di A–C), o alzala sopra il mobile tenendo il "
                 "distanziometro in bolla."),
-              P("Se non si può, usa un <b>vincolo</b> (pagina 2 della finestra): spigolo e angolo, per esempio "
+              P("Se non si può, usa un <b>vincolo</b> (nella scheda del vano): spigolo e angolo, per esempio "
                 "<b>A, 90</b>, dopo averlo verificato con la squadra; oppure un lato <b>orizzontale</b> o <b>verticale</b>. "
                 "Ogni vincolo vale una misura e riceve anche lui uno scarto."),
               P("Se manca ancora qualcosa, l'opzione <b>completa la forma con gli angoli del disegno</b> (attiva di "
@@ -362,16 +362,20 @@ def build():
           plan_door(),
           P("Una porta tra il vano 1 e il vano 2: distanza dallo spigolo e larghezza misurate da ciascuna parte, "
             "spessore del muro misurato nello stipite.", cap),
-          P("Nella pagina 2 della finestra scrivi la porta <b>due volte</b>, una per vano, con lo <b>stesso nome</b>:"),
-          table([["Nome", "Lato", "Tipo", "Distanza", "Larghezza", "Spessore muro"],
-                 ["P1", "1B-1C", "porta", "1,00", "0,90", "0,30"],
-                 ["P1", "2D-2A", "porta", "1,10", "0,90", ""]],
-                [18, 22, 22, 22, 24, 30]),
+          P("Dall'elenco della finestra scegli <b>Aggiungi porta o finestra</b> e <b>clicca sul disegno</b>, sul muro tra i "
+            "due vani, vicino alla porta. Il plugin riconosce da solo i due lati (li evidenzia in verde) e chiede:"),
+          table([["Casella", "Esempio"],
+                 ["Distanza dallo spigolo 1B allo stipite (misurata nel vano 1)", "1,00"],
+                 ["Larghezza", "0,90"],
+                 ["Spessore del muro, misurato nella porta", "0,30"],
+                 ["Distanza dallo spigolo 2D allo stipite (misurata nel vano 2)", "1,10"]],
+                [110, 30]),
           Spacer(1, 3 * mm),
-          P("La distanza si prende dal <b>primo spigolo scritto</b> del lato fino allo stipite. Basta questo: i due vani "
+          P("La distanza si prende dallo spigolo fino allo stipite; il plugin propone lo spigolo più vicino al punto "
+            "cliccato e puoi sceglierne l'altro. Basta questo: i due vani "
             "risultano collegati (stipiti affacciati, muro parallelo, spessore noto). Una misura in più attraverso la "
             "porta (per esempio da 1B a 2D) fa da controllo."),
-          P("Senza porta (o per controllo) puoi usare, nella tabella delle diagonali della pagina 1:"),
+          P("Senza porta (o per controllo) scegli dall'elenco <b>Altre misure tra vani</b>:"),
           ]
     s += bullets([
         "<b>spessore di un muro</b>: Da = un lato (1B-1C), A = lo spigolo dell'altro vano dietro quel muro (2A), "
@@ -382,14 +386,13 @@ def build():
     s += [P("Ordine consigliato per l'appartamento d'esempio", h2),
           P("Parti dal <b>corridoio</b> (vano 4), che tocca quasi tutti gli altri, e collega ogni vano al corridoio con "
             "la sua porta: soggiorno e camera a sinistra, cucina e camera 2 a destra; il bagno si collega alla camera. "
-            "In questo modo ogni vano è legato da una catena corta e un errore resta circoscritto."),
-          PageBreak()]
+            "In questo modo ogni vano è legato da una catena corta e un errore resta circoscritto.")]
 
     s += [P("5. Porte, finestre e muri esterni", h1),
           P("Porte e finestre", h2),
-          P("Per ogni apertura: lato, tipo (<b>porta</b>, <b>finestra</b>, <b>apertura</b>), distanza dal primo spigolo "
-            "del lato fino alla spalla e larghezza della luce. Scrivendo il lato al contrario (C-B invece di B-C) la "
-            "distanza si misura dall'altro spigolo e la porta si apre dall'altra parte. Le altezze (davanzale, "
+          P("Anche finestre e porte verso l'esterno si aggiungono con <b>Aggiungi porta o finestra</b> e un clic sul muro: "
+            "tipo (<b>porta</b>, <b>finestra</b>, <b>apertura</b>), distanza dallo spigolo fino alla spalla e larghezza "
+            "della luce. La porta è incernierata dalla parte dello spigolo da cui misuri. Le altezze (davanzale, "
             "architrave) annotale sull'eidotipo: il plugin lavora in pianta."),
           P("Muri esterni", h2),
           P("Il plugin ricostruisce i vani sul filo interno. Per il perimetro esterno misura lo <b>spessore del muro "
@@ -398,8 +401,9 @@ def build():
             "con una misura esterna (la lunghezza di una facciata) presa da fuori."),
           P("6. In studio: calcolo e controllo", h1)]
     s += bullets([
-        "<b>Misure e diagonali</b>: clicca tutti i vani (stesso ordine dell'eidotipo) e premi Invio. Pagina 1: lati e "
-        "diagonali; pagina 2: vincoli, porte e finestre, opzioni. <b>Calcola</b>.",
+        "<b>Misure e diagonali</b>: clicca tutti i vani (stesso ordine dell'eidotipo) e premi Invio. Si apre l'elenco dei "
+        "vani con il loro stato: apri un vano alla volta e scrivi lati e diagonali, aggiungi le porte con un clic sul "
+        "disegno; quando tutto è completo l'elenco propone <b>Calcola</b>.",
         "Se le misure non bastano o non tornano, la finestra si riapre con il motivo e con le misure già scritte.",
         "Il risultato va sul layer <b>RILIEVO_CORRETTO</b>, con la superficie di ogni vano; quote, diagonali e tabella su "
         "<b>RILIEVO_QUOTE</b>; porte e finestre su <b>RILIEVO_APERTURE</b>. Il disegno a occhio resta per confronto.",

@@ -12,6 +12,39 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.6.0] - 2026-11-14
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Finestra delle misure rifatta, una scheda per vano.** *Misure e diagonali* apre
+  un elenco dei vani con il loro stato (completo, con quante misure di controllo,
+  oppure cosa manca) e dei collegamenti tra i vani. Si apre un vano alla volta: la
+  sua scheda contiene solo i suoi lati, le sue diagonali e i suoi vincoli. A ogni
+  OK l'elenco propone il vano successivo e, quando tutto è a posto, *Calcola*. La
+  finestra resta piccola anche con molti vani.
+- Nella scheda di un vano basta la lettera dello spigolo (`A`, `C`): il numero del
+  vano viene aggiunto da solo.
+- Le misure scritte restano memorizzate a ogni passaggio, anche chiudendo la
+  finestra: rilanciando il comando sugli stessi vani si riparte da dove si era.
+- Opzioni (testi, tolleranza, unità, quote, libretto…) in una scheda a parte.
+
+### Aggiunto
+- **Porte e finestre con un clic sul disegno**: dall'elenco, *Aggiungi porta o
+  finestra*, poi un clic sul muro nel punto dove si trova. Tra due vani il plugin
+  riconosce da solo i due lati (evidenziati in verde) e chiede solo la distanza
+  dallo spigolo allo stipite nei due vani, la larghezza e lo **spessore del muro
+  misurato nella porta**; la porta collega i due vani. Lo spigolo da cui si misura
+  è quello più vicino al clic, e si può cambiare.
+- Se della porta si conosce solo lo spessore del muro (senza la distanza nel
+  secondo vano), i due vani vengono legati dallo spessore e la posizione lungo il
+  muro è presa dal disegno.
+- *Modifica o elimina porte e finestre* e *Altre misure tra vani (senza porta)*
+  come voci dell'elenco.
+- Manuale PDF e guida aggiornati al nuovo modo di lavorare.
+
 ## [0.5.1] - 2026-11-13
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

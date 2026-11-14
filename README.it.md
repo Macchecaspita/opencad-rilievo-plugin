@@ -46,7 +46,7 @@ italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
 
 | Comando | Pulsante | Cosa fa |
 |---|---|---|
-| `RV_VANO` | **Misure e diagonali** | clicca uno o più vani, Invio: scrive le lettere, apre la tabella delle misure e ricalcola |
+| `RV_VANO` | **Misure e diagonali** | clicca uno o più vani, Invio: si apre l'elenco dei vani; una scheda per vano con lati e diagonali, porte e finestre con un clic sul disegno, poi Calcola |
 | `RV_ETICHETTE` | **Lettere vertici** | scrive solo le lettere sui vertici (layer RILIEVO_ETICHETTE), per l'eidotipo |
 | `RV_APPLICA` | **Applica al disegno** | porta le polilinee originali nella forma calcolata (dopo aver controllato il risultato) |
 | `RV_LIBRETTO` | **Libretto misure** | salva l'ultimo calcolo in CSV: misure, scarti, σ₀, coordinate, superfici |

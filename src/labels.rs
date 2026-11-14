@@ -27,7 +27,7 @@ fn radius(chars: usize, h: f64) -> f64 {
     hw.max(0.6 * h)
 }
 
-fn seg_dist(p: P2, a: P2, b: P2) -> f64 {
+pub fn seg_dist(p: P2, a: P2, b: P2) -> f64 {
     let u = [b[0] - a[0], b[1] - a[1]];
     let l2 = u[0] * u[0] + u[1] * u[1];
     let t = if l2 > 0.0 { (((p[0] - a[0]) * u[0] + (p[1] - a[1]) * u[1]) / l2).clamp(0.0, 1.0) } else { 0.0 };

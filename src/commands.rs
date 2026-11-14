@@ -150,7 +150,7 @@ pub fn saved_for(hs: &[Handle]) -> Option<Saved> {
     SAVED.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(&key(hs)).cloned())
 }
 
-fn remember(hs: &[Handle], s: Saved) {
+pub fn remember(hs: &[Handle], s: Saved) {
     SAVED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new).insert(key(hs), s);
 }
 
@@ -273,6 +273,32 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
             if !hs.is_empty() {
                 open_dialog(host, &hs, None);
+            }
+        }
+        "RV_VANOREOPEN" => {
+            let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            if !hs.is_empty() {
+                open_dialog_at(host, &hs, None, tools::Start::Hub, false);
+            }
+        }
+        "RV_PORTAPICK" => {
+            let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            match fetch_rooms(host, &hs) {
+                Some(rooms) if !rooms.is_empty() => {
+                    let z = rooms[0].z;
+                    let pts = rooms.into_iter().map(|r| r.pts).collect();
+                    host.start_interactive(Box::new(tools::PickDoorTool::new(pts, z, key(&hs))));
+                }
+                _ => host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing.")),
+            }
+        }
+        "RV_PORTAOPEN" => {
+            let a = arg.unwrap_or_default();
+            let mut parts = a.splitn(2, '|');
+            let hs = parse_handles(parts.next().unwrap_or(""));
+            let start = parts.next().and_then(tools::DoorSpot::decode).map_or(tools::Start::Hub, tools::Start::Door);
+            if !hs.is_empty() {
+                open_dialog_at(host, &hs, None, start, false);
             }
         }
         "RV_ETICHETTEAPPLY" => {
@@ -422,6 +448,13 @@ fn default_book_path(host: &dyn HostApi) -> String {
 }
 
 fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
+    let labels = msg.is_none();
+    open_dialog_at(host, hs, msg, tools::Start::Hub, labels);
+}
+
+/// Open the measures dialog on its hub or on a door's page; `labels`
+/// (re)writes the corner letters on the rooms drawn by eye.
+fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, start: tools::Start, labels: bool) {
     let Some(rooms) = fetch_rooms(host, hs) else {
         host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing."));
         return;
@@ -453,7 +486,7 @@ fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
             }
         }
     };
-    if msg.is_none() {
+    if labels {
         if rooms.iter().any(|r| r.had_arcs) {
             host.push_info(tr!(
                 "RV_VANO: i tratti ad arco delle polilinee sono presi come corde (lati diritti).",
@@ -465,7 +498,7 @@ fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
         host.end_undo_group();
         host.set_dirty();
     }
-    host.start_interactive(Box::new(tools::MeasureDialog::new(hs.to_vec(), &survey, &saved, msg)));
+    host.start_interactive(Box::new(tools::MeasureDialog::new(hs.to_vec(), &survey, &saved, msg).starting(start)));
 }
 
 fn labels_only(host: &mut dyn HostApi, hs: &[Handle]) {

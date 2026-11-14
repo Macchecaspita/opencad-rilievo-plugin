@@ -220,153 +220,253 @@ fn csv_picker(default: &str) -> DialogControl {
 fn how_to_measure(multi: bool) -> Vec<String> {
     let mut v = vec![
         tr!(
-            "LATI — misura ogni parete da spigolo a spigolo, all'altezza più comoda ma sempre la stessa. \
-             Una misura lasciata vuota non viene usata.",
-            "SIDES — measure each wall from corner to corner, at a comfortable height but always the same one. \
-             An empty measure is not used."
+            "COME SI USA — scegli una voce dall'elenco e premi Continua. Apri un vano alla volta, scrivi le sue \
+             misure e premi OK: torni qui e l'elenco passa da solo al vano successivo. Quando tutto è a posto \
+             l'elenco propone Calcola. Quello che scrivi resta memorizzato anche se chiudi la finestra.",
+            "HOW IT WORKS — pick an entry from the list and press Continue. Open one room at a time, type its \
+             measures and press OK: you come back here and the list moves on to the next room. When all is set the \
+             list proposes Compute. What you type is kept even if you close the window."
         )
         .to_string(),
         tr!(
-            "DIAGONALI — tra due spigoli non vicini dello stesso vano. Un vano di n spigoli ne vuole almeno n−3 \
-             (1 per un rettangolo, 3 per una L): quelle proposte passano tutte dentro il vano. Per aggiungerne una, \
-             aggiungi una riga e scrivi le due lettere nelle colonne Da e A.",
-            "DIAGONALS — between two corners of the same room that are not next to each other. A room of n corners \
-             needs at least n−3 (1 for a rectangle, 3 for an L): the proposed ones all run inside the room. To add one, \
-             add a row and type the two letters in the From and To columns."
+            "LATI E DIAGONALI — misura ogni parete da spigolo a spigolo, sempre alla stessa altezza. Un vano di n \
+             spigoli vuole tutti i lati e almeno n−3 diagonali (1 per un rettangolo, 3 per una L): quelle proposte \
+             passano dentro il vano. Una diagonale in più fa da controllo: è l'unico modo per accorgersi di una \
+             cifra letta male.",
+            "SIDES AND DIAGONALS — measure each wall from corner to corner, always at the same height. A room of n \
+             corners needs all sides and at least n−3 diagonals (1 for a rectangle, 3 for an L): the proposed ones run \
+             inside the room. One more diagonal is the check: the only way to notice a misread digit."
         )
         .to_string(),
         tr!(
-            "CONTROLLO — misura sempre almeno una diagonale in più del minimo: è l'unico modo per accorgersi di una \
-             cifra letta male. Il plugin calcola allora gli scarti (calcolata − misurata) e colora in rosso quelli \
-             oltre la tolleranza.",
-            "CHECK — always measure at least one diagonal more than the minimum: it is the only way to notice a \
-             misread digit. The plugin then computes the residuals (computed − measured) and shows in red those over \
-             the tolerance."
+            "VINCOLI — al posto di una diagonale: uno spigolo e il suo angolo (A, 90) oppure un lato orizzontale o \
+             verticale (A-B, orizzontale). Ognuno vale una misura e riceve il suo scarto.",
+            "CONSTRAINTS — instead of a diagonal: a corner and its angle (A, 90) or a horizontal or vertical side \
+             (A-B, horizontal). Each counts as a measure and gets its residual."
+        )
+        .to_string(),
+        tr!(
+            "PORTE E FINESTRE — scegli \"Aggiungi porta o finestra\" e clicca sul disegno, sul muro, nel punto dove \
+             si trova. Poi scrivi la distanza dallo spigolo allo stipite, la larghezza e lo spessore del muro \
+             misurato nella porta.",
+            "DOORS AND WINDOWS — choose \"Add a door or window\" and click on the drawing, on the wall, where it is. \
+             Then type the distance from the corner to the jamb, the width and the wall thickness measured in the door."
         )
         .to_string(),
     ];
     if multi {
         v.push(
             tr!(
-                "VANI COLLEGATI — i vertici si scrivono con il numero del vano: 1A, 2C … Ogni vano oltre al primo ha \
-                 bisogno di almeno 3 misure di collegamento, prese verso vertici diversi: per esempio lo spessore del \
-                 muro e due misure attraverso la porta (dallo spigolo 1B allo spigolo 2D, da 1C a 2A). Con 4 o più \
-                 misure il collegamento è anche controllato.",
-                "LINKED ROOMS — corners are written with the room number: 1A, 2C … Each room after the first needs at \
-                 least 3 linking measures, to different corners: for example the wall thickness and two measures through \
-                 the door (from corner 1B to corner 2D, from 1C to 2A). With 4 or more the link is also checked."
-            )
-            .to_string(),
-        );
-        v.push(
-            tr!(
-                "SPESSORE DEL MURO — nella colonna Da scrivi il lato di un vano (per esempio 1B-1C), nella colonna A il \
-                 vertice dell'altro vano dietro quel muro (per esempio 2A); in Misurata lo spessore, preso in squadra \
-                 nel vano della porta.",
-                "WALL THICKNESS — in From write the side of one room (for example 1B-1C), in To the corner of the other \
-                 room behind that wall (for example 2A); in Measured the thickness, taken square in the door opening."
-            )
-            .to_string(),
-        );
-    } else {
-        v.push(
-            tr!(
-                "PIÙ VANI — per collegare due o più vani (spessori dei muri, misure attraverso le porte) avvia di nuovo \
-                 Misure e diagonali e clicca tutti i vani uno dopo l'altro prima di premere Invio.",
-                "SEVERAL ROOMS — to link two or more rooms (wall thicknesses, measures through doors) start Sides and \
-                 diagonals again and click all the rooms one after the other before pressing Enter."
+                "COLLEGARE I VANI — una porta tra due vani li collega da sola: cliccando sul muro tra i due, il plugin \
+                 riconosce i due lati; servono lo spessore del muro e la distanza della porta dallo spigolo misurata \
+                 in tutti e due i vani. Senza porta, usa \"Altre misure tra vani\": due spigoli (1B, 2D) per una \
+                 distanza, oppure un lato e uno spigolo (1B-1C, 2A) per lo spessore di un muro.",
+                "LINKING ROOMS — a door between two rooms links them by itself: click the wall between them and the \
+                 plugin finds both sides; it needs the wall thickness and the door's distance from the corner measured \
+                 in both rooms. With no door, use \"Other measures between rooms\": two corners (1B, 2D) for a distance, \
+                 or a side and a corner (1B-1C, 2A) for a wall thickness."
             )
             .to_string(),
         );
     }
     v.push(
         tr!(
-            "VINCOLI — al posto di una diagonale puoi dire che uno spigolo è retto (C, 90) o ha un altro angolo \
-             (C, 135; per uno spigolo rientrante va bene sia 270 sia 90), oppure che un lato è orizzontale o \
-             verticale (A-B, orizzontale). Ogni vincolo vale una misura e riceve il suo scarto: se un angolo \
-             \"retto\" in realtà non lo è, lo scarto lo mostra. Un lato orizzontale o verticale fissa anche la \
-             rotazione del vano sul foglio.",
-            "CONSTRAINTS — instead of a diagonal you can say a corner is square (C, 90) or has another angle \
-             (C, 135; for an inner corner 270 or 90 both work), or that a side is horizontal or vertical (A-B, \
-             horizontal). Each constraint counts as a measure and gets its residual: if a \"square\" corner is \
-             not, the residual shows it. A horizontal or vertical side also fixes the room's rotation on the sheet."
-        )
-        .to_string(),
-    );
-    v.push(
-        tr!(
-            "PORTE E FINESTRE — scrivi il lato (per esempio B-C), il tipo, la distanza dal primo spigolo scritto \
-             (B) fino allo stipite e la larghezza del vano porta. Scrivendo C-B la distanza si misura da C e la \
-             porta si apre dall'altro lato. La porta è disegnata sul layer RILIEVO_APERTURE, incernierata allo \
-             stipite più vicino al primo spigolo, con l'anta verso l'interno.",
-            "DOORS AND WINDOWS — write the side (for example B-C), the kind, the distance from the first corner \
-             written (B) to the jamb and the opening width. Writing C-B measures from C and hinges the door on the \
-             other side. Doors are drawn on layer RILIEVO_APERTURE, hinged at the jamb nearer the first corner, \
-             opening inwards."
-        )
-        .to_string(),
-    );
-    if multi {
-        v.push(
-            tr!(
-                "PORTA COMUNE — la stessa porta vista dai due vani: scrivila una volta per ciascun vano con lo \
-                 stesso nome (P1) e, in una delle due righe, lo spessore del muro. Basta questo a collegare i due \
-                 vani: non servono altre misure di collegamento (aggiungerne una fa da controllo).",
-                "SHARED DOOR — the same door seen from both rooms: write it once for each room with the same name \
-                 (P1) and, on one of the two rows, the wall thickness. That alone links the two rooms: no other \
-                 linking measures are needed (adding one is a check)."
-            )
-            .to_string(),
-        );
-    }
-    v.push(
-        tr!(
-            "MISURE MANCANTI — se un mobile impedisce una diagonale, lasciala vuota: con l'opzione \"completa la \
-             forma\" (pagina 2, attiva di solito) il plugin usa per quella parte gli angoli del disegno e lo segnala in \
-             rosso. Il risultato è buono quanto il disegno in quel punto: meglio un vincolo (angolo retto) o una \
-             diagonale tra altri spigoli, se si può.",
-            "MISSING MEASURES — if furniture blocks a diagonal, leave it empty: with \"finish the shape\" (page 2, \
-             usually on) the plugin uses the drawing's angles for that part and says so in red. The result is as good \
-             as the drawing there: a constraint (square corner) or a diagonal between other corners is better, if \
-             possible."
-        )
-        .to_string(),
-    );
-    v.push(
-        tr!(
-            "UNITÀ — le misure vanno nelle unità del disegno (metri, centimetri o millimetri, come hai disegnato); la \
-             virgola decimale va bene. Il vertice A (o 1A) resta dov'è e il lato A–B mantiene la direzione disegnata.",
-            "UNITS — type the measures in drawing units (metres, centimetres or millimetres, as you drew); a decimal \
-             comma is fine. Corner A (or 1A) stays where it is and side A–B keeps its drawn direction."
+            "MISURE MANCANTI E UNITÀ — una casella vuota non viene usata; se mancano misure (mobili, ostacoli) il \
+             plugin completa la forma con gli angoli del disegno e lo segnala in rosso (si può spegnere nelle \
+             Opzioni). Le misure vanno nelle unità del disegno; la virgola decimale va bene.",
+            "MISSING MEASURES AND UNITS — an empty box is not used; if measures are missing (furniture, obstacles) the \
+             plugin finishes the shape with the drawing's angles and says so in red (can be turned off in Options). \
+             Type the measures in drawing units; a decimal comma is fine."
         )
         .to_string(),
     );
     v
 }
 
-// ── Measures dialog ─────────────────────────────────────────────────────────
+// ── Doors by a click on the drawing ─────────────────────────────────────────
 
-/// The measures dialog, in two pages: 1. sides and diagonals (the
-/// measures), 2. constraints, doors and windows, options. "Back" on page 2
-/// returns to page 1 with everything typed kept.
-///
-/// Plain text boxes rather than table controls: the host sizes its dialog
-/// window to the content, and a table's rows are measured at their minimum
-/// height, so a table opened squashed and had to be stretched by hand.
-/// Boxes are measured at their real height, so the whole page shows at once.
-/// Spare empty rows take extra measures; filled ones survive a reopening,
-/// with new spare rows after them.
-pub struct MeasureDialog {
-    handles: Vec<Handle>,
-    survey: Survey,
-    msg: Option<String>,
-    saved: Saved,
-    page: u8,
-    /// Rows shown on the current page, by kind (for reading the answer).
-    shown_others: usize,
-    shown_constraints: usize,
-    shown_openings: usize,
+/// The wall a door or window was clicked on: a side of a room, from the
+/// corner nearer the click, and — when another room lies just behind it —
+/// the facing side of that room, from the corner facing the first one.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DoorSpot {
+    pub room: usize,
+    pub from: usize,
+    pub to: usize,
+    pub other: Option<(usize, usize, usize)>,
 }
+
+impl DoorSpot {
+    pub fn encode(&self) -> String {
+        let o = match self.other {
+            Some((q, k, l)) => format!("{q},{k},{l}"),
+            None => "-".into(),
+        };
+        format!("{},{},{};{o}", self.room, self.from, self.to)
+    }
+
+    pub fn decode(s: &str) -> Option<Self> {
+        let mut parts = s.split(';');
+        let three = |t: &str| -> Option<(usize, usize, usize)> {
+            let v: Vec<usize> = t.split(',').filter_map(|x| x.trim().parse().ok()).collect();
+            (v.len() == 3).then(|| (v[0], v[1], v[2]))
+        };
+        let (room, from, to) = three(parts.next()?)?;
+        let other = parts.next().and_then(three);
+        Some(DoorSpot { room, from, to, other })
+    }
+
+    /// Whether the indices exist in `survey` and name real sides.
+    fn fits(&self, survey: &Survey) -> bool {
+        let side = |r: usize, i: usize, j: usize| {
+            survey.rooms.get(r).is_some_and(|room| {
+                let n = room.len();
+                i < n && j < n && (j == (i + 1) % n || i == (j + 1) % n)
+            })
+        };
+        side(self.room, self.from, self.to) && self.other.is_none_or(|(q, k, l)| q != self.room && side(q, k, l))
+    }
+}
+
+/// The side nearest to `pt` and, if any, the facing side of the room behind
+/// that wall (roughly parallel, opposite the click, on the outside).
+pub fn find_spot(rooms: &[Vec<P2>], pt: P2) -> Option<DoorSpot> {
+    let longest = rooms
+        .iter()
+        .flat_map(|r| (0..r.len()).map(move |i| solve::dist(r[i], r[(i + 1) % r.len()])))
+        .fold(0.0f64, f64::max);
+    let mut best: Option<(f64, usize, usize)> = None;
+    for (r, room) in rooms.iter().enumerate() {
+        for i in 0..room.len() {
+            let d = crate::labels::seg_dist(pt, room[i], room[(i + 1) % room.len()]);
+            if best.is_none_or(|b| d < b.0) {
+                best = Some((d, r, i));
+            }
+        }
+    }
+    let (d, r, i) = best?;
+    if d > longest * 0.3 {
+        return None;
+    }
+    let j = (i + 1) % rooms[r].len();
+    let (a, b) = (rooms[r][i], rooms[r][j]);
+    let len = solve::dist(a, b);
+    if len <= 0.0 {
+        return None;
+    }
+    let (from, to) = if solve::dist(pt, a) <= solve::dist(pt, b) { (i, j) } else { (j, i) };
+    let u = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+    let on_first = solve::foot(pt, a, b);
+
+    let mut other: Option<(f64, usize, usize, usize)> = None;
+    for (q, room) in rooms.iter().enumerate() {
+        if q == r {
+            continue;
+        }
+        for k in 0..room.len() {
+            let l = (k + 1) % room.len();
+            let (c, e) = (room[k], room[l]);
+            let le = solve::dist(c, e);
+            if le <= 0.0 {
+                continue;
+            }
+            let v = [(e[0] - c[0]) / le, (e[1] - c[1]) / le];
+            if (u[0] * v[1] - u[1] * v[0]).abs() > 0.5 {
+                continue; // not parallel enough
+            }
+            let t = ((pt[0] - c[0]) * v[0] + (pt[1] - c[1]) * v[1]) / le;
+            if !(0.0..=1.0).contains(&t) {
+                continue; // the click is not in front of this side
+            }
+            let on_second = solve::foot(pt, c, e);
+            let gap = solve::dist(on_first, on_second);
+            if gap > longest * 0.2 {
+                continue;
+            }
+            // The wall lies outside both rooms.
+            if gap > longest * 1e-6 {
+                let mid = [(on_first[0] + on_second[0]) / 2.0, (on_first[1] + on_second[1]) / 2.0];
+                if commands::point_in_polygon(&rooms[r], mid) || commands::point_in_polygon(room, mid) {
+                    continue;
+                }
+            }
+            if other.is_none_or(|o| gap < o.0) {
+                let near = rooms[r][from];
+                let (f2, t2) = if solve::dist(near, c) <= solve::dist(near, e) { (k, l) } else { (l, k) };
+                other = Some((gap, q, f2, t2));
+            }
+        }
+    }
+    Some(DoorSpot { room: r, from, to, other: other.map(|o| (o.1, o.2, o.3)) })
+}
+
+/// Click on a wall to place a door or window; then the measures dialog
+/// opens again on the door's page.
+pub struct PickDoorTool {
+    rooms: Vec<Vec<P2>>,
+    z: f64,
+    /// The rooms' handles, as the dialog commands take them.
+    key: String,
+    msg: Option<String>,
+}
+
+impl PickDoorTool {
+    pub fn new(rooms: Vec<Vec<P2>>, z: f64, key: String) -> Self {
+        PickDoorTool { rooms, z, key, msg: None }
+    }
+
+    fn pick(&mut self, pt: [f64; 3]) -> CommandStep {
+        match find_spot(&self.rooms, [pt[0], pt[1]]) {
+            Some(s) => deferred("RV_PORTAOPEN", format!("{}|{}", self.key, s.encode())),
+            None => {
+                self.msg = Some(tr!("lì non c'è il muro di un vano scelto", "no wall of a chosen room there").into());
+                CommandStep::NeedPoint
+            }
+        }
+    }
+}
+
+impl InteractiveCommand for PickDoorTool {
+    fn prompt(&self) -> String {
+        with_msg(
+            &self.msg,
+            tr!(
+                "Porta o finestra: clicca sul muro nel punto dove si trova (tra due vani il plugin riconosce i due lati, \
+                 in verde). Invio per tornare alla finestra senza aggiungerla"
+                    .to_string(),
+                "Door or window: click the wall where it is (between two rooms the plugin finds both sides, in green). \
+                 Enter to go back to the window without adding it"
+                    .to_string()
+            ),
+        )
+    }
+    fn on_point(&mut self, pt: [f64; 3]) -> CommandStep {
+        self.pick(pt)
+    }
+    fn needs_object_pick(&self) -> bool {
+        true
+    }
+    fn on_object_pick(&mut self, _handle: Handle, pt: [f64; 3]) -> CommandStep {
+        self.pick(pt)
+    }
+    fn on_cursor_move(&mut self, pt: [f64; 3]) -> Vec<PreviewWire> {
+        let Some(s) = find_spot(&self.rooms, [pt[0], pt[1]]) else { return Vec::new() };
+        let seg = |r: usize, i: usize, j: usize| {
+            let (a, b) = (self.rooms[r][i], self.rooms[r][j]);
+            PreviewWire::with_color(vec![[a[0], a[1], self.z], [b[0], b[1], self.z]], GREEN)
+        };
+        let mut w = vec![seg(s.room, s.from, s.to)];
+        if let Some((q, k, l)) = s.other {
+            w.push(seg(q, k, l));
+        }
+        w
+    }
+    fn on_enter(&mut self) -> CommandStep {
+        deferred("RV_VANOREOPEN", self.key.clone())
+    }
+}
+
+// ── Measures dialog ─────────────────────────────────────────────────────────
 
 fn tf(id: String, label: String, default: String) -> DialogControl {
     DialogControl::Text { id, label, default }
@@ -395,149 +495,459 @@ fn get_text(m: &HashMap<String, DialogValue>, id: &str) -> String {
     }
 }
 
+fn get_choice(m: &HashMap<String, DialogValue>, id: &str, default: usize) -> usize {
+    match m.get(id) {
+        Some(DialogValue::Choice { index, .. }) => *index,
+        _ => default,
+    }
+}
+
 fn filled(row: &[String], cols: &[usize]) -> bool {
     cols.iter().any(|&c| row.get(c).is_some_and(|s| !s.trim().is_empty()))
 }
 
+fn cell(row: &[String], c: usize) -> String {
+    row.get(c).cloned().unwrap_or_default()
+}
+
+/// Where the measures dialog opens.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Start {
+    Hub,
+    Door(DoorSpot),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum Page {
+    Hub,
+    Room(usize),
+    Links,
+    Openings,
+    Options,
+    Door(DoorSpot),
+    Done,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Action {
+    Room(usize),
+    AddDoor,
+    Links,
+    Openings,
+    Options,
+    Compute,
+}
+
+/// The measures dialog: a small hub listing the rooms with their state,
+/// from which one room at a time is opened (its sides, diagonals and
+/// constraints), doors and windows are added by a click on the drawing,
+/// and the calculation is started. Each page stays small whatever the
+/// number of rooms.
+///
+/// Plain text boxes rather than table controls: the host sizes its dialog
+/// window to the content and measures a table's rows at their minimum
+/// height, so a table opens squashed.
+pub struct MeasureDialog {
+    handles: Vec<Handle>,
+    survey: Survey,
+    msg: Option<String>,
+    saved: Saved,
+    page: Page,
+    /// What was typed on the door page, kept when it has to be shown again.
+    draft: HashMap<String, DialogValue>,
+}
+
 impl MeasureDialog {
-    /// `saved`: what the user typed last time for these rooms (kept when the
-    /// calculation failed, so nothing has to be typed again).
+    /// `saved`: what the user typed last time for these rooms.
     pub fn new(handles: Vec<Handle>, survey: &Survey, saved: &Saved, msg: Option<String>) -> Self {
-        MeasureDialog {
-            handles,
-            survey: survey.clone(),
-            msg,
-            saved: saved.clone(),
-            page: 1,
-            shown_others: 0,
-            shown_constraints: 0,
-            shown_openings: 0,
+        MeasureDialog { handles, survey: survey.clone(), msg, saved: saved.clone(), page: Page::Hub, draft: HashMap::new() }
+    }
+
+    /// Open on the door page for a wall clicked on the drawing.
+    pub fn starting(mut self, start: Start) -> Self {
+        if let Start::Door(spot) = start {
+            if spot.fits(&self.survey) {
+                self.page = Page::Door(spot);
+            }
+        }
+        self
+    }
+
+    fn key(&self) -> String {
+        self.handles.iter().map(|h| format!("{:X}", h.value())).collect::<Vec<_>>().join(",")
+    }
+
+    fn keep(&self) {
+        commands::remember(&self.handles, self.saved.clone());
+    }
+
+    fn multi(&self) -> bool {
+        self.survey.multi()
+    }
+
+    fn room_name(&self, r: usize) -> String {
+        if self.multi() {
+            tr!(format!("vano {}", r + 1), format!("room {}", r + 1))
+        } else {
+            tr!("vano".to_string(), "room".to_string())
         }
     }
 
-    fn page1(&mut self) -> DialogDef {
-        let multi = self.survey.multi();
-        let n_rooms = self.survey.rooms.len();
-        let need: usize = self.survey.rooms.iter().map(|r| r.len().saturating_sub(3)).sum();
-        let ranges = self.survey.ranges();
-        let links = if multi { 3 * (n_rooms - 1) } else { 0 };
-        let title = if multi {
-            tr!(format!("Rilievo di {n_rooms} vani collegati — 1/2: misure"), format!("Survey of {n_rooms} linked rooms — 1/2: measures"))
-        } else {
-            tr!("Rilievo vano — 1/2: lati e diagonali".to_string(), "Room survey — 1/2: sides and diagonals".to_string())
-        };
-        let mut def = DialogDef::new(title);
-        if let Some(m) = &self.msg {
-            def = def.with_control(info(tr!(
-                format!("⚠ Da correggere: {m}. Le misure scritte sono rimaste: correggi e premi di nuovo Calcola."),
-                format!("⚠ To fix: {m}. The measures typed are still here: fix them and press Compute again.")
-            )));
+    /// First row of room `r` in the sides table.
+    fn offset(&self, r: usize) -> usize {
+        self.survey.rooms[..r].iter().map(|x| x.len()).sum()
+    }
+
+    /// The room a diagonal row belongs to (both corners in it); with one
+    /// room, every row.
+    fn other_room(&self, row: &[String]) -> Option<usize> {
+        if !self.multi() {
+            return Some(0);
         }
-        let summary = if multi {
-            tr!(
-                format!(
-                    "Vertici: {ranges}. Servono tutti i lati, almeno {need} diagonali (o vincoli, a pagina 2) e almeno \
-                     {links} misure di collegamento, oppure una porta comune per ogni vano collegato."
-                ),
-                format!(
-                    "Corners: {ranges}. All sides are needed, at least {need} diagonals (or constraints, on page 2) and at \
-                     least {links} linking measures, or one shared door per linked room."
-                )
-            )
+        let a = self.survey.parse_corner(&cell(row, 0))?;
+        let b = self.survey.parse_corner(&cell(row, 1))?;
+        (a.0 == b.0).then_some(a.0)
+    }
+
+    /// The room a constraint row belongs to.
+    fn con_room(&self, row: &[String]) -> usize {
+        let at = cell(row, 0);
+        self.survey
+            .parse_corner(&at)
+            .map(|c| c.0)
+            .or_else(|| self.survey.parse_room_side(&at).map(|s| s.0))
+            .or_else(|| self.survey.parse_side(&at).and_then(|(a, _)| self.survey.rooms_of(a).first().copied()))
+            .unwrap_or(0)
+    }
+
+    /// Diagonal rows room by room, and the rows between rooms.
+    fn split_others(&self) -> (Vec<Vec<Vec<String>>>, Vec<Vec<String>>) {
+        let mut per = vec![Vec::new(); self.survey.rooms.len()];
+        let mut links = Vec::new();
+        for row in &self.saved.others {
+            match self.other_room(row) {
+                Some(r) => per[r].push(row.clone()),
+                None => links.push(row.clone()),
+            }
+        }
+        (per, links)
+    }
+
+    fn split_cons(&self) -> Vec<Vec<Vec<String>>> {
+        let mut per = vec![Vec::new(); self.survey.rooms.len()];
+        for row in &self.saved.constraints {
+            per[self.con_room(row)].push(row.clone());
+        }
+        per
+    }
+
+    /// In room `r`'s page a bare letter means that room's corner: A → 3A.
+    fn norm(&self, r: usize, s: &str) -> String {
+        if !self.multi() {
+            return s.trim().to_string();
+        }
+        s.split(['-', '–', '—', '/'])
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .map(|p| {
+                if p.chars().all(|c| c.is_ascii_alphabetic()) {
+                    format!("{}{}", r + 1, p.to_ascii_uppercase())
+                } else {
+                    p.to_ascii_uppercase()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("-")
+    }
+
+    /// Whether room `r` has what it needs, and its state in words.
+    fn room_status(&self, r: usize) -> (bool, String) {
+        let n = self.survey.rooms[r].len();
+        let off = self.offset(r);
+        let sides = (0..n).filter(|i| self.saved.sides.get(off + i).is_some_and(|row| !cell(row, 2).is_empty())).count();
+        let (per, _) = self.split_others();
+        let diags = per[r].iter().filter(|row| !cell(row, 3).is_empty()).count();
+        let cons = self.split_cons()[r].iter().filter(|row| !cell(row, 0).is_empty() && !cell(row, 1).is_empty()).count();
+        let need = n.saturating_sub(3);
+        let have = diags + cons;
+        if sides == n && have >= need {
+            let extra = have - need;
+            let s = if extra > 0 {
+                tr!(format!("✔ completo, {extra} di controllo"), format!("✔ complete, {extra} as a check"))
+            } else {
+                tr!("✔ completo (senza misura di controllo)".to_string(), "✔ complete (no check measure)".to_string())
+            };
+            (true, s)
         } else {
-            tr!(
-                format!("Vertici: {ranges}. Servono tutti i lati e almeno {need} diagonali (o vincoli, a pagina 2); ogni misura in più fa da controllo."),
-                format!("Corners: {ranges}. All sides are needed plus at least {need} diagonals (or constraints, on page 2); every extra measure is a check.")
-            )
-        };
-        def = def
-            .with_control(info(summary))
-            .with_control(help_section("help", tr!("Come misurare (aiuto) ▸", "How to measure (help) ▸"), how_to_measure(multi)))
-            .with_control(info(
-                tr!(
-                    "LATI — scrivi la misura sotto ogni lato (tra parentesi la lunghezza disegnata).",
-                    "SIDES — type the measure under each side (the drawn length in brackets)."
-                )
-                .to_string(),
+            let mut parts = Vec::new();
+            if sides < n {
+                parts.push(tr!(format!("{} lati", n - sides), format!("{} sides", n - sides)));
+            }
+            if have < need {
+                parts.push(tr!(format!("{} diagonali o vincoli", need - have), format!("{} diagonals or constraints", need - have)));
+            }
+            (false, tr!(format!("✘ mancano {}", parts.join(" e ")), format!("✘ missing {}", parts.join(" and "))))
+        }
+    }
+
+    /// Rooms (1-based) the measures do not tie to room 1 yet.
+    fn unlinked(&self) -> Result<Vec<usize>, String> {
+        let p = self.survey.parse(&self.saved, &commands::parse_num)?;
+        let meas: Vec<solve::Meas> = p.measures.iter().map(|m| m.meas).collect();
+        let groups = solve::groups(self.survey.points.len(), &meas);
+        let group_of = |r: usize| groups.iter().position(|g| g.contains(&self.survey.point_of[r][0]));
+        let main = group_of(0);
+        Ok((1..self.survey.rooms.len()).filter(|&r| group_of(r) != main).map(|r| r + 1).collect())
+    }
+
+    /// One line per door or window: "P1 porta: 1B-1C ↔ 2D-2A · 0,90 · muro 0,30".
+    fn opening_lines(&self) -> Vec<String> {
+        let mut out: Vec<(String, String)> = Vec::new();
+        for row in self.saved.openings.iter().filter(|r| filled(r, &[0, 1, 2, 3, 4, 5])) {
+            let name = cell(row, 0);
+            if let Some(line) = out.iter_mut().find(|(n, _)| n.eq_ignore_ascii_case(&name)) {
+                line.1 = line.1.replacen(" · ", &format!(" ↔ {} · ", cell(row, 1)), 1);
+                if !cell(row, 5).is_empty() && !line.1.contains(tr!("muro", "wall")) {
+                    line.1 += &format!(" · {} {}", tr!("muro", "wall"), cell(row, 5));
+                }
+                continue;
+            }
+            let mut s = format!("{name} {}: {} · {}", cell(row, 2), cell(row, 1), cell(row, 4));
+            if !cell(row, 5).is_empty() {
+                s += &format!(" · {} {}", tr!("muro", "wall"), cell(row, 5));
+            }
+            out.push((name, s));
+        }
+        out.into_iter().map(|x| x.1).collect()
+    }
+
+    /// The hub's list: what each entry does, its label, and the one
+    /// proposed (the first thing still to do).
+    fn actions(&self) -> (Vec<Action>, Vec<String>, usize) {
+        let mut acts = Vec::new();
+        let mut labels = Vec::new();
+        let mut first_open = None;
+        for r in 0..self.survey.rooms.len() {
+            let (ok, status) = self.room_status(r);
+            if !ok && first_open.is_none() {
+                first_open = Some(acts.len());
+            }
+            acts.push(Action::Room(r));
+            labels.push(tr!(
+                format!("Misure del {} — {status}", self.room_name(r)),
+                format!("Measures of {} — {status}", self.room_name(r))
             ));
-        let sides: Vec<DialogControl> = self
-            .saved
-            .sides
-            .iter()
-            .enumerate()
-            .map(|(i, r)| {
-                let name = r.first().cloned().unwrap_or_default();
-                let drawn = r.get(1).cloned().unwrap_or_default();
-                tf(format!("s{i}"), format!("{name}  ({drawn})"), r.get(2).cloned().unwrap_or_default())
+        }
+        let door = acts.len();
+        acts.push(Action::AddDoor);
+        labels.push(tr!("Aggiungi porta o finestra (clic sul disegno)", "Add a door or window (click on the drawing)").to_string());
+        if self.saved.openings.iter().any(|r| filled(r, &[0, 1, 2, 3, 4, 5])) {
+            acts.push(Action::Openings);
+            labels.push(tr!("Modifica o elimina porte e finestre", "Edit or delete doors and windows").to_string());
+        }
+        if self.multi() {
+            acts.push(Action::Links);
+            labels.push(tr!("Altre misure tra vani (senza porta)", "Other measures between rooms (no door)").to_string());
+        }
+        acts.push(Action::Options);
+        labels.push(tr!("Opzioni (testi, tolleranza, quote, libretto…)", "Options (texts, tolerance, dimensions, book…)").to_string());
+        let compute = acts.len();
+        acts.push(Action::Compute);
+        labels.push(tr!("▶ Calcola", "▶ Compute").to_string());
+        let default = first_open.unwrap_or_else(|| {
+            if self.multi() && self.unlinked().is_ok_and(|u| !u.is_empty()) {
+                door
+            } else {
+                compute
+            }
+        });
+        (acts, labels, default)
+    }
+
+    fn hub(&self) -> DialogDef {
+        let n_rooms = self.survey.rooms.len();
+        let mut def = DialogDef::new(if self.multi() {
+            tr!(format!("Rilievo di {n_rooms} vani"), format!("Survey of {n_rooms} rooms"))
+        } else {
+            tr!("Rilievo del vano".to_string(), "Room survey".to_string())
+        });
+        if let Some(m) = &self.msg {
+            def = def.with_control(info(tr!(format!("⚠ Da correggere: {m}."), format!("⚠ To fix: {m}."))));
+        }
+        let lines: Vec<DialogControl> = (0..n_rooms)
+            .map(|r| {
+                let n = self.survey.rooms[r].len();
+                let name = self.room_name(r);
+                let name = name[..1].to_uppercase() + &name[1..];
+                info(tr!(
+                    format!("{name} ({n} spigoli): {}", self.room_status(r).1),
+                    format!("{name} ({n} corners): {}", self.room_status(r).1)
+                ))
+            })
+            .collect();
+        for row in grid(lines, if n_rooms > 6 { 2 } else { 1 }) {
+            def = def.with_control(row);
+        }
+        if self.multi() {
+            def = def.with_control(info(match self.unlinked() {
+                Ok(u) if u.is_empty() => tr!("Collegamenti: ✔ tutti i vani sono collegati tra loro.".to_string(), "Links: ✔ all rooms are linked.".to_string()),
+                Ok(u) => {
+                    let list = u.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ");
+                    tr!(
+                        format!("Collegamenti: ✘ vani non ancora collegati al vano 1: {list}. Aggiungi una porta sul muro che li separa."),
+                        format!("Links: ✘ rooms not yet linked to room 1: {list}. Add a door on the wall between them.")
+                    )
+                }
+                Err(e) => format!("⚠ {e}"),
+            }));
+        }
+        let doors = self.opening_lines();
+        if !doors.is_empty() {
+            let shown: Vec<String> = doors.iter().take(8).cloned().collect();
+            let more = doors.len() - shown.len();
+            let mut text = format!("{}: {}", tr!("Porte e finestre", "Doors and windows"), shown.join("   |   "));
+            if more > 0 {
+                text += &tr!(format!("   … e altre {more}"), format!("   … and {more} more"));
+            }
+            def = def.with_control(info(text));
+        }
+        let (_, labels, default) = self.actions();
+        def.with_control(DialogControl::Choice {
+            id: "do".into(),
+            label: tr!("Cosa vuoi fare?", "What next?").into(),
+            options: labels,
+            default_index: default,
+        })
+        .with_control(help_section("help", tr!("Come si usa (aiuto) ▸", "How it works (help) ▸"), how_to_measure(self.multi())))
+        .submit_label(tr!("Continua ▸", "Continue ▸"))
+        .cancel_label(tr!("Chiudi", "Close"))
+        .width(660.0)
+    }
+
+    /// The diagonal and constraint rows shown on room `r`'s page: the ones
+    /// kept, then empty spare rows.
+    fn room_view(&self, r: usize) -> (Vec<Vec<String>>, Vec<Vec<String>>) {
+        let (per, _) = self.split_others();
+        let mut others: Vec<Vec<String>> = per[r].iter().filter(|x| filled(x, &[0, 1, 3])).cloned().collect();
+        others.extend(std::iter::repeat_n(vec![String::new(); 4], 2));
+        let mut cons: Vec<Vec<String>> = self.split_cons()[r].iter().filter(|x| filled(x, &[0, 1])).cloned().collect();
+        let total = (cons.len() + 1).max(3).div_ceil(3) * 3;
+        cons.resize(total, vec![String::new(); 2]);
+        (others, cons)
+    }
+
+    fn links_view(&self) -> Vec<Vec<String>> {
+        let (_, links) = self.split_others();
+        let mut v: Vec<Vec<String>> = links.into_iter().filter(|x| filled(x, &[0, 1, 3])).collect();
+        v.extend(std::iter::repeat_n(vec![String::new(); 4], 4));
+        v
+    }
+
+    fn openings_view(&self) -> Vec<Vec<String>> {
+        let mut v: Vec<Vec<String>> = self.saved.openings.iter().filter(|x| filled(x, &[0, 1, 2, 3, 4, 5])).cloned().collect();
+        v.extend(std::iter::repeat_n(vec![String::new(); 6], 2));
+        v
+    }
+
+    fn distance_rows(rows: &[Vec<String>]) -> Vec<DialogControl> {
+        let mut cells = Vec::new();
+        for (k, r) in rows.iter().enumerate() {
+            let drawn = r.get(2).filter(|d| !d.is_empty()).map(|d| format!(" ({d})")).unwrap_or_default();
+            cells.push(tf(format!("o{k}a"), tr!("Da", "From").into(), cell(r, 0)));
+            cells.push(tf(format!("o{k}b"), tr!("A", "To").into(), cell(r, 1)));
+            cells.push(tf(format!("o{k}m"), format!("{}{drawn}", tr!("Misurata", "Measured")), cell(r, 3)));
+        }
+        grid(cells, 6)
+    }
+
+    fn room_page(&self, r: usize) -> DialogDef {
+        let n = self.survey.rooms[r].len();
+        let off = self.offset(r);
+        let need = n.saturating_sub(3);
+        let name = self.room_name(r);
+        let name = name[..1].to_uppercase() + &name[1..];
+        let (first, last) = (self.survey.corner(r, 0), self.survey.corner(r, n - 1));
+        let mut def = DialogDef::new(tr!(format!("{name} — lati, diagonali, vincoli"), format!("{name} — sides, diagonals, constraints")))
+            .with_control(info(tr!(
+                format!("LATI — spigoli {first} … {last}. Scrivi la misura sotto ogni lato (tra parentesi la lunghezza disegnata)."),
+                format!("SIDES — corners {first} … {last}. Type the measure under each side (the drawn length in brackets).")
+            )));
+        let sides: Vec<DialogControl> = (0..n)
+            .map(|i| {
+                let row = self.saved.sides.get(off + i).cloned().unwrap_or_default();
+                tf(format!("s{i}"), format!("{}  ({})", cell(&row, 0), cell(&row, 1)), cell(&row, 2))
             })
             .collect();
         for row in grid(sides, 4) {
             def = def.with_control(row);
         }
-
-        def = def.with_control(info(if multi {
+        let (others, cons) = self.room_view(r);
+        def = def.with_control(info(if need == 0 {
             tr!(
-                "DIAGONALI E ALTRE MISURE — Da e A: due vertici (1A, 2C) per una distanza, oppure un lato (1B-1C) e un vertice (2A) per lo spessore di un muro. Le righe vuote servono per misure in più.",
-                "DIAGONALS AND OTHER MEASURES — From and To: two corners (1A, 2C) for a distance, or a side (1B-1C) and a corner (2A) for a wall thickness. Empty rows take extra measures."
+                "DIAGONALI — un triangolo non ne ha bisogno.".to_string(),
+                "DIAGONALS — a triangle needs none.".to_string()
             )
-            .to_string()
         } else {
             tr!(
-                "DIAGONALI — quelle proposte passano dentro il vano; nelle righe vuote puoi scriverne altre (Da, A, Misurata).",
-                "DIAGONALS — the proposed ones run inside the room; use the empty rows for more (From, To, Measured)."
-            )
-            .to_string()
-        }));
-        let kept: Vec<Vec<String>> = self.saved.others.iter().filter(|r| filled(r, &[0, 1, 3])).cloned().collect();
-        let spare = if multi { 4 } else { 2 };
-        let total = kept.len() + spare;
-        self.shown_others = total;
-        let mut cells = Vec::new();
-        for k in 0..total {
-            let r = kept.get(k).cloned().unwrap_or_else(|| vec![String::new(); 4]);
-            let drawn = r.get(2).filter(|d| !d.is_empty()).map(|d| format!(" ({d})")).unwrap_or_default();
-            cells.push(tf(format!("o{k}a"), tr!("Da", "From").into(), r[0].clone()));
-            cells.push(tf(format!("o{k}b"), tr!("A", "To").into(), r[1].clone()));
-            cells.push(tf(format!("o{k}m"), format!("{}{drawn}", tr!("Misurata", "Measured")), r.get(3).cloned().unwrap_or_default()));
-        }
-        for row in grid(cells, 6) {
-            def = def.with_control(row);
-        }
-        def.submit_label(tr!("Avanti ▸", "Next ▸")).cancel_label(tr!("Annulla", "Cancel")).width(700.0)
-    }
-
-    fn page2(&mut self) -> DialogDef {
-        let mut def = DialogDef::new(tr!("Rilievo — 2/2: vincoli, porte e finestre, opzioni", "Survey — 2/2: constraints, doors and windows, options"))
-            .with_control(info(
-                tr!(
-                    "VINCOLI (facoltativi, ognuno vale una misura) — uno spigolo e il suo angolo (C, 90), oppure un lato e orizzontale / verticale (A-B, orizzontale).",
-                    "CONSTRAINTS (optional, each counts as a measure) — a corner and its angle (C, 90), or a side and horizontal / vertical (A-B, horizontal)."
+                format!(
+                    "DIAGONALI — ne servono almeno {need} (contando anche i vincoli); una in più fa da controllo. Quelle \
+                     proposte passano dentro il vano; nelle righe vuote puoi scriverne altre{}.",
+                    if self.multi() { " (basta la lettera: A, C)" } else { "" }
+                ),
+                format!(
+                    "DIAGONALS — at least {need} are needed (constraints count too); one more is a check. The proposed \
+                     ones run inside the room; use the empty rows for more{}.",
+                    if self.multi() { " (the letter is enough: A, C)" } else { "" }
                 )
-                .to_string(),
-            ));
-        let kept: Vec<Vec<String>> = self.saved.constraints.iter().filter(|r| filled(r, &[0, 1])).cloned().collect();
-        let total = (kept.len() + 2).max(3).div_ceil(3) * 3;
-        self.shown_constraints = total;
-        let mut cells = Vec::new();
-        for k in 0..total {
-            let r = kept.get(k).cloned().unwrap_or_else(|| vec![String::new(); 2]);
-            cells.push(tf(format!("c{k}a"), tr!("Spigolo o lato", "Corner or side").into(), r[0].clone()));
-            cells.push(tf(format!("c{k}b"), tr!("Vincolo", "Constraint").into(), r.get(1).cloned().unwrap_or_default()));
-        }
-        for row in grid(cells, 6) {
+            )
+        }));
+        for row in Self::distance_rows(&others) {
             def = def.with_control(row);
         }
-
         def = def.with_control(info(
             tr!(
-                "PORTE E FINESTRE (facoltative) — lato (B-C), tipo (porta, finestra, apertura), distanza dal primo spigolo scritto, larghezza; stesso nome in due vani = porta comune (con lo spessore del muro).",
-                "DOORS AND WINDOWS (optional) — side (B-C), kind (door, window, opening), distance from the first corner written, width; same name in two rooms = shared door (with the wall thickness)."
+                "VINCOLI (facoltativi) — uno spigolo e il suo angolo (A, 90), oppure un lato e orizzontale / verticale (A-B, orizzontale).",
+                "CONSTRAINTS (optional) — a corner and its angle (A, 90), or a side and horizontal / vertical (A-B, horizontal)."
             )
             .to_string(),
         ));
-        let kept: Vec<Vec<String>> = self.saved.openings.iter().filter(|r| filled(r, &[0, 1, 2, 3, 4, 5])).cloned().collect();
-        let total = kept.len() + 2;
-        self.shown_openings = total;
+        let mut cells = Vec::new();
+        for (k, c) in cons.iter().enumerate() {
+            cells.push(tf(format!("c{k}a"), tr!("Spigolo o lato", "Corner or side").into(), cell(c, 0)));
+            cells.push(tf(format!("c{k}b"), tr!("Vincolo", "Constraint").into(), cell(c, 1)));
+        }
+        for row in grid(cells, 6) {
+            def = def.with_control(row);
+        }
+        def.submit_label("OK ▸").cancel_label(tr!("◂ Indietro", "◂ Back")).width(700.0)
+    }
+
+    fn links_page(&self) -> DialogDef {
+        let mut def = DialogDef::new(tr!("Altre misure tra vani", "Other measures between rooms")).with_control(info(
+            tr!(
+                "Servono solo dove non c'è una porta, o come controllo. Da e A: due spigoli di vani diversi (1B, 2D) per \
+                 una distanza presa attraverso un'apertura, oppure un lato e uno spigolo (1B-1C, 2A) per lo spessore di un muro.",
+                "Needed only where there is no door, or as a check. From and To: two corners of different rooms (1B, 2D) \
+                 for a distance taken through an opening, or a side and a corner (1B-1C, 2A) for a wall thickness."
+            )
+            .to_string(),
+        ));
+        for row in Self::distance_rows(&self.links_view()) {
+            def = def.with_control(row);
+        }
+        def.submit_label("OK ▸").cancel_label(tr!("◂ Indietro", "◂ Back")).width(700.0)
+    }
+
+    fn openings_page(&self) -> DialogDef {
+        let mut def = DialogDef::new(tr!("Porte e finestre inserite", "Doors and windows")).with_control(info(
+            tr!(
+                "Correggi i valori, oppure svuota una riga per eliminare la porta o la finestra. Una porta tra due vani \
+                 occupa due righe con lo stesso nome, una per vano. La distanza si misura dal primo spigolo scritto nel lato.",
+                "Fix the values, or empty a row to delete the door or window. A door between two rooms takes two rows \
+                 with the same name, one per room. The distance is taken from the first corner written in the side."
+            )
+            .to_string(),
+        ));
         let labels = [
             tr!("Nome", "Name"),
             tr!("Lato", "Side"),
@@ -547,93 +957,231 @@ impl MeasureDialog {
             tr!("Spessore muro", "Wall"),
         ];
         let mut cells = Vec::new();
-        for k in 0..total {
-            let r = kept.get(k).cloned().unwrap_or_else(|| vec![String::new(); 6]);
+        for (k, r) in self.openings_view().iter().enumerate() {
             for (c, l) in labels.iter().enumerate() {
-                cells.push(tf(format!("p{k}_{c}"), l.to_string(), r.get(c).cloned().unwrap_or_default()));
+                cells.push(tf(format!("p{k}_{c}"), l.to_string(), cell(r, c)));
             }
         }
         for row in grid(cells, 6) {
             def = def.with_control(row);
         }
-
-        let saved = &self.saved;
-        def.with_control(DialogControl::row(vec![
-            number("h", tr!("Altezza testi", "Text height"), saved.h),
-            number("tol", tr!("Tolleranza scarti", "Residual tolerance"), saved.tol),
-            DialogControl::Choice {
-                id: "unit".into(),
-                label: tr!("Unità del disegno", "Drawing unit").into(),
-                options: vec![tr!("metri", "metres").into(), tr!("centimetri", "centimetres").into(), tr!("millimetri", "millimetres").into()],
-                default_index: saved.unit.min(2),
-            },
-        ]))
-        .with_control(checkbox(
-            "fill",
-            tr!(
-                "Se mancano misure (mobili, ostacoli), completa la forma con gli angoli del disegno",
-                "If measures are missing (furniture, obstacles), finish the shape with the drawing's angles"
-            ),
-            saved.fill,
-        ))
-        .with_control(checkbox(
-            "replace",
-            tr!(
-                "Modifica subito le polilinee originali (senza copia su RILIEVO_CORRETTO); altrimenti usa poi Applica al disegno",
-                "Change the original polylines straight away (no copy on RILIEVO_CORRETTO); otherwise use Apply to drawing later"
-            ),
-            saved.replace,
-        ))
-        .with_control(DialogControl::row(vec![
-            checkbox("dims", tr!("Quote", "Dimensions"), saved.dims),
-            checkbox("table", tr!("Tabella scarti", "Residuals table"), saved.table),
-            checkbox("csv", tr!("Salva libretto (CSV)", "Save book (CSV)"), saved.csv),
-        ]))
-        .with_control(csv_picker(&saved.csv_path))
-        .submit_label(tr!("Calcola", "Compute"))
-        .cancel_label(tr!("◂ Indietro", "◂ Back"))
-        .width(700.0)
+        def.submit_label("OK ▸").cancel_label(tr!("◂ Indietro", "◂ Back")).width(700.0)
     }
 
-    fn read_page1(&mut self, m: &HashMap<String, DialogValue>) {
-        for (i, row) in self.saved.sides.iter_mut().enumerate() {
-            if m.contains_key(&format!("s{i}")) {
-                while row.len() < 3 {
-                    row.push(String::new());
-                }
-                row[2] = get_text(m, &format!("s{i}"));
+    fn options_page(&self) -> DialogDef {
+        let saved = &self.saved;
+        DialogDef::new(tr!("Opzioni del rilievo", "Survey options"))
+            .with_control(DialogControl::row(vec![
+                number("h", tr!("Altezza testi", "Text height"), saved.h),
+                number("tol", tr!("Tolleranza scarti", "Residual tolerance"), saved.tol),
+                DialogControl::Choice {
+                    id: "unit".into(),
+                    label: tr!("Unità del disegno", "Drawing unit").into(),
+                    options: vec![tr!("metri", "metres").into(), tr!("centimetri", "centimetres").into(), tr!("millimetri", "millimetres").into()],
+                    default_index: saved.unit.min(2),
+                },
+            ]))
+            .with_control(checkbox(
+                "fill",
+                tr!(
+                    "Se mancano misure (mobili, ostacoli), completa la forma con gli angoli del disegno",
+                    "If measures are missing (furniture, obstacles), finish the shape with the drawing's angles"
+                ),
+                saved.fill,
+            ))
+            .with_control(checkbox(
+                "replace",
+                tr!(
+                    "Modifica subito le polilinee originali (senza copia su RILIEVO_CORRETTO); altrimenti usa poi Applica al disegno",
+                    "Change the original polylines straight away (no copy on RILIEVO_CORRETTO); otherwise use Apply to drawing later"
+                ),
+                saved.replace,
+            ))
+            .with_control(DialogControl::row(vec![
+                checkbox("dims", tr!("Quote", "Dimensions"), saved.dims),
+                checkbox("table", tr!("Tabella scarti", "Residuals table"), saved.table),
+                checkbox("csv", tr!("Salva libretto (CSV)", "Save book (CSV)"), saved.csv),
+            ]))
+            .with_control(csv_picker(&saved.csv_path))
+            .submit_label("OK ▸")
+            .cancel_label(tr!("◂ Indietro", "◂ Back"))
+            .width(660.0)
+    }
+
+    /// A name not used yet: P1, P2 … (F1 … for windows).
+    fn free_name(&self, prefix: &str) -> String {
+        (1..)
+            .map(|k| format!("{prefix}{k}"))
+            .find(|n| !self.saved.openings.iter().any(|r| cell(r, 0).eq_ignore_ascii_case(n)))
+            .unwrap_or_default()
+    }
+
+    fn door_page(&self, spot: &DoorSpot) -> DialogDef {
+        let s = &self.survey;
+        let d = |id: &str| get_text(&self.draft, id);
+        let (c1, c2) = (s.corner(spot.room, spot.from), s.corner(spot.room, spot.to));
+        let mut def = DialogDef::new(match spot.other {
+            Some((q, _, _)) if self.multi() => tr!(
+                format!("Porta tra il vano {} e il vano {}", spot.room + 1, q + 1),
+                format!("Door between room {} and room {}", spot.room + 1, q + 1)
+            ),
+            _ => tr!(format!("Porta o finestra sul lato {c1}–{c2}"), format!("Door or window on side {c1}–{c2}")),
+        });
+        if let Some(m) = &self.msg {
+            def = def.with_control(info(format!("⚠ {m}.")));
+        }
+        def = def.with_control(info(match spot.other {
+            Some((q, k, l)) => tr!(
+                format!(
+                    "Muro tra il lato {c1}–{c2} (vano {}) e il lato {}–{} (vano {}). Con lo spessore del muro e le due distanze \
+                     dagli spigoli, questa porta collega i due vani.",
+                    spot.room + 1,
+                    s.corner(q, k),
+                    s.corner(q, l),
+                    q + 1
+                ),
+                format!(
+                    "Wall between side {c1}–{c2} (room {}) and side {}–{} (room {}). With the wall thickness and the two \
+                     distances from the corners, this door links the two rooms.",
+                    spot.room + 1,
+                    s.corner(q, k),
+                    s.corner(q, l),
+                    q + 1
+                )
+            ),
+            None => tr!(
+                format!("Lato {c1}–{c2}: dietro questo muro non c'è un altro vano scelto (finestra o porta verso l'esterno)."),
+                format!("Side {c1}–{c2}: no other chosen room behind this wall (a window or an outside door).")
+            ),
+        }));
+        let kind_default = if spot.other.is_some() { 0 } else { 1 };
+        let name_default = if d("name").is_empty() { self.free_name(if spot.other.is_some() { "P" } else { "F" }) } else { d("name") };
+        def = def
+            .with_control(DialogControl::row(vec![
+                tf("name".into(), tr!("Nome", "Name").into(), name_default),
+                DialogControl::Choice {
+                    id: "kind".into(),
+                    label: tr!("Tipo", "Kind").into(),
+                    options: vec![tr!("porta", "door").into(), tr!("finestra", "window").into(), tr!("apertura senza serramento", "plain opening").into()],
+                    default_index: get_choice(&self.draft, "kind", kind_default),
+                },
+            ]))
+            .with_control(DialogControl::row(vec![
+                DialogControl::Choice {
+                    id: "from1".into(),
+                    label: tr!("Distanza misurata dallo spigolo", "Distance measured from corner").into(),
+                    options: vec![c1.clone(), c2.clone()],
+                    default_index: get_choice(&self.draft, "from1", 0),
+                },
+                tf("d1".into(), tr!("Distanza dallo spigolo allo stipite", "Distance from corner to jamb").into(), d("d1")),
+                tf("w".into(), tr!("Larghezza", "Width").into(), d("w")),
+            ]))
+            .with_control(tf(
+                "t".into(),
+                tr!("Spessore del muro, misurato nella porta", "Wall thickness, measured in the door").into(),
+                d("t"),
+            ));
+        if let Some((q, k, l)) = spot.other {
+            def = def
+                .with_control(DialogControl::row(vec![
+                    DialogControl::Choice {
+                        id: "from2".into(),
+                        label: tr!(format!("Nel vano {}: distanza dallo spigolo", q + 1), format!("In room {}: distance from corner", q + 1)),
+                        options: vec![s.corner(q, k), s.corner(q, l)],
+                        default_index: get_choice(&self.draft, "from2", 0),
+                    },
+                    tf(
+                        "d2".into(),
+                        tr!(format!("Distanza allo stipite, misurata nel vano {}", q + 1), format!("Distance to the jamb, measured in room {}", q + 1)),
+                        d("d2"),
+                    ),
+                ]))
+                .with_control(info(
+                    tr!(
+                        "Se lasci vuota la seconda distanza, i vani restano legati dal solo spessore del muro e la loro posizione \
+                         lungo il muro viene presa dal disegno.",
+                        "If the second distance is left empty, the rooms are tied by the wall thickness only and their position \
+                         along the wall is taken from the drawing."
+                    )
+                    .to_string(),
+                ));
+        }
+        def.submit_label(tr!("Aggiungi ▸", "Add ▸")).cancel_label(tr!("◂ Indietro", "◂ Back")).width(700.0)
+    }
+
+    fn read_room(&mut self, r: usize, m: &HashMap<String, DialogValue>) {
+        let off = self.offset(r);
+        for i in 0..self.survey.rooms[r].len() {
+            let id = format!("s{i}");
+            if let (true, Some(row)) = (m.contains_key(&id), self.saved.sides.get_mut(off + i)) {
+                row.resize(3, String::new());
+                row[2] = get_text(m, &id);
             }
         }
+        let (others, cons) = self.room_view(r);
+        let rows = self.read_distances(Some(r), &others, m);
+        let (mut per, links) = self.split_others();
+        per[r] = rows;
+        self.saved.others = per.into_iter().flatten().chain(links).collect();
+
+        let mut mine = Vec::new();
+        for (k, old) in cons.iter().enumerate() {
+            let (a, b) = if m.contains_key(&format!("c{k}a")) {
+                (self.norm(r, &get_text(m, &format!("c{k}a"))), get_text(m, &format!("c{k}b")))
+            } else {
+                (cell(old, 0), cell(old, 1))
+            };
+            if !(a.is_empty() && b.is_empty()) {
+                mine.push(vec![a, b]);
+            }
+        }
+        let mut per = self.split_cons();
+        per[r] = mine;
+        self.saved.constraints = per.into_iter().flatten().collect();
+    }
+
+    /// The Da / A / Misurata rows of a page, with the drawn value refreshed.
+    fn read_distances(&self, room: Option<usize>, shown: &[Vec<String>], m: &HashMap<String, DialogValue>) -> Vec<Vec<String>> {
         let dec = commands::decimals(self.saved.tol);
-        let mut others = Vec::new();
-        for k in 0..self.shown_others {
-            let (a, b, v) = (get_text(m, &format!("o{k}a")), get_text(m, &format!("o{k}b")), get_text(m, &format!("o{k}m")));
+        let mut rows = Vec::new();
+        for (k, old) in shown.iter().enumerate() {
+            let (a, b, v) = if m.contains_key(&format!("o{k}a")) {
+                let (a, b) = (get_text(m, &format!("o{k}a")), get_text(m, &format!("o{k}b")));
+                match room {
+                    Some(r) => (self.norm(r, &a), self.norm(r, &b), get_text(m, &format!("o{k}m"))),
+                    None => (a.to_ascii_uppercase(), b.to_ascii_uppercase(), get_text(m, &format!("o{k}m"))),
+                }
+            } else {
+                (cell(old, 0), cell(old, 1), cell(old, 3))
+            };
             if a.is_empty() && b.is_empty() && v.is_empty() {
                 continue;
             }
             let drawn = self.survey.drawn_other(&a, &b).map(|d| commands::fmt_num(d, dec)).unwrap_or_default();
-            others.push(vec![a, b, drawn, v]);
+            rows.push(vec![a, b, drawn, v]);
         }
-        self.saved.others = others;
+        rows
     }
 
-    fn read_page2(&mut self, m: &HashMap<String, DialogValue>) {
-        let mut cons = Vec::new();
-        for k in 0..self.shown_constraints {
-            let (a, b) = (get_text(m, &format!("c{k}a")), get_text(m, &format!("c{k}b")));
-            if !(a.is_empty() && b.is_empty()) {
-                cons.push(vec![a, b]);
-            }
-        }
-        self.saved.constraints = cons;
+    fn read_links(&mut self, m: &HashMap<String, DialogValue>) {
+        let rows = self.read_distances(None, &self.links_view(), m);
+        let (per, _) = self.split_others();
+        self.saved.others = per.into_iter().flatten().chain(rows).collect();
+    }
+
+    fn read_openings(&mut self, m: &HashMap<String, DialogValue>) {
         let mut ops = Vec::new();
-        for k in 0..self.shown_openings {
-            let row: Vec<String> = (0..6).map(|c| get_text(m, &format!("p{k}_{c}"))).collect();
+        for (k, old) in self.openings_view().iter().enumerate() {
+            let row: Vec<String> =
+                (0..6).map(|c| if m.contains_key(&format!("p{k}_{c}")) { get_text(m, &format!("p{k}_{c}")) } else { cell(old, c) }).collect();
             if row.iter().any(|x| !x.is_empty()) {
                 ops.push(row);
             }
         }
         self.saved.openings = ops;
+    }
+
+    fn read_options(&mut self, m: &HashMap<String, DialogValue>) {
         let s = &mut self.saved;
         if let Some(v) = get_num(m, "h").filter(|v| *v > 0.0) {
             s.h = v;
@@ -641,9 +1189,7 @@ impl MeasureDialog {
         if let Some(v) = get_num(m, "tol").filter(|v| *v >= 0.0) {
             s.tol = v;
         }
-        if let Some(DialogValue::Choice { index, .. }) = m.get("unit") {
-            s.unit = *index;
-        }
+        s.unit = get_choice(m, "unit", s.unit);
         s.dims = get_bool(m, "dims", s.dims);
         s.table = get_bool(m, "table", s.table);
         s.csv = get_bool(m, "csv", s.csv);
@@ -653,13 +1199,75 @@ impl MeasureDialog {
             s.csv_path = p;
         }
     }
+
+    /// Add the door or window typed on the door page; an error says what
+    /// is missing and nothing is added.
+    fn read_door(&mut self, spot: &DoorSpot, m: &HashMap<String, DialogValue>) -> Result<(), String> {
+        let s = &self.survey;
+        let num = |id: &str| commands::parse_num(&get_text(m, id));
+        let name = match get_text(m, "name") {
+            n if n.is_empty() => self.free_name("P"),
+            n => n,
+        };
+        if self.saved.openings.iter().any(|r| cell(r, 0).eq_ignore_ascii_case(&name)) {
+            return Err(tr!(format!("il nome {name} è già usato: scegline un altro"), format!("the name {name} is already used: choose another")));
+        }
+        let (d1, w, t) = (get_text(m, "d1"), get_text(m, "w"), get_text(m, "t"));
+        if !(num("d1").is_some_and(|v| v >= 0.0) && num("w").is_some_and(|v| v > 0.0)) {
+            return Err(tr!(
+                "scrivi la distanza dallo spigolo allo stipite e la larghezza".to_string(),
+                "type the distance from the corner to the jamb and the width".to_string()
+            ));
+        }
+        if !t.is_empty() && !num("t").is_some_and(|v| v > 0.0) {
+            return Err(tr!(format!("lo spessore \"{t}\" non è una misura valida"), format!("the thickness \"{t}\" is not a valid measure")));
+        }
+        let kind = match get_choice(m, "kind", if spot.other.is_some() { 0 } else { 1 }) {
+            0 => tr!("porta", "door"),
+            1 => tr!("finestra", "window"),
+            _ => tr!("apertura", "opening"),
+        };
+        let (i, j) = if get_choice(m, "from1", 0) == 0 { (spot.from, spot.to) } else { (spot.to, spot.from) };
+        let side1 = format!("{}-{}", s.corner(spot.room, i), s.corner(spot.room, j));
+        let mut second = None;
+        let mut walls = Vec::new();
+        if let Some((q, k, l)) = spot.other {
+            let (k, l) = if get_choice(m, "from2", 0) == 0 { (k, l) } else { (l, k) };
+            let d2 = get_text(m, "d2");
+            if !d2.is_empty() {
+                if !num("d2").is_some_and(|v| v >= 0.0) {
+                    return Err(tr!(format!("la distanza \"{d2}\" non è una misura valida"), format!("the distance \"{d2}\" is not a valid measure")));
+                }
+                if t.is_empty() {
+                    return Err(tr!(
+                        "per collegare i due vani scrivi lo spessore del muro, misurato nella porta".to_string(),
+                        "to link the two rooms type the wall thickness, measured in the door".to_string()
+                    ));
+                }
+                second = Some(vec![name.clone(), format!("{}-{}", s.corner(q, k), s.corner(q, l)), kind.to_string(), d2, w.clone(), String::new()]);
+            } else if !t.is_empty() {
+                let dec = commands::decimals(self.saved.tol);
+                for c in [k, l] {
+                    let b = s.corner(q, c);
+                    if !self.saved.others.iter().any(|r| cell(r, 0).eq_ignore_ascii_case(&side1) && cell(r, 1).eq_ignore_ascii_case(&b)) {
+                        let drawn = s.drawn_other(&side1, &b).map(|d| commands::fmt_num(d, dec)).unwrap_or_default();
+                        walls.push(vec![side1.clone(), b, drawn, t.clone()]);
+                    }
+                }
+            }
+        }
+        self.saved.openings.push(vec![name, side1, kind.to_string(), d1, w, t]);
+        self.saved.openings.extend(second);
+        self.saved.others.extend(walls);
+        Ok(())
+    }
 }
 
 impl InteractiveCommand for MeasureDialog {
     fn prompt(&self) -> String {
         tr!(
-            "RV_VANO: inserisci le misure nella finestra (apri \"Come misurare\" per l'aiuto)",
-            "RV_VANO: type the measures in the dialog (open \"How to measure\" for help)"
+            "RV_VANO: scegli cosa fare nella finestra (apri \"Come si usa\" per l'aiuto)",
+            "RV_VANO: choose what to do in the dialog (open \"How it works\" for help)"
         )
         .into()
     }
@@ -670,55 +1278,81 @@ impl InteractiveCommand for MeasureDialog {
         CommandStep::Cancel
     }
     fn modal_dialog(&self) -> Option<DialogDef> {
-        // Building a page records how many rows it shows; work on a copy so
-        // this stays `&self`, and keep the counts in step through `shown`.
-        let mut me = MeasureDialog {
-            handles: Vec::new(),
-            survey: self.survey.clone(),
-            msg: self.msg.clone(),
-            saved: self.saved.clone(),
-            page: self.page,
-            shown_others: 0,
-            shown_constraints: 0,
-            shown_openings: 0,
-        };
-        match self.page {
-            1 => Some(me.page1()),
-            2 => Some(me.page2()),
-            _ => None,
+        match &self.page {
+            Page::Hub => Some(self.hub()),
+            Page::Room(r) => Some(self.room_page(*r)),
+            Page::Links => Some(self.links_page()),
+            Page::Openings => Some(self.openings_page()),
+            Page::Options => Some(self.options_page()),
+            Page::Door(spot) => Some(self.door_page(spot)),
+            Page::Done => None,
         }
     }
     fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
-        // The row counts the page was built with (same input → same layout).
-        let _ = match self.page {
-            1 => Some(self.page1()),
-            2 => Some(self.page2()),
-            _ => None,
-        };
-        match (self.page, response) {
-            (1, DialogResponse::Submitted(m)) => {
-                self.read_page1(&m);
+        let page = self.page.clone();
+        match (page, response) {
+            (Page::Done, _) => CommandStep::Cancel,
+            (Page::Hub, DialogResponse::Submitted(m)) => {
+                let (acts, _, default) = self.actions();
+                let act = acts.get(get_choice(&m, "do", default)).copied().unwrap_or(Action::Compute);
                 self.msg = None;
-                self.page = 2;
+                self.keep();
+                match act {
+                    Action::Room(r) => self.page = Page::Room(r),
+                    Action::Links => self.page = Page::Links,
+                    Action::Openings => self.page = Page::Openings,
+                    Action::Options => self.page = Page::Options,
+                    Action::AddDoor => {
+                        self.page = Page::Done;
+                        return deferred("RV_PORTAPICK", self.key());
+                    }
+                    Action::Compute => {
+                        self.page = Page::Done;
+                        commands::set_pending(self.handles.clone(), self.saved.clone());
+                        return CommandStep::Dispatch("RV_VANOAPPLY".into());
+                    }
+                }
                 CommandStep::NeedPoint
             }
-            (1, _) => {
-                self.page = 0;
+            (Page::Hub, _) => {
+                self.keep();
+                self.page = Page::Done;
                 CommandStep::Cancel
             }
-            (2, DialogResponse::Submitted(m)) => {
-                self.read_page2(&m);
-                self.page = 0;
-                commands::set_pending(self.handles.clone(), self.saved.clone());
-                CommandStep::Dispatch("RV_VANOAPPLY".into())
-            }
-            (2, _) => {
-                // "Back": the host sends no values with it, so page 2 keeps
-                // what it had when it was opened.
-                self.page = 1;
+            (Page::Door(spot), DialogResponse::Submitted(m)) => {
+                match self.read_door(&spot, &m) {
+                    Ok(()) => {
+                        self.msg = None;
+                        self.draft.clear();
+                        self.keep();
+                        self.page = Page::Hub;
+                    }
+                    Err(e) => {
+                        self.msg = Some(e);
+                        self.draft = m;
+                    }
+                }
                 CommandStep::NeedPoint
             }
-            _ => CommandStep::Cancel,
+            (page, DialogResponse::Submitted(m)) => {
+                match page {
+                    Page::Room(r) => self.read_room(r, &m),
+                    Page::Links => self.read_links(&m),
+                    Page::Openings => self.read_openings(&m),
+                    Page::Options => self.read_options(&m),
+                    _ => {}
+                }
+                self.keep();
+                self.page = Page::Hub;
+                CommandStep::NeedPoint
+            }
+            (_, _) => {
+                // "Back": the host sends no values with it; nothing changes.
+                self.msg = None;
+                self.draft.clear();
+                self.page = Page::Hub;
+                CommandStep::NeedPoint
+            }
         }
     }
 }
@@ -819,23 +1453,25 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
         (
             tr!("3. Misure e diagonali", "3. Sides and diagonals"),
             tr!(
-                "Scegli gli stessi vani e scrivi le misure. Un vano di n spigoli vuole tutti i lati e almeno n−3 diagonali; \
-                 ogni vano collegato ne vuole almeno 3 di collegamento (spessore del muro, misure attraverso la porta). \
-                 Nella finestra, \"Come misurare\" spiega ogni colonna.",
-                "Choose the same rooms and type the measures. A room of n corners needs all sides and at least n−3 \
-                 diagonals; each linked room needs at least 3 linking measures (wall thickness, measures through the \
-                 door). In the dialog, \"How to measure\" explains every column."
+                "Scegli gli stessi vani: si apre un elenco dei vani con il loro stato. Apri un vano alla volta e scrivi lati e \
+                 diagonali (un vano di n spigoli vuole tutti i lati e almeno n−3 diagonali o vincoli); a ogni OK l'elenco \
+                 passa al vano successivo e alla fine propone Calcola. Le misure restano memorizzate anche chiudendo la finestra.",
+                "Choose the same rooms: a list of the rooms with their state opens. Open one room at a time and type sides and \
+                 diagonals (a room of n corners needs all sides and at least n−3 diagonals or constraints); at every OK the \
+                 list moves to the next room and at the end proposes Compute. The measures are kept even if you close the window."
             ),
         ),
         (
-            tr!("Vincoli, porte e finestre", "Constraints, doors and windows"),
+            tr!("Porte, finestre e muri tra i vani", "Doors, windows and walls between rooms"),
             tr!(
-                "Un angolo noto (per esempio retto) o un lato orizzontale / verticale può prendere il posto di una \
-                 diagonale. Porte e finestre si danno con lato, distanza dallo spigolo e larghezza; la stessa porta \
-                 scritta nei due vani con lo stesso nome e lo spessore del muro collega i vani da sola.",
-                "A known angle (for example square) or a horizontal / vertical side can take the place of a diagonal. \
-                 Doors and windows are given by side, distance from the corner and width; the same door written in both \
-                 rooms with the same name and the wall thickness links the rooms by itself."
+                "Dall'elenco scegli \"Aggiungi porta o finestra\" e clicca sul disegno, sul muro, dove si trova. Tra due vani il \
+                 plugin riconosce i due lati: scrivi la distanza dallo spigolo allo stipite nei due vani, la larghezza e lo \
+                 spessore del muro misurato nella porta. Basta questo a collegare i due vani. Un angolo noto o un lato \
+                 orizzontale / verticale può prendere il posto di una diagonale.",
+                "From the list choose \"Add a door or window\" and click on the drawing, on the wall, where it is. Between two \
+                 rooms the plugin finds both sides: type the distance from the corner to the jamb in both rooms, the width \
+                 and the wall thickness measured in the door. That alone links the two rooms. A known angle or a horizontal / \
+                 vertical side can take the place of a diagonal."
             ),
         ),
         (
@@ -858,10 +1494,10 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
             tr!(
                 "Controllato il risultato, Applica al disegno (RV_APPLICA) porta i vertici delle polilinee originali nella \
                  posizione calcolata: restano le stesse polilinee, sullo stesso layer, e la copia su RILIEVO_CORRETTO viene \
-                 tolta. Ctrl+Z annulla. Nella pagina 2 si può scegliere di farlo subito a ogni calcolo.",
+                 tolta. Ctrl+Z annulla. Nelle Opzioni si può scegliere di farlo subito a ogni calcolo.",
                 "Once the result is checked, Apply to drawing (RV_APPLICA) moves the corners of the original polylines to \
                  the computed position: same polylines, same layer, and the copy on RILIEVO_CORRETTO is removed. Ctrl+Z \
-                 undoes it. On page 2 you can choose to do it at every calculation."
+                 undoes it. In Options you can choose to do it at every calculation."
             ),
         ),
         (
@@ -939,10 +1575,11 @@ impl InteractiveCommand for GuideDialog {
 mod tests {
     use super::*;
 
-    fn saved(n: usize) -> Saved {
+    fn saved_for(survey: &Survey) -> Saved {
+        let (sides, others) = survey.initial(3, &|v, d| format!("{v:.d$}"));
         Saved {
-            sides: (0..n).map(|i| vec![format!("{i}"), "1".into(), String::new()]).collect(),
-            others: vec![],
+            sides,
+            others,
             h: 0.2,
             tol: 0.02,
             dims: true,
@@ -957,42 +1594,152 @@ mod tests {
         }
     }
 
-    #[test]
-    fn two_pages_forth_and_back() {
-        let survey = Survey::new(vec![vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]]]);
-        let mut d = MeasureDialog::new(vec![Handle::new(0x2A)], &survey, &saved(4), None);
-        let p1 = d.modal_dialog().unwrap();
-        assert!(p1.title.contains("1/2"));
-        // Page 1 has only the two measure tables (and short texts).
+    fn two() -> Survey {
+        Survey::new(vec![
+            vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]],
+            vec![[4.3, 0.0], [7.0, 0.0], [7.0, 3.0], [4.3, 3.0]],
+        ])
+    }
+
+    fn text(m: &mut HashMap<String, DialogValue>, id: &str, v: &str) {
+        m.insert(id.to_string(), DialogValue::Text(v.to_string()));
+    }
+
+    fn pick(d: &MeasureDialog, want: Action) -> HashMap<String, DialogValue> {
+        let (acts, labels, _) = d.actions();
+        let index = acts.iter().position(|a| *a == want).unwrap();
         let mut m = HashMap::new();
-        for i in 0..4 {
-            m.insert(format!("s{i}"), DialogValue::Text("4,01".into()));
-        }
-        m.insert("o0a".to_string(), DialogValue::Text("A".into()));
-        m.insert("o0b".to_string(), DialogValue::Text("C".into()));
-        m.insert("o0m".to_string(), DialogValue::Text("5".into()));
-        assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m)), CommandStep::NeedPoint));
-        assert!(d.modal_dialog().unwrap().title.contains("2/2"));
-        // Back keeps page 1's values.
-        assert!(matches!(d.on_dialog_response(DialogResponse::Cancelled), CommandStep::NeedPoint));
-        assert_eq!(d.saved.sides[0][2], "4,01");
-        assert_eq!(d.saved.others, vec![vec!["A".to_string(), "C".into(), "5.000".into(), "5".into()]]);
-        assert!(d.modal_dialog().unwrap().title.contains("1/2"));
-        // Forth again, then compute.
-        d.on_dialog_response(DialogResponse::Submitted(HashMap::new()));
-        let mut m = HashMap::new();
-        m.insert("c0a".to_string(), DialogValue::Text("A".into()));
-        m.insert("c0b".to_string(), DialogValue::Text("90".into()));
-        assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m)), CommandStep::Dispatch(ref c) if c == "RV_VANOAPPLY"));
-        assert!(d.modal_dialog().is_none());
-        assert_eq!(d.saved.constraints, vec![vec!["A".to_string(), "90".into()]]);
+        m.insert("do".to_string(), DialogValue::Choice { index, text: labels[index].clone() });
+        m
     }
 
     #[test]
-    fn cancel_on_page_one_ends() {
-        let survey = Survey::new(vec![vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]]]);
-        let mut d = MeasureDialog::new(vec![Handle::new(0x2A)], &survey, &saved(3), None);
-        assert!(matches!(d.on_dialog_response(DialogResponse::Cancelled), CommandStep::Cancel));
+    fn spot_between_two_rooms() {
+        let s = two();
+        // In the wall between the rooms, near the bottom.
+        let spot = find_spot(&s.rooms, [4.1, 0.8]).unwrap();
+        assert_eq!(spot, DoorSpot { room: 0, from: 1, to: 2, other: Some((1, 0, 3)) });
+        assert_eq!(DoorSpot::decode(&spot.encode()), Some(spot));
+        // On an outer wall: no room behind.
+        let spot = find_spot(&s.rooms, [2.0, 3.05]).unwrap();
+        assert_eq!((spot.room, spot.other), (0, None));
+        // On the far side of room 2: not matched with room 1 across it.
+        let spot = find_spot(&s.rooms, [7.02, 1.0]).unwrap();
+        assert_eq!((spot.room, spot.other), (1, None));
+        assert!(find_spot(&s.rooms, [50.0, 50.0]).is_none());
+    }
+
+    #[test]
+    fn hub_walks_through_the_rooms() {
+        let s = two();
+        let mut d = MeasureDialog::new(vec![Handle::new(0x71), Handle::new(0x72)], &s, &saved_for(&s), None);
+        let (acts, _, default) = d.actions();
+        assert_eq!(acts[default], Action::Room(0), "first incomplete room is proposed");
+        assert!(d.modal_dialog().unwrap().title.contains('2'));
+        // Open room 2 and fill it, with bare letters for an extra diagonal.
+        let m = pick(&d, Action::Room(1));
+        assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m)), CommandStep::NeedPoint));
+        let mut m = HashMap::new();
+        for i in 0..4 {
+            text(&mut m, &format!("s{i}"), "3,00");
+        }
+        text(&mut m, "o0a", "2A");
+        text(&mut m, "o0b", "2C");
+        text(&mut m, "o0m", "4,03");
+        text(&mut m, "o1a", "b");
+        text(&mut m, "o1b", "d");
+        text(&mut m, "o1m", "4,04");
+        text(&mut m, "o2a", "");
+        text(&mut m, "o2b", "");
+        text(&mut m, "o2m", "");
+        text(&mut m, "c0a", "a");
+        text(&mut m, "c0b", "90");
+        d.on_dialog_response(DialogResponse::Submitted(m));
+        assert_eq!(d.page, Page::Hub);
+        assert_eq!(d.saved.sides[4][2], "3,00");
+        assert!(d.saved.others.iter().any(|r| r[0] == "2B" && r[1] == "2D" && r[3] == "4,04"), "{:?}", d.saved.others);
+        assert_eq!(d.saved.constraints, vec![vec!["2A".to_string(), "90".into()]]);
+        // Room 1's proposed diagonal is untouched and still first.
+        assert!(d.saved.others[0][0].starts_with('1'));
+        let (ok, status) = d.room_status(1);
+        assert!(ok && status.contains('2'), "{status}");
+        assert!(!d.room_status(0).0);
+        // Back from a page changes nothing.
+        let m = pick(&d, Action::Options);
+        d.on_dialog_response(DialogResponse::Submitted(m));
+        assert_eq!(d.page, Page::Options);
+        d.on_dialog_response(DialogResponse::Cancelled);
+        assert_eq!(d.page, Page::Hub);
+        // Compute hands over to the command.
+        let m = pick(&d, Action::Compute);
+        assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m)), CommandStep::Dispatch(ref c) if c == "RV_VANOAPPLY"));
         assert!(d.modal_dialog().is_none());
+    }
+
+    #[test]
+    fn door_by_click_links_the_rooms() {
+        let s = two();
+        let mut saved = saved_for(&s);
+        for r in saved.sides.iter_mut() {
+            r[2] = r[1].clone();
+        }
+        for r in saved.others.iter_mut() {
+            r[3] = r[2].clone();
+        }
+        let spot = find_spot(&s.rooms, [4.1, 0.8]).unwrap();
+        let mut d = MeasureDialog::new(vec![Handle::new(0x73), Handle::new(0x74)], &s, &saved, None).starting(Start::Door(spot.clone()));
+        assert_eq!(d.unlinked().unwrap(), vec![2]);
+        assert!(d.modal_dialog().unwrap().title.contains('1'));
+        // Missing width: stays on the page, keeps what was typed.
+        let mut m = HashMap::new();
+        text(&mut m, "name", "P1");
+        text(&mut m, "d1", "1,00");
+        d.on_dialog_response(DialogResponse::Submitted(m.clone()));
+        assert_eq!(d.page, Page::Door(spot));
+        assert!(d.msg.is_some() && d.saved.openings.is_empty());
+        text(&mut m, "w", "0,90");
+        text(&mut m, "t", "0,30");
+        text(&mut m, "d2", "1,00");
+        d.on_dialog_response(DialogResponse::Submitted(m));
+        assert_eq!(d.page, Page::Hub);
+        assert_eq!(d.saved.openings.len(), 2);
+        assert_eq!(d.saved.openings[0][1], "1B-1C");
+        assert_eq!(d.saved.openings[1][1], "2A-2D");
+        assert!(d.unlinked().unwrap().is_empty(), "the door links the rooms");
+        let (acts, _, default) = d.actions();
+        assert_eq!(acts[default], Action::Compute);
+        assert!(d.opening_lines()[0].contains("↔"), "{:?}", d.opening_lines());
+    }
+
+    #[test]
+    fn door_without_second_distance_gives_wall_thickness() {
+        let s = two();
+        let spot = find_spot(&s.rooms, [4.1, 0.8]).unwrap();
+        let mut d = MeasureDialog::new(vec![Handle::new(0x75), Handle::new(0x76)], &s, &saved_for(&s), None).starting(Start::Door(spot));
+        let mut m = HashMap::new();
+        text(&mut m, "d1", "1");
+        text(&mut m, "w", "0,9");
+        text(&mut m, "t", "0,30");
+        d.on_dialog_response(DialogResponse::Submitted(m));
+        assert_eq!(d.saved.openings.len(), 1);
+        let walls: Vec<_> = d.saved.others.iter().filter(|r| r[0] == "1B-1C").collect();
+        assert_eq!(walls.len(), 2);
+        assert_eq!(walls[0][3], "0,30");
+    }
+
+    #[test]
+    fn single_room_uses_plain_letters() {
+        let s = Survey::new(vec![vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]]]);
+        let mut d = MeasureDialog::new(vec![Handle::new(0x77)], &s, &saved_for(&s), None);
+        let m = pick(&d, Action::Room(0));
+        d.on_dialog_response(DialogResponse::Submitted(m));
+        let mut m = HashMap::new();
+        text(&mut m, "o1a", "b");
+        text(&mut m, "o1b", "d");
+        text(&mut m, "o1m", "5");
+        d.on_dialog_response(DialogResponse::Submitted(m));
+        assert!(d.saved.others.iter().any(|r| r[0] == "b" && r[3] == "5"));
+        // Closing the hub ends the command.
+        assert!(matches!(d.on_dialog_response(DialogResponse::Cancelled), CommandStep::Cancel));
     }
 }
