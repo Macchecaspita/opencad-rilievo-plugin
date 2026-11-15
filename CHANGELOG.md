@@ -12,6 +12,19 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.6] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Manuale PDF: nuovo capitolo 7, esempio completo passo per passo** in tutte e
+  sette le lingue: un appartamento di sette vani con facciata inclinata e angolo
+  smussato, perimetro rilevato con la stazione totale, muri pieni con il retino e
+  sei porte. Disegno di partenza, tabella di come ogni vano si collega, misure del
+  vano 1, tabella delle porte e dieci passi dal rilievo al calcolo.
+
 ## [0.9.5] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

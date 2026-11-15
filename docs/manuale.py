@@ -276,6 +276,80 @@ def plan_obstacle():
 
 # ── Testo ──────────────────────────────────────────────────────────────────
 
+# ── Esempio completo: sette vani dentro un perimetro rilevato ───────────────
+EX_OUTER = [(0.8, 0.0), (15.0, 0.0), (15.0, 8.0), (13.4, 8.0), (13.4, 11.6), (10.8, 14.0), (0.0, 14.0)]
+EX_ROOMS = {
+    1: [(0.898, 5.3), (5.0, 5.3), (5.0, 13.6), (0.424, 13.6)],
+    2: [(5.3, 8.3), (9.4, 8.3), (9.4, 13.6), (5.3, 13.6)],
+    3: [(9.7, 7.9), (13.0, 7.9), (13.0, 11.425), (10.644, 13.6), (9.7, 13.6)],
+    4: [(1.178, 0.4), (5.0, 0.4), (5.0, 5.0), (0.915, 5.0)],
+    5: [(5.3, 0.4), (9.4, 0.4), (9.4, 8.0), (5.3, 8.0)],
+    6: [(9.7, 4.3), (14.6, 4.3), (14.6, 7.6), (9.7, 7.6)],
+    7: [(9.7, 0.4), (14.6, 0.4), (14.6, 4.0), (9.7, 4.0)],
+}
+HATCH = colors.HexColor("#f3e27a")
+# Porte: nome, rettangolo del varco nel muro, cerniera, battuta, verso l'apertura.
+EX_DOORS = [
+    ("P1", [(5.0, 2.0), (5.3, 2.0), (5.3, 2.9), (5.0, 2.9)], (5.3, 2.0), (5.3, 2.9), (1, 0)),
+    ("P2", [(6.6, 8.0), (7.5, 8.0), (7.5, 8.3), (6.6, 8.3)], (6.6, 8.3), (7.5, 8.3), (0, 1)),
+    ("P3", [(9.4, 5.4), (9.7, 5.4), (9.7, 6.3), (9.4, 6.3)], (9.7, 5.4), (9.7, 6.3), (1, 0)),
+    ("P4", [(9.4, 1.4), (9.7, 1.4), (9.7, 2.3), (9.4, 2.3)], (9.7, 1.4), (9.7, 2.3), (1, 0)),
+    ("P5", [(3.0, 5.0), (3.9, 5.0), (3.9, 5.3), (3.0, 5.3)], (3.0, 5.3), (3.9, 5.3), (0, 1)),
+    ("P6", [(11.0, 7.6), (11.8, 7.6), (11.8, 7.9), (11.0, 7.9)], (11.0, 7.9), (11.8, 7.9), (0, 1)),
+]
+EX_WINDOWS = [((2.0, 13.8), (3.4, 13.8)), ((6.6, 13.8), (8.0, 13.8)), ((11.6, 12.75), (12.6, 11.83)),
+              ((2.4, 0.2), (3.6, 0.2)), ((6.6, 0.2), (7.8, 0.2)), ((14.8, 5.4), (14.8, 6.6)),
+              ((11.4, 0.2), (12.8, 0.2)), ((14.8, 1.6), (14.8, 2.8)), ((0.36, 9.0), (0.27, 10.6))]
+
+
+def plan_example():
+    pl = Plan(164, (-0.6, -0.9, 15.8, 14.9))
+    pl.poly(EX_OUTER, WALL, 1.4, fill=HATCH)
+    for pts in EX_ROOMS.values():
+        pl.poly(pts, INK, 0.8, fill=colors.white)
+    for name, gap, hinge, other, inward in EX_DOORS:
+        pl.poly(gap, colors.white, 0.1, fill=colors.white)
+        pl.door(hinge, other, inward, SIDE)
+        cx = sum(p[0] for p in gap) / 4
+        cy = sum(p[1] for p in gap) / 4
+        pl.text((cx - 0.55 * inward[0] + 0.0, cy - 0.55 * inward[1] + (0.0 if inward[1] else 0.0)), name, 5.5, SIDE, bold=True)
+    for a, b in EX_WINDOWS:
+        pl.line(a, b, SIDE, 2.4)
+    for r, pts in EX_ROOMS.items():
+        cx = sum(p[0] for p in pts) / len(pts)
+        cy = sum(p[1] for p in pts) / len(pts)
+        pl.text((cx, cy), str(r), 15, ACCENT, bold=True)
+        for i in range(len(pts)):
+            pl.text(inside_offset(pts, i, 0.38), chr(65 + i), 6, INK)
+    for k, q in enumerate(EX_OUTER):
+        pl.dot(q, 1.6, ACCENT)
+        dx = -0.35 if q[0] < 7 else 0.35
+        dy = -0.35 if q[1] < 7 else 0.35
+        pl.text((q[0] + dx, q[1] + dy), f"E{k + 1}", 6, ACCENT, bold=True)
+    pl.text((7.6, -0.7), T["ex_fig"], 6.5, GREY)
+    return pl.d
+
+
+def ex_rows(t):
+    """Come rows(), con anche l'intestazione che va a capo."""
+    out = rows(t)
+    out[0] = [cell(f"<b>{c}</b>") for c in t[0]]
+    return out
+
+
+def ex_section():
+    s = [PageBreak(), P(T["ex_h"], h1), P(T["ex_p"]), plan_example(), P(T["ex_cap"], cap)]
+    s += [table(ex_rows(T["ex_ties"]), [16, 48, 58, 42]), Spacer(1, 3 * mm), P(T["ex_ties_note"])]
+    for k, (title, text) in enumerate(T["ex_steps"], 1):
+        s += [P(f"{k}. {title}", h2), P(text)]
+        if k == T["ex_room_step"]:
+            s += [table(ex_rows(T["ex_room1"]), [60, 30, 74]), Spacer(1, 2 * mm)]
+        if k == T["ex_door_step"]:
+            s += [table(ex_rows(T["ex_doors"]), [14, 50, 50, 24, 26]), Spacer(1, 2 * mm)]
+    s += [P(T["ex_end"])]
+    return s
+
+
 def table(rows, widths, head=True):
     t = Table(rows, colWidths=[w * mm for w in widths])
     st = [
@@ -382,6 +456,7 @@ def build(lang):
           Spacer(1, 4 * mm),
           P(T["h_list"], h2)]
     s += bullets(T["list"])
+    s += ex_section()
     s += [Spacer(1, 6 * mm), P(T["end"], small)]
 
     doc = SimpleDocTemplate(out, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm,
