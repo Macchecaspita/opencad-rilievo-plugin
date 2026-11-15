@@ -135,6 +135,13 @@ fn centroid(p: &[P2]) -> P2 {
 
 static SAVED: Mutex<Option<HashMap<String, Saved>>> = Mutex::new(None);
 static PENDING: Mutex<Option<(Vec<Handle>, Saved)>> = Mutex::new(None);
+/// The letter height last chosen in Corner letters, used by the next
+/// calculations too.
+static LETTER_H: Mutex<Option<f64>> = Mutex::new(None);
+
+pub fn letter_height() -> Option<f64> {
+    *LETTER_H.lock().unwrap_or_else(|e| e.into_inner())
+}
 /// The last measures book (CSV text) and its suggested file.
 static LAST_BOOK: Mutex<Option<(String, String)>> = Mutex::new(None);
 /// The last calculation, for "apply to the drawing": per room, the original
@@ -328,8 +335,27 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
             // The rooms were chosen with the CAD's selection: clear it.
             let _ = host.set_selection(&[]);
-            if !hs.is_empty() {
-                labels_only(host, &hs);
+            if hs.is_empty() {
+                return true;
+            }
+            // Second word: the letter height chosen in the small dialog.
+            match rest.split_whitespace().nth(1).and_then(parse_num) {
+                Some(h) if h > 0.0 => {
+                    *LETTER_H.lock().unwrap_or_else(|e| e.into_inner()) = Some(h);
+                    if let Some(mut s) = saved_for(&hs) {
+                        s.h = h;
+                        remember(&hs, s);
+                    }
+                    labels_only(host, &hs, h);
+                }
+                _ => match fetch_rooms(host, &hs) {
+                    Some(rooms) => {
+                        let auto = sizes_for(&rooms.iter().map(|r| r.pts.clone()).collect::<Vec<_>>()).0;
+                        let h = saved_for(&hs).map(|s| s.h).or_else(letter_height).unwrap_or(auto);
+                        host.start_interactive(Box::new(tools::LetterSizeDialog::new(key(&hs), h, auto)));
+                    }
+                    None => host.push_error(tr!("RV_ETICHETTE: un vano scelto non è più nel disegno.", "RV_ETICHETTE: a chosen room is no longer in the drawing.")),
+                },
             }
         }
         "RV_VANOAPPLY" => {
@@ -492,6 +518,7 @@ fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, st
             let all: Vec<P2> = rooms.iter().flat_map(|r| r.pts.iter().copied()).collect();
             let longest = sizes_for(&rooms.iter().map(|r| r.pts.clone()).collect::<Vec<_>>());
             let (h, tol) = if all.is_empty() { (1.0, 0.01) } else { longest };
+            let h = letter_height().unwrap_or(h);
             let (sides, others) = survey.initial(decimals(tol), &fmt_num);
             let longest = rooms.iter().flat_map(|r| (0..r.pts.len()).map(move |i| solve::dist(r.pts[i], r.pts[(i + 1) % r.pts.len()]))).fold(0.0f64, f64::max);
             Saved {
@@ -526,13 +553,12 @@ fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, st
     host.start_interactive(Box::new(tools::MeasureDialog::new(hs.to_vec(), &survey, &saved, msg).starting(start)));
 }
 
-fn labels_only(host: &mut dyn HostApi, hs: &[Handle]) {
+fn labels_only(host: &mut dyn HostApi, hs: &[Handle], h: f64) {
     let Some(rooms) = fetch_rooms(host, hs) else {
         host.push_error(tr!("RV_ETICHETTE: un vano scelto non è più nel disegno.", "RV_ETICHETTE: a chosen room is no longer in the drawing."));
         return;
     };
     let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
-    let h = saved_for(hs).map(|s| s.h).unwrap_or_else(|| sizes_for(&rooms.iter().map(|r| r.pts.clone()).collect::<Vec<_>>()).0);
     host.begin_undo_group("RV_ETICHETTE");
     write_labels(host, &rooms, &survey, h);
     host.end_undo_group();
@@ -615,25 +641,40 @@ fn existing_leaders(host: &dyn HostApi) -> Vec<(Handle, P2)> {
 /// Letters (with leaders where moved) and, with several rooms, room titles,
 /// placed so that none covers another.
 fn label_entities(rooms: &[Vec<P2>], survey: &Survey, h: f64, z: f64, layer: &str, letter_h: f64, area_unit: Option<usize>) -> Vec<EntityType> {
+    // Room name and area, fitted inside the room with some room to spare.
     let mut titles: Vec<(String, P2, f64)> = Vec::new();
+    let mut title_ents: Vec<EntityType> = Vec::new();
     for (r, pts) in rooms.iter().enumerate() {
-        let c = centroid(pts);
-        let has_title = survey.multi();
-        if has_title {
-            titles.push((room_title(r), c, h * 1.4));
+        let mut lines: Vec<(String, f64)> = Vec::new();
+        if survey.multi() {
+            lines.push((room_title(r), 1.4));
         }
         if let Some(u) = area_unit {
             let f = survey::unit_factor(u);
             let area = solve::signed_area(pts).abs() * f * f;
-            let at = if has_title { [c[0], c[1] - h * 1.9] } else { c };
-            titles.push((format!("{} m²", fmt_num(area, 2)), at, h * 1.1));
+            lines.push((format!("{} m²", fmt_num(area, 2)), 1.1));
+        }
+        if lines.is_empty() {
+            continue;
+        }
+        let spec: Vec<(usize, f64)> = lines.iter().map(|(t, k)| (t.chars().count(), *k)).collect();
+        let fit = labels::fit_block(pts, &spec, h, centroid(pts));
+        for ((t, _), (at, hh)) in lines.iter().zip(fit.at.iter().zip(&fit.heights)) {
+            let mut e = mtext(t, *at, z, *hh, AttachmentPoint::MiddleCenter, layer);
+            if fit.vertical {
+                if let EntityType::MText(m) = &mut e {
+                    m.rotation = std::f64::consts::FRAC_PI_2;
+                }
+            }
+            title_ents.push(e);
+            // Letters keep clear of the title (as a circle around each line).
+            titles.push((t.clone(), *at, *hh));
         }
     }
     // On the drawing the corners carry the letter only: the room's number is
     // in its title, and "1B" would double the text to fit between corners.
     let names: Vec<Vec<String>> = rooms.iter().map(|pts| (0..pts.len()).map(solve::label).collect()).collect();
-    let mut out: Vec<EntityType> =
-        titles.iter().map(|(t, at, hh)| mtext(t, *at, z, *hh, AttachmentPoint::MiddleCenter, layer)).collect();
+    let mut out: Vec<EntityType> = title_ents;
     for p in labels::place(rooms, &names, letter_h, &titles) {
         out.push(mtext(&p.text, p.at, z, p.height, AttachmentPoint::MiddleCenter, layer));
         if let Some((a, b)) = p.leader {
@@ -671,7 +712,15 @@ fn remove_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey, h: f64
         if survey.multi() {
             targets.push((room_title(r), centroid(&room.pts)));
         }
+        let title = room_title(r);
         for (name, near) in targets {
+            // A room's name may sit anywhere inside it.
+            if name == title {
+                if let Some((hd, _, _)) = have.iter().find(|(hd, v, p)| *v == title && !gone.contains(hd) && point_in_polygon(&room.pts, *p)) {
+                    gone.push(*hd);
+                    continue;
+                }
+            }
             let best = have
                 .iter()
                 .filter(|(hd, v, _)| *v == name && !gone.contains(hd))

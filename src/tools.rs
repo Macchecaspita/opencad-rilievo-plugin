@@ -1414,6 +1414,75 @@ impl InteractiveCommand for MeasureDialog {
     }
 }
 
+// ── Letter size ─────────────────────────────────────────────────────────────
+
+/// Asks the height of the corner letters before writing them. Texts in a
+/// drawing have a height in drawing units: they grow with the zoom like the
+/// lines. A smaller height keeps them apart where corners crowd together.
+pub struct LetterSizeDialog {
+    key: String,
+    def: DialogDef,
+    done: bool,
+}
+
+impl LetterSizeDialog {
+    pub fn new(key: String, h: f64, auto: f64) -> Self {
+        let fmt = |v: f64| commands::fmt_num(v, 3);
+        let def = DialogDef::new(tr!("Lettere vertici — dimensione", "Corner letters — size"))
+            .with_control(info(tr!(
+                format!(
+                    "Altezza delle lettere, nelle unità del disegno. Proposta per questi vani: {}. Se le lettere si \
+                     ammucchiano su riseghe e spigoli vicini, rimpiccioliscile (per esempio alla metà); se si leggono male \
+                     stampate, ingrandiscile. Rieseguendo il comando le lettere vengono riscritte con la nuova altezza.",
+                    fmt(auto)
+                ),
+                format!(
+                    "Letter height, in drawing units. Proposed for these rooms: {}. If the letters crowd on recesses and \
+                     close corners, make them smaller (for example half); if they read badly in print, make them bigger. \
+                     Running the command again rewrites the letters at the new height.",
+                    fmt(auto)
+                )
+            )))
+            .with_control(DialogControl::Number {
+                id: "h".into(),
+                label: tr!("Altezza lettere", "Letter height").into(),
+                default: h,
+                min: Some(0.0),
+                max: None,
+                step: Some(auto / 4.0),
+            })
+            .submit_label(tr!("Scrivi le lettere", "Write the letters"))
+            .cancel_label(tr!("Annulla", "Cancel"))
+            .width(520.0);
+        LetterSizeDialog { key, def, done: false }
+    }
+}
+
+impl InteractiveCommand for LetterSizeDialog {
+    fn prompt(&self) -> String {
+        tr!("RV_ETICHETTE: scegli l'altezza delle lettere", "RV_ETICHETTE: choose the letter height").into()
+    }
+    fn on_point(&mut self, _pt: [f64; 3]) -> CommandStep {
+        CommandStep::NeedPoint
+    }
+    fn on_enter(&mut self) -> CommandStep {
+        CommandStep::Cancel
+    }
+    fn modal_dialog(&self) -> Option<DialogDef> {
+        (!self.done).then(|| self.def.clone())
+    }
+    fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
+        self.done = true;
+        let DialogResponse::Submitted(m) = response else {
+            return CommandStep::Cancel;
+        };
+        match get_num(&m, "h").filter(|v| *v > 0.0) {
+            Some(h) => deferred("RV_ETICHETTEAPPLY", format!("{} {h}", self.key)),
+            None => CommandStep::Cancel,
+        }
+    }
+}
+
 // ── Measures book dialog ────────────────────────────────────────────────────
 
 pub struct BookDialog {
@@ -1502,9 +1571,11 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
             tr!("2. Lettere vertici", "2. Corner letters"),
             tr!(
                 "Seleziona i vani (un clic sulla linea, o una finestra per prenderne tanti; Invio): sugli angoli compaiono A, B, C … o, con più vani, 1A, \
-                 1B … 2A … Stampa la pianta e usala in cantiere per segnare le misure.",
+                 1B … 2A … Una piccola finestra chiede l'altezza delle lettere: rimpiccioliscile dove gli spigoli sono fitti. \
+                 Stampa la pianta e usala in cantiere per segnare le misure.",
                 "Select the rooms (click a line, or drag a window for many; Enter): A, B, C … or, with several rooms, 1A, 1B … 2A … \
-                 appear at the corners. Print the plan and use it on site to note the measures."
+                 appear at the corners. A small window asks the letter height: make it smaller where corners crowd together. \
+                 Print the plan and use it on site to note the measures."
             ),
         ),
         (

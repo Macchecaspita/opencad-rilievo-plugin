@@ -12,6 +12,22 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.6.3] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Nome del vano (e superficie) sempre dentro il vano**, con un margine libero
+  verso i lati: il testo si sposta nella parte del vano dove sta (per esempio nel
+  braccio più largo di una L), si rimpicciolisce quanto serve e, nei vani lunghi
+  e stretti come i corridoi, si scrive in verticale.
+- **Lettere vertici chiede l'altezza delle lettere**, con una proposta calcolata
+  sui vani: si possono rimpicciolire dove gli spigoli sono fitti. L'altezza scelta
+  vale anche per i calcoli successivi; rieseguendo il comando le lettere vengono
+  riscritte.
+
 ## [0.6.2] - 2026-11-14
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
