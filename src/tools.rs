@@ -15,7 +15,7 @@ use ocs_plugin_api::host::{CommandStep, InteractiveCommand, PreviewWire};
 
 use crate::commands::{self, Room};
 use crate::solve::{self, P2};
-use crate::survey::{Saved, Survey};
+use crate::survey::{self, Saved, Survey};
 
 const GREEN: [f32; 4] = [0.45, 0.85, 0.45, 1.0];
 
@@ -613,6 +613,45 @@ impl InteractiveCommand for PickDoorTool {
     }
 }
 
+/// Click on the outer outline surveyed exactly (a closed polyline); then
+/// the measures dialog opens again on the outer walls page.
+pub struct PickOuterTool {
+    key: String,
+}
+
+impl PickOuterTool {
+    pub fn new(key: String) -> Self {
+        PickOuterTool { key }
+    }
+}
+
+impl InteractiveCommand for PickOuterTool {
+    fn prompt(&self) -> String {
+        tr!(
+            "Poligono esterno: clicca sulla polilinea chiusa rilevata con la stazione totale (resterà ferma). Invio per tornare alla finestra",
+            "Outer outline: click the closed polyline surveyed with the total station (it will not move). Enter to go back to the window",
+            "Polígono exterior: haga clic en la polilínea cerrada levantada con la estación total (no se moverá). Intro para volver a la ventana",
+            "Polygone extérieur : cliquez sur la polyligne fermée relevée à la station totale (elle ne bougera pas). Entrée pour revenir à la fenêtre",
+            "Dış poligon: total station ile ölçülen kapalı çoklu çizgiye tıklayın (yerinden oynamaz). Pencereye dönmek için Enter",
+            "Polígono exterior: clique na polilinha fechada levantada com a estação total (não se moverá). Enter para voltar à janela",
+            "Obrys zewnętrzny: kliknij zamkniętą polilinię zmierzoną tachimetrem (nie zostanie przesunięta). Enter, aby wrócić do okna",
+        )
+        .to_string()
+    }
+    fn on_point(&mut self, _pt: [f64; 3]) -> CommandStep {
+        CommandStep::NeedPoint
+    }
+    fn needs_object_pick(&self) -> bool {
+        true
+    }
+    fn on_object_pick(&mut self, handle: Handle, _pt: [f64; 3]) -> CommandStep {
+        deferred("RV_ESTERNOSET", format!("{}|{:X}", self.key, handle.value()))
+    }
+    fn on_enter(&mut self) -> CommandStep {
+        deferred("RV_VANOREOPEN", self.key.clone())
+    }
+}
+
 // ── Measures dialog ─────────────────────────────────────────────────────────
 
 fn tf(id: String, label: String, default: String) -> DialogControl {
@@ -662,6 +701,7 @@ fn cell(row: &[String], c: usize) -> String {
 pub enum Start {
     Hub,
     Door(DoorSpot),
+    Outer,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -672,6 +712,7 @@ enum Page {
     Openings,
     Options,
     Door(DoorSpot),
+    Outer,
     Done,
 }
 
@@ -682,6 +723,8 @@ enum Action {
     Links,
     Openings,
     Options,
+    PickOuter,
+    Outer,
     Compute,
 }
 
@@ -712,10 +755,10 @@ impl MeasureDialog {
 
     /// Open on the door page for a wall clicked on the drawing.
     pub fn starting(mut self, start: Start) -> Self {
-        if let Start::Door(spot) = start {
-            if spot.fits(&self.survey) {
-                self.page = Page::Door(spot);
-            }
+        match start {
+            Start::Door(spot) if spot.fits(&self.survey) => self.page = Page::Door(spot),
+            Start::Outer if self.survey.outer >= 3 => self.page = Page::Outer,
+            _ => {}
         }
         self
     }
@@ -815,7 +858,10 @@ impl MeasureDialog {
         let (per, _) = self.split_others();
         let diags = per[r].iter().filter(|row| !cell(row, 3).is_empty()).count();
         let cons = self.split_cons()[r].iter().filter(|row| !cell(row, 0).is_empty() && !cell(row, 1).is_empty()).count();
-        let need = n.saturating_sub(3);
+        // Sides along the fixed outline: two of them place the room and fix
+        // its turn, so fewer diagonals are needed.
+        let k = self.outer_rows_of(r);
+        let need = if k >= 2 { n.saturating_sub(2 * k) } else { n.saturating_sub(3) };
         let have = diags + cons;
         if sides == n && have >= need {
             let extra = have - need;
@@ -833,8 +879,17 @@ impl MeasureDialog {
             if have < need {
                 parts.push(tr!(format!("{} diagonali o vincoli", need - have), format!("{} diagonals or constraints", need - have), format!("{} diagonales o restricciones", need - have), format!("{} diagonales ou contraintes", need - have), format!("{} köşegen veya kısıt", need - have), format!("{} diagonais ou restrições", need - have), format!("{} przekątnych lub warunków", need - have)));
             }
-            (false, tr!(format!("✘ mancano {}", parts.join(" e ")), format!("✘ missing {}", parts.join(" and ")), format!("✘ faltan {}", parts.join(" and ")), format!("✘ il manque {}", parts.join(" and ")), format!("✘ eksik {}", parts.join(" and ")), format!("✘ faltam {}", parts.join(" and ")), format!("✘ brakuje {}", parts.join(" and "))))
+            let and = tr!(" e ", " and ", " y ", " et ", " ve ", " e ", " i ");
+            (false, tr!(format!("✘ mancano {}", parts.join(and)), format!("✘ missing {}", parts.join(and)), format!("✘ faltan {}", parts.join(and)), format!("✘ il manque {}", parts.join(and)), format!("✘ eksik {}", parts.join(and)), format!("✘ faltam {}", parts.join(and)), format!("✘ brakuje {}", parts.join(and))))
         }
+    }
+
+    /// Outer-wall rows on room `r`'s sides.
+    fn outer_rows_of(&self, r: usize) -> usize {
+        if self.survey.outer < 3 {
+            return 0;
+        }
+        self.saved.outer_walls.iter().filter(|row| self.survey.parse_room_side(&cell(row, 0)).is_some_and(|x| x.0 == r)).count()
     }
 
     /// Rooms (1-based) the measures do not tie to room 1 yet.
@@ -896,6 +951,31 @@ impl MeasureDialog {
         if self.saved.openings.iter().any(|r| filled(r, &[0, 1, 2, 3, 4, 5])) {
             acts.push(Action::Openings);
             labels.push(tr!("Modifica o elimina porte e finestre", "Edit or delete doors and windows", "Modificar o borrar puertas y ventanas", "Modifier ou supprimer portes et fenêtres", "Kapı ve pencereleri düzenle veya sil", "Alterar ou apagar portas e janelas", "Zmień lub usuń drzwi i okna").to_string());
+        }
+        if self.survey.outer >= 3 {
+            acts.push(Action::Outer);
+            labels.push(tr!(
+                "Muri esterni: spessore verso il poligono esterno fisso",
+                "Outer walls: thickness towards the fixed outer outline",
+                "Muros exteriores: espesor hacia el polígono exterior fijo",
+                "Murs extérieurs : épaisseur vers le polygone extérieur fixe",
+                "Dış duvarlar: sabit dış poligona olan kalınlık",
+                "Paredes exteriores: espessura até ao polígono exterior fixo",
+                "Ściany zewnętrzne: grubość do stałego obrysu zewnętrznego",
+            )
+            .to_string());
+        } else {
+            acts.push(Action::PickOuter);
+            labels.push(tr!(
+                "Poligono esterno fisso, da rilievo celerimetrico (clic sul disegno)",
+                "Fixed outer outline, from a total-station survey (click on the drawing)",
+                "Polígono exterior fijo, de levantamiento taquimétrico (clic en el dibujo)",
+                "Polygone extérieur fixe, issu d'un relevé tachéométrique (clic sur le dessin)",
+                "Sabit dış poligon, takeometrik ölçümden (çizime tıkla)",
+                "Polígono exterior fixo, de levantamento taqueométrico (clique no desenho)",
+                "Stały obrys zewnętrzny z pomiaru tachimetrem (kliknij na rysunku)",
+            )
+            .to_string());
         }
         if self.multi() {
             acts.push(Action::Links);
@@ -962,6 +1042,20 @@ impl MeasureDialog {
                 }
                 Err(e) => format!("⚠ {e}"),
             }));
+        }
+        if self.survey.outer >= 3 {
+            let n = self.saved.outer_walls.iter().filter(|r| !cell(r, 0).trim().is_empty()).count();
+            let t = if self.saved.outer_t.trim().is_empty() { "?".to_string() } else { self.saved.outer_t.trim().to_string() };
+            let m = self.survey.outer;
+            def = def.with_control(info(tr!(
+                format!("Poligono esterno fisso ({m} vertici, non viene modificato): {n} lati dei vani lungo i muri esterni, spessore {t}."),
+                format!("Fixed outer outline ({m} corners, never changed): {n} room sides along the outer walls, thickness {t}."),
+                format!("Polígono exterior fijo ({m} vértices, no se modifica): {n} lados de estancias junto a los muros exteriores, espesor {t}."),
+                format!("Polygone extérieur fixe ({m} sommets, jamais modifié) : {n} côtés de pièces le long des murs extérieurs, épaisseur {t}."),
+                format!("Sabit dış poligon ({m} köşe, değiştirilmez): dış duvarlar boyunca {n} oda kenarı, kalınlık {t}."),
+                format!("Polígono exterior fixo ({m} vértices, não é alterado): {n} lados de compartimentos junto às paredes exteriores, espessura {t}."),
+                format!("Stały obrys zewnętrzny ({m} wierzchołków, nie jest zmieniany): {n} boków pomieszczeń wzdłuż ścian zewnętrznych, grubość {t}."),
+            )));
         }
         let doors = self.opening_lines();
         if !doors.is_empty() {
@@ -1223,6 +1317,105 @@ impl MeasureDialog {
             .submit_label("OK ▸")
             .cancel_label(tr!("◂ Indietro", "◂ Back", "◂ Atrás", "◂ Retour", "◂ Geri", "◂ Voltar", "◂ Wstecz"))
             .width(660.0)
+    }
+
+    /// The outer-wall rows shown: the ones kept, then three spare ones.
+    fn outer_view(&self) -> Vec<Vec<String>> {
+        let mut rows: Vec<Vec<String>> = self.saved.outer_walls.iter().filter(|r| filled(r, &[0, 1])).cloned().collect();
+        let total = (rows.len() + 3).div_ceil(3) * 3;
+        rows.resize(total, vec![String::new(); 2]);
+        rows
+    }
+
+    fn outer_page(&self) -> DialogDef {
+        let mut def = DialogDef::new(tr!("Muri esterni", "Outer walls", "Muros exteriores", "Murs extérieurs", "Dış duvarlar", "Paredes exteriores", "Ściany zewnętrzne")).with_control(info(
+            tr!(
+                "Il poligono esterno, rilevato con la stazione totale, resta fermo. I lati dei vani scritti qui sotto restano \
+                 alla distanza dello spessore del muro dal lato del poligono esterno più vicino e parallelo: così i vani si \
+                 posizionano da soli dentro l'edificio. Il plugin ha proposto i lati vicini al poligono esterno: controllali, \
+                 svuota quelli sbagliati, aggiungi quelli mancanti. Uno spessore vuoto vale lo spessore dei muri esterni.",
+                "The outer outline, surveyed with a total station, stays still. The room sides written below stay at the \
+                 wall's thickness from the nearest parallel side of the outline: this way the rooms place themselves inside \
+                 the building. The plugin proposed the sides near the outline: check them, empty the wrong ones, add the \
+                 missing ones. An empty thickness means the thickness of the outer walls.",
+                "El polígono exterior, levantado con la estación total, queda fijo. Los lados de estancias escritos abajo se mantienen a la distancia del espesor del muro del lado del polígono exterior más cercano y paralelo: así las estancias se colocan solas dentro del edificio. El plugin ha propuesto los lados cercanos al polígono exterior: compruébelos, vacíe los equivocados, añada los que falten. Un espesor vacío vale el espesor de los muros exteriores.",
+                "Le polygone extérieur, relevé à la station totale, reste fixe. Les côtés de pièces écrits ci-dessous restent à l'épaisseur du mur du côté du polygone extérieur le plus proche et parallèle : ainsi les pièces se placent d'elles-mêmes dans le bâtiment. Le plugin a proposé les côtés proches du polygone extérieur : vérifiez-les, videz ceux qui sont faux, ajoutez ceux qui manquent. Une épaisseur vide vaut l'épaisseur des murs extérieurs.",
+                "Total station ile ölçülen dış poligon sabit kalır. Aşağıda yazılı oda kenarları, dış poligonun en yakın ve paralel kenarından duvar kalınlığı kadar uzakta kalır: böylece odalar binanın içine kendiliğinden yerleşir. Eklenti dış poligona yakın kenarları önerdi: kontrol edin, yanlış olanları boşaltın, eksik olanları ekleyin. Boş bir kalınlık, dış duvarların kalınlığı demektir.",
+                "O polígono exterior, levantado com a estação total, fica fixo. Os lados de compartimentos escritos abaixo ficam à distância da espessura da parede do lado do polígono exterior mais próximo e paralelo: assim os compartimentos colocam-se sozinhos dentro do edifício. O plugin propôs os lados próximos do polígono exterior: verifique-os, esvazie os errados, acrescente os que faltam. Uma espessura vazia vale a espessura das paredes exteriores.",
+                "Obrys zewnętrzny zmierzony tachimetrem pozostaje nieruchomy. Wpisane niżej boki pomieszczeń pozostają w odległości grubości ściany od najbliższego równoległego boku obrysu: dzięki temu pomieszczenia same ustawiają się wewnątrz budynku. Wtyczka zaproponowała boki bliskie obrysu: sprawdź je, opróżnij błędne, dodaj brakujące. Pusta grubość oznacza grubość ścian zewnętrznych.",
+            )
+            .to_string(),
+        ));
+        def = def.with_control(tf(
+            "outer_t".into(),
+            tr!("Spessore dei muri esterni", "Thickness of the outer walls", "Espesor de los muros exteriores", "Épaisseur des murs extérieurs", "Dış duvarların kalınlığı", "Espessura das paredes exteriores", "Grubość ścian zewnętrznych").into(),
+            self.saved.outer_t.clone(),
+        ));
+        let mut cells = Vec::new();
+        for (k, r) in self.outer_view().iter().enumerate() {
+            cells.push(tf(format!("o{k}_0"), tr!("Lato del vano", "Room side", "Lado de la estancia", "Côté de la pièce", "Oda kenarı", "Lado do compartimento", "Bok pomieszczenia").into(), cell(r, 0)));
+            cells.push(tf(format!("o{k}_1"), tr!("Spessore", "Thickness", "Espesor", "Épaisseur", "Kalınlık", "Espessura", "Grubość").into(), cell(r, 1)));
+        }
+        for row in grid(cells, 6) {
+            def = def.with_control(row);
+        }
+        def.with_control(checkbox(
+            "redo",
+            tr!(
+                "Proponi di nuovo i lati vicini al poligono esterno",
+                "Propose the sides near the outer outline again",
+                "Proponer de nuevo los lados cercanos al polígono exterior",
+                "Proposer de nouveau les côtés proches du polygone extérieur",
+                "Dış poligona yakın kenarları yeniden öner",
+                "Propor de novo os lados próximos do polígono exterior",
+                "Zaproponuj ponownie boki bliskie obrysu zewnętrznego",
+            ),
+            false,
+        ))
+        .with_control(checkbox(
+            "drop",
+            tr!(
+                "Non usare più il poligono esterno (per sceglierne un altro)",
+                "Stop using the outer outline (to choose another one)",
+                "Dejar de usar el polígono exterior (para elegir otro)",
+                "Ne plus utiliser le polygone extérieur (pour en choisir un autre)",
+                "Dış poligonu artık kullanma (başka birini seçmek için)",
+                "Deixar de usar o polígono exterior (para escolher outro)",
+                "Nie używaj już obrysu zewnętrznego (aby wybrać inny)",
+            ),
+            false,
+        ))
+        .submit_label("OK ▸")
+        .cancel_label(tr!("◂ Indietro", "◂ Back", "◂ Atrás", "◂ Retour", "◂ Geri", "◂ Voltar", "◂ Wstecz"))
+        .width(700.0)
+    }
+
+    fn read_outer(&mut self, m: &HashMap<String, DialogValue>) {
+        if get_bool(m, "drop", false) {
+            self.saved.outer.clear();
+            self.saved.outer_walls.clear();
+            self.survey = Survey::new(self.survey.rooms.clone());
+            return;
+        }
+        if m.contains_key("outer_t") {
+            self.saved.outer_t = get_text(m, "outer_t");
+        }
+        if get_bool(m, "redo", false) {
+            let t = commands::parse_num(&self.saved.outer_t).filter(|v| *v > 0.0).unwrap_or(0.30 / survey::unit_factor(self.saved.unit));
+            let o = self.survey.outline();
+            let longest = (0..o.len()).map(|i| solve::dist(o[i], o[(i + 1) % o.len()])).fold(0.0f64, f64::max);
+            self.saved.outer_walls = self.survey.suggest_outer_walls((4.0 * t).max(longest * 0.05));
+            return;
+        }
+        let mut rows = Vec::new();
+        for (k, old) in self.outer_view().iter().enumerate() {
+            let row: Vec<String> = (0..2).map(|c| if m.contains_key(&format!("o{k}_{c}")) { get_text(m, &format!("o{k}_{c}")) } else { cell(old, c) }).collect();
+            if !row[0].is_empty() {
+                // In a single room a bare "A-B" is enough; with several, "1A-1B".
+                rows.push(row);
+            }
+        }
+        self.saved.outer_walls = rows;
     }
 
     /// A name not used yet: P1, P2 … (F1 … for windows).
@@ -1567,6 +1760,7 @@ impl InteractiveCommand for MeasureDialog {
             Page::Openings => Some(self.openings_page()),
             Page::Options => Some(self.options_page()),
             Page::Door(spot) => Some(self.door_page(spot)),
+            Page::Outer => Some(self.outer_page()),
             Page::Done => None,
         }
     }
@@ -1584,6 +1778,11 @@ impl InteractiveCommand for MeasureDialog {
                     Action::Links => self.page = Page::Links,
                     Action::Openings => self.page = Page::Openings,
                     Action::Options => self.page = Page::Options,
+                    Action::Outer => self.page = Page::Outer,
+                    Action::PickOuter => {
+                        self.page = Page::Done;
+                        return deferred("RV_ESTERNOPICK", self.key());
+                    }
                     Action::AddDoor => {
                         self.page = Page::Done;
                         return deferred("RV_PORTAPICK", self.key());
@@ -1622,6 +1821,7 @@ impl InteractiveCommand for MeasureDialog {
                     Page::Links => self.read_links(&m),
                     Page::Openings => self.read_openings(&m),
                     Page::Options => self.read_options(&m),
+                    Page::Outer => self.read_outer(&m),
                     _ => {}
                 }
                 self.keep();
@@ -1883,6 +2083,24 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
             ),
         ),
         (
+            tr!("Poligono esterno fisso", "Fixed outer outline", "Polígono exterior fijo", "Polygone extérieur fixe", "Sabit dış poligon", "Polígono exterior fixo", "Stały obrys zewnętrzny"),
+            tr!(
+                "Se il perimetro esterno è stato rilevato con la stazione totale, disegnalo come polilinea chiusa e, nella \
+                 finestra delle misure, scegli \"Poligono esterno fisso\" e cliccalo: resta fermo. Scrivi lo spessore dei muri \
+                 esterni e controlla i lati dei vani proposti lungo il perimetro: nel calcolo restano a quella distanza dal \
+                 poligono esterno, e i vani si posizionano da soli dentro l'edificio, con meno diagonali.",
+                "If the outer perimeter was surveyed with a total station, draw it as a closed polyline and, in the measures \
+                 window, choose \"Fixed outer outline\" and click it: it stays still. Type the thickness of the outer walls and \
+                 check the room sides proposed along the perimeter: the calculation keeps them at that distance from the \
+                 outline, and the rooms place themselves inside the building, with fewer diagonals.",
+                "Si el perímetro exterior se ha levantado con la estación total, dibújelo como polilínea cerrada y, en la ventana de medidas, elija \"Polígono exterior fijo\" y haga clic en él: queda fijo. Escriba el espesor de los muros exteriores y compruebe los lados de las estancias propuestos a lo largo del perímetro: el cálculo los mantiene a esa distancia del polígono exterior, y las estancias se colocan solas dentro del edificio, con menos diagonales.",
+                "Si le périmètre extérieur a été relevé à la station totale, dessinez-le comme une polyligne fermée et, dans la fenêtre des mesures, choisissez \"Polygone extérieur fixe\" et cliquez dessus : il reste fixe. Saisissez l'épaisseur des murs extérieurs et vérifiez les côtés des pièces proposés le long du périmètre : le calcul les maintient à cette distance du polygone extérieur, et les pièces se placent d'elles-mêmes dans le bâtiment, avec moins de diagonales.",
+                "Dış çevre total station ile ölçüldüyse, onu kapalı bir çoklu çizgi olarak çizin ve ölçü penceresinde \"Sabit dış poligon\" seçip ona tıklayın: yerinden oynamaz. Dış duvarların kalınlığını girin ve çevre boyunca önerilen oda kenarlarını kontrol edin: hesap onları dış poligondan bu uzaklıkta tutar ve odalar daha az köşegenle binanın içine kendiliğinden yerleşir.",
+                "Se o perímetro exterior foi levantado com a estação total, desenhe-o como polilinha fechada e, na janela das medidas, escolha \"Polígono exterior fixo\" e clique nele: fica fixo. Escreva a espessura das paredes exteriores e verifique os lados dos compartimentos propostos ao longo do perímetro: o cálculo mantém-nos a essa distância do polígono exterior, e os compartimentos colocam-se sozinhos dentro do edifício, com menos diagonais.",
+                "Jeśli obrys zewnętrzny zmierzono tachimetrem, narysuj go jako zamkniętą polilinię i w oknie pomiarów wybierz \"Stały obrys zewnętrzny\", a następnie kliknij go: pozostaje nieruchomy. Wpisz grubość ścian zewnętrznych i sprawdź boki pomieszczeń zaproponowane wzdłuż obrysu: obliczenie utrzymuje je w tej odległości od obrysu, a pomieszczenia same ustawiają się wewnątrz budynku, z mniejszą liczbą przekątnych.",
+            ),
+        ),
+        (
             tr!("4. Risultato", "4. Result", "4. Resultado", "4. Résultat", "4. Sonuç", "4. Resultado", "4. Wynik"),
             tr!(
                 "I vani veri vanno sul layer RILIEVO_CORRETTO con la loro superficie in m²; il disegno originale resta. Porte \
@@ -2024,6 +2242,9 @@ mod tests {
             unit: 0,
             fill: true,
             replace: false,
+            outer: String::new(),
+            outer_t: String::new(),
+            outer_walls: vec![],
         }
     }
 

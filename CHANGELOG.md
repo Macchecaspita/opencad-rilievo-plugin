@@ -12,6 +12,28 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.8.0] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Poligono esterno fisso** (perimetro rilevato con la stazione totale): nella
+  finestra delle misure si sceglie *Poligono esterno fisso* e si clicca la sua
+  polilinea chiusa. Il poligono non viene mai spostato né modificato.
+- **Muri esterni**: si scrive lo spessore dei muri esterni (uno per tutti, oppure
+  lato per lato) e il plugin propone i lati dei vani che corrono lungo il poligono
+  esterno. Nel calcolo questi lati restano a quella distanza dal lato del poligono
+  più vicino e parallelo (vincolo forte, con il suo scarto in tabella): i vani si
+  posizionano da soli dentro l'edificio e servono meno diagonali (un vano d'angolo
+  rettangolare con due lati sul perimetro non ne richiede).
+- Nuova sezione nella guida (RV_GUIDE).
+
+### Corretto
+- Stato del vano nell'elenco: la congiunzione "e" era rimasta in inglese nelle
+  lingue diverse dall'italiano.
+
 ## [0.7.1] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

@@ -440,6 +440,23 @@ pub fn solve_network_weighted(
     n_real: usize,
     datum_hint: &[(usize, usize)],
 ) -> Result<Solution, SolveError> {
+    solve_network_fixed(init, meas, weights, n_real, datum_hint, &[])
+}
+
+/// Like [`solve_network_weighted`], with some points held where they are
+/// (`fixed[p]`): an outline surveyed exactly, for instance with a total
+/// station. A group holding two or more of them has no free movement on
+/// the sheet: its `m` free points are `2m` unknowns. Points that are all
+/// held are left alone.
+pub fn solve_network_fixed(
+    init: &[P2],
+    meas: &[Meas],
+    weights: &[f64],
+    n_real: usize,
+    datum_hint: &[(usize, usize)],
+    fixed: &[bool],
+) -> Result<Solution, SolveError> {
+    let held = |p: usize| fixed.get(p).copied().unwrap_or(false);
     let n = init.len();
     if n < 3 {
         return Err(SolveError::TooFewPoints);
@@ -455,6 +472,10 @@ pub fn solve_network_weighted(
     let mut redundancy = 0;
     let all_groups = groups(n, meas);
     for group in &all_groups {
+        let n_held = group.iter().filter(|&&p| held(p)).count();
+        if n_held == group.len() {
+            continue;
+        }
         let local: Vec<usize> = meas
             .iter()
             .enumerate()
@@ -464,11 +485,23 @@ pub fn solve_network_weighted(
         let gm: Vec<Meas> = local.iter().map(|&k| meas[k]).collect();
         let gw: Vec<f64> = local.iter().map(|&k| weights.get(k).copied().unwrap_or(1.0)).collect();
         let real_here = local.iter().filter(|&&k| k < n_real).count();
+        if n_held >= 2 {
+            let unknowns = 2 * (group.len() - n_held);
+            if local.len() < unknowns {
+                return Err(SolveError::NotEnough { needed: unknowns, have: local.len(), group: group.clone() });
+            }
+            let free: Vec<usize> = group.iter().copied().filter(|&p| !held(p)).collect();
+            let it = solve_group_fixed(&mut pts, group, &free, &gm, &gw)?;
+            iterations = iterations.max(it);
+            redundancy += real_here.saturating_sub(unknowns);
+            continue;
+        }
         let orients = gm.iter().any(Meas::orients);
         let unknowns = unknowns_of(group.len(), orients);
         if group.len() < 3 || local.len() < unknowns {
             return Err(SolveError::NotEnough { needed: unknowns.max(3), have: local.len(), group: group.clone() });
         }
+        let held_one = group.iter().copied().find(|&p| held(p));
         let (p0, p1) = datum_hint
             .iter()
             .copied()
@@ -486,6 +519,11 @@ pub fn solve_network_weighted(
                     .unwrap_or(group[1]);
                 (p0, p1)
             });
+        // One held point: it is the one that stays.
+        let (p0, p1) = match held_one {
+            Some(h) if h != p0 => (h, if p1 == h { p0 } else { p1 }),
+            _ => (p0, p1),
+        };
         let it = solve_group(&mut pts, group, &gm, &gw, p0, p1, orients)?;
         iterations = iterations.max(it);
         redundancy += real_here.saturating_sub(unknowns);
@@ -603,6 +641,59 @@ fn solve_group(pts: &mut [P2], group: &[usize], meas: &[Meas], weights: &[f64], 
         return Err(SolveError::NoConvergence);
     }
     Ok(iterations)
+}
+
+/// Gauss–Newton on a group tied to held points: only `free` move, two
+/// unknowns each.
+fn solve_group_fixed(pts: &mut [P2], group: &[usize], free: &[usize], meas: &[Meas], weights: &[f64]) -> Result<usize, SolveError> {
+    let unknowns = 2 * free.len();
+    let size = mean_size(meas).max(1e-12);
+    let col: std::collections::HashMap<usize, usize> = free.iter().enumerate().map(|(k, &p)| (p, 2 * k)).collect();
+    let mut converged = false;
+    let mut last_big = f64::INFINITY;
+    let mut iterations = 0;
+    for it in 1..=200 {
+        iterations = it;
+        let mut nm = vec![vec![0.0; unknowns]; unknowns];
+        let mut rhs = vec![0.0; unknowns];
+        for (x, &wt) in meas.iter().zip(weights) {
+            let (f, parts) = x.linearize(pts, size);
+            let w8 = x.scale(size) * wt;
+            let mut row: Vec<(usize, f64)> = Vec::with_capacity(8);
+            for (p, g) in parts {
+                if let Some(&c) = col.get(&p) {
+                    row.push((c, w8 * g[0]));
+                    row.push((c + 1, w8 * g[1]));
+                }
+            }
+            let w = w8 * (x.value() - f);
+            for &(c1, v1) in &row {
+                rhs[c1] += v1 * w;
+                for &(c2, v2) in &row {
+                    nm[c1][c2] += v1 * v2;
+                }
+            }
+        }
+        let Some(dx) = gauss(nm, rhs) else {
+            return Err(SolveError::NotRigid { group: group.to_vec() });
+        };
+        let big = dx.iter().fold(0.0f64, |a, v| a.max(v.abs()));
+        let k = if big > size { size / big } else { 1.0 };
+        for (&p, &c) in &col {
+            pts[p][0] += k * dx[c];
+            pts[p][1] += k * dx[c + 1];
+        }
+        last_big = big;
+        if big < size * 1e-10 {
+            converged = true;
+            break;
+        }
+    }
+    if converged || last_big < size * 1e-6 {
+        Ok(iterations)
+    } else {
+        Err(SolveError::NoConvergence)
+    }
 }
 
 /// Whether the segment p–q crosses the segment a–b at an inner point.

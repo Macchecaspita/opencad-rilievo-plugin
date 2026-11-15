@@ -21,6 +21,10 @@
 //!   an opening on a side, at a distance from the side's first corner. Two
 //!   doors with the same name in two rooms are the same door seen from both
 //!   sides: with the wall thickness they link the two rooms by themselves.
+//! * **Muri esterni** — `[side, thickness]`, with an outer outline surveyed
+//!   exactly (total station): its corners are held where they are, and the
+//!   room side keeps the given distance (the outer wall's thickness) from
+//!   the nearest outline side. Two measures per row, one per end.
 
 use crate::solve::{self, label, parse_label, At, Meas, P2};
 
@@ -49,6 +53,13 @@ pub struct Saved {
     pub fill: bool,
     /// Move the original polylines to the result straight away.
     pub replace: bool,
+    /// Handle (hex) of the outer outline surveyed exactly, held fixed; empty
+    /// when there is none.
+    pub outer: String,
+    /// Thickness of the outer walls, for the rows that leave it empty.
+    pub outer_t: String,
+    /// Rows `[room side, thickness]`: sides along the outer outline.
+    pub outer_walls: Vec<Vec<String>>,
 }
 
 /// Metres per drawing unit, for the areas.
@@ -110,6 +121,8 @@ pub enum Kind {
     Angle,
     Level,
     Door,
+    /// A room side at the outer wall's thickness from the fixed outline.
+    Outer,
 }
 
 /// One measure as typed, with its display name.
@@ -130,6 +143,8 @@ pub struct Survey {
     pub points: Vec<P2>,
     /// Display name of each global point (its first room's name).
     pub names: Vec<String>,
+    /// Corners of the fixed outer outline: the last `outer` points.
+    pub outer: usize,
 }
 
 impl Survey {
@@ -159,7 +174,98 @@ impl Survey {
             }
             point_of.push(ids);
         }
-        Survey { rooms, point_of, points, names }
+        Survey { rooms, point_of, points, names, outer: 0 }
+    }
+
+    /// Add the outer outline surveyed exactly: its corners (E1, E2 …) are
+    /// held fixed by the solver.
+    pub fn with_outer(mut self, outline: Vec<P2>) -> Self {
+        self.outer = outline.len();
+        for (k, p) in outline.into_iter().enumerate() {
+            self.points.push(p);
+            self.names.push(format!("E{}", k + 1));
+        }
+        self
+    }
+
+    /// Which points the solver must hold.
+    pub fn fixed(&self) -> Vec<bool> {
+        let first = self.points.len() - self.outer;
+        (0..self.points.len()).map(|p| p >= first).collect()
+    }
+
+    /// The outer outline's corners, as drawn.
+    pub fn outline(&self) -> &[P2] {
+        &self.points[self.points.len() - self.outer..]
+    }
+
+    /// The side of the outer outline that room side `a`–`b` (global points)
+    /// runs along: nearly parallel (within 15°), overlapping it, the nearest
+    /// one. Returns the outline side as global points and the drawn distance.
+    pub fn outer_side_for(&self, a: usize, b: usize) -> Option<(usize, usize, f64)> {
+        let m = self.outer;
+        if m < 3 {
+            return None;
+        }
+        let first = self.points.len() - m;
+        let (pa, pb) = (self.points[a], self.points[b]);
+        let l = solve::dist(pa, pb);
+        if l <= 0.0 {
+            return None;
+        }
+        let u = [(pb[0] - pa[0]) / l, (pb[1] - pa[1]) / l];
+        let mid = [(pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0];
+        let mut best: Option<(usize, usize, f64)> = None;
+        for k in 0..m {
+            let (p, q) = (first + k, first + (k + 1) % m);
+            let (pp, pq) = (self.points[p], self.points[q]);
+            let lo = solve::dist(pp, pq);
+            if lo <= 0.0 {
+                continue;
+            }
+            let v = [(pq[0] - pp[0]) / lo, (pq[1] - pp[1]) / lo];
+            if (u[0] * v[1] - u[1] * v[0]).abs() > 15f64.to_radians().sin() {
+                continue;
+            }
+            // The room side's ends, projected on the outline side.
+            let t = |x: P2| (x[0] - pp[0]) * v[0] + (x[1] - pp[1]) * v[1];
+            let (ta, tb) = (t(pa), t(pb));
+            let overlap = ta.max(tb).min(lo) - ta.min(tb).max(0.0);
+            if overlap < 0.3 * l.min(lo) {
+                continue;
+            }
+            let d = solve::perp_dist(mid, pp, pq);
+            if best.is_none_or(|b| d < b.2) {
+                best = Some((p, q, d));
+            }
+        }
+        best
+    }
+
+    /// The room sides that run along the outer outline, within `reach` of
+    /// it and inside it: the rows proposed for the outer walls.
+    pub fn suggest_outer_walls(&self, reach: f64) -> Vec<Vec<String>> {
+        let mut rows = Vec::new();
+        if self.outer < 3 {
+            return rows;
+        }
+        let outline = self.outline().to_vec();
+        for (r, ids) in self.point_of.iter().enumerate() {
+            let n = ids.len();
+            for i in 0..n {
+                let (a, b) = (ids[i], ids[(i + 1) % n]);
+                let mid = [(self.points[a][0] + self.points[b][0]) / 2.0, (self.points[a][1] + self.points[b][1]) / 2.0];
+                if !inside(&outline, mid) {
+                    continue;
+                }
+                if let Some((_, _, d)) = self.outer_side_for(a, b) {
+                    if d <= reach {
+                        rows.push(vec![format!("{}–{}", self.corner(r, i), self.corner(r, (i + 1) % n)), String::new()]);
+                    }
+                }
+            }
+        }
+        rows
     }
 
     pub fn multi(&self) -> bool {
@@ -372,7 +478,82 @@ impl Survey {
         }
         self.parse_constraints(saved, parse_num, &mut out)?;
         let openings = self.parse_openings(saved, parse_num, &mut out)?;
+        self.parse_outer(saved, parse_num, &mut out)?;
         Ok(Parsed { measures: out, openings })
+    }
+
+    /// Outer walls: each room side kept at the wall's thickness from the
+    /// fixed outline, at both ends.
+    fn parse_outer(&self, saved: &Saved, parse_num: &dyn Fn(&str) -> Option<f64>, out: &mut Vec<Measure>) -> Result<(), String> {
+        if self.outer < 3 {
+            return Ok(());
+        }
+        let default_t = parse_num(&saved.outer_t).filter(|v| *v > 0.0);
+        for (k, cells) in saved.outer_walls.iter().enumerate() {
+            let cell = |c: usize| cells.get(c).map(|s| s.trim().to_string()).unwrap_or_default();
+            let (side, th) = (cell(0), cell(1));
+            if side.is_empty() {
+                continue;
+            }
+            let r = k + 1;
+            let Some((room, i, j)) = self.parse_room_side(&side) else {
+                return Err(tr!(
+                    format!("muro esterno alla riga {r}: \"{side}\" non è un lato di un vano (scrivi due spigoli vicini, per esempio {}-{})", self.corner(0, 0), self.corner(0, 1)),
+                    format!("outer wall on row {r}: \"{side}\" is not a room side (write two neighbouring corners, for example {}-{})", self.corner(0, 0), self.corner(0, 1)),
+                    format!("muro exterior en la fila {r}: \"{side}\" no es un lado de estancia (escriba dos esquinas contiguas, por ejemplo {}-{})", self.corner(0, 0), self.corner(0, 1)),
+                    format!("mur extérieur à la ligne {r} : \"{side}\" n'est pas un côté de pièce (écrivez deux angles voisins, par exemple {}-{})", self.corner(0, 0), self.corner(0, 1)),
+                    format!("{r}. satırdaki dış duvar: \"{side}\" bir oda kenarı değil (iki komşu köşe yazın, örneğin {}-{})", self.corner(0, 0), self.corner(0, 1)),
+                    format!("parede exterior na linha {r}: \"{side}\" não é um lado de compartimento (escreva dois cantos vizinhos, por exemplo {}-{})", self.corner(0, 0), self.corner(0, 1)),
+                    format!("ściana zewnętrzna w wierszu {r}: \"{side}\" nie jest bokiem pomieszczenia (wpisz dwa sąsiednie narożniki, np. {}-{})", self.corner(0, 0), self.corner(0, 1)),
+                ));
+            };
+            let t = if th.is_empty() { default_t } else { parse_num(&th).filter(|v| *v > 0.0) };
+            let Some(t) = t else {
+                return Err(if th.is_empty() {
+                    tr!(
+                        "scrivi lo spessore dei muri esterni".to_string(),
+                        "type the thickness of the outer walls".to_string(),
+                        "escriba el espesor de los muros exteriores".to_string(),
+                        "saisissez l'épaisseur des murs extérieurs".to_string(),
+                        "dış duvarların kalınlığını girin".to_string(),
+                        "escreva a espessura das paredes exteriores".to_string(),
+                        "wpisz grubość ścian zewnętrznych".to_string(),
+                    )
+                } else {
+                    tr!(
+                        format!("muro esterno {side}: lo spessore \"{th}\" non è una misura valida"),
+                        format!("outer wall {side}: the thickness \"{th}\" is not a valid measure"),
+                        format!("muro exterior {side}: el espesor \"{th}\" no es una medida válida"),
+                        format!("mur extérieur {side} : l'épaisseur \"{th}\" n'est pas une mesure valable"),
+                        format!("dış duvar {side}: \"{th}\" kalınlığı geçerli bir ölçü değil"),
+                        format!("parede exterior {side}: a espessura \"{th}\" não é uma medida válida"),
+                        format!("ściana zewnętrzna {side}: grubość \"{th}\" nie jest prawidłowym pomiarem"),
+                    )
+                });
+            };
+            let (a, b) = (self.point_of[room][i], self.point_of[room][j]);
+            let Some((p, q, _)) = self.outer_side_for(a, b) else {
+                return Err(tr!(
+                    format!("il lato {side} non corre lungo nessun lato del poligono esterno: toglilo dai muri esterni"),
+                    format!("side {side} does not run along any side of the outer outline: remove it from the outer walls"),
+                    format!("el lado {side} no va a lo largo de ningún lado del polígono exterior: quítelo de los muros exteriores"),
+                    format!("le côté {side} ne longe aucun côté du polygone extérieur : retirez-le des murs extérieurs"),
+                    format!("{side} kenarı dış poligonun hiçbir kenarı boyunca uzanmıyor: onu dış duvarlardan çıkarın"),
+                    format!("o lado {side} não segue nenhum lado do polígono exterior: retire-o das paredes exteriores"),
+                    format!("bok {side} nie biegnie wzdłuż żadnego boku obrysu zewnętrznego: usuń go ze ścian zewnętrznych"),
+                ));
+            };
+            let ext = tr!("est.", "ext.", "ext.", "ext.", "dış", "ext.", "zewn.");
+            let side_name = format!("{}–{}", self.corner(room, i), self.corner(room, j));
+            for c in [a, b] {
+                out.push(Measure {
+                    meas: Meas::Perp { p: c, a: p, b: q, d: t },
+                    name: format!("{ext} {side_name} · {} / {}–{}", self.names[c], self.names[p], self.names[q]),
+                    kind: Kind::Outer,
+                });
+            }
+        }
+        Ok(())
     }
 
     fn parse_constraints(&self, saved: &Saved, parse_num: &dyn Fn(&str) -> Option<f64>, out: &mut Vec<Measure>) -> Result<(), String> {
@@ -647,6 +828,21 @@ impl Survey {
     }
 }
 
+/// Whether point `p` lies inside polygon `poly`.
+pub fn inside(poly: &[P2], p: P2) -> bool {
+    let mut inside = false;
+    let n = poly.len();
+    let mut j = n.wrapping_sub(1);
+    for i in 0..n {
+        let (a, b) = (poly[i], poly[j]);
+        if (a[1] > p[1]) != (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0] {
+            inside = !inside;
+        }
+        j = i;
+    }
+    inside
+}
+
 fn corner_name(multi: bool, r: usize, i: usize) -> String {
     if multi {
         format!("{}{}", r + 1, label(i))
@@ -706,6 +902,63 @@ mod tests {
     }
 
     #[test]
+    fn rooms_held_at_the_outer_wall_thickness() {
+        // Outline surveyed exactly: 10 × 8. Two rooms drawn by eye inside it,
+        // the real ones 0,30 from the outer face, 0,10 apart.
+        let outline = vec![[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]];
+        let s = Survey::new(vec![
+            vec![[0.5, 0.2], [5.1, 0.4], [4.9, 7.5], [0.2, 7.8]],
+            vec![[5.3, 0.4], [9.6, 0.1], [9.8, 7.6], [5.2, 7.7]],
+        ])
+        .with_outer(outline.clone());
+        assert_eq!(s.names[8], "E1");
+        let walls = s.suggest_outer_walls(1.2);
+        let listed: Vec<&str> = walls.iter().map(|r| r[0].as_str()).collect();
+        assert_eq!(listed, ["1A–1B", "1C–1D", "1D–1A", "2A–2B", "2B–2C", "2C–2D"]);
+        let (sides, _) = s.initial(3, &fmt);
+        let mut sides = sides;
+        for (row, v) in sides.iter_mut().zip(["4,6", "7,4", "4,6", "7,4", "4,5", "7,4", "4,5", "7,4"]) {
+            row[2] = v.into();
+        }
+        let saved = Saved {
+            sides,
+            others: vec![],
+            h: 0.2,
+            tol: 0.02,
+            dims: true,
+            table: true,
+            csv: false,
+            csv_path: String::new(),
+            constraints: vec![],
+            openings: vec![],
+            unit: 0,
+            fill: true,
+            replace: false,
+            outer: "1".into(),
+            outer_t: "0,30".into(),
+            outer_walls: walls,
+        };
+        let p = s.parse(&saved, &num).unwrap();
+        assert_eq!(p.measures.iter().filter(|m| m.kind == Kind::Outer).count(), 12);
+        let meas: Vec<Meas> = p.measures.iter().map(|m| m.meas).collect();
+        let w: Vec<f64> = p.measures.iter().map(|m| if m.kind == Kind::Outer { 30.0 } else { 1.0 }).collect();
+        let sol = solve::solve_network_fixed(&s.points, &meas, &w, meas.len(), &s.datum(), &s.fixed()).unwrap();
+        let close = |a: P2, b: [f64; 2]| solve::dist(a, b) < 1e-6;
+        assert!(close(sol.pts[0], [0.3, 0.3]), "{:?}", sol.pts[0]);
+        assert!(close(sol.pts[2], [4.9, 7.7]), "{:?}", sol.pts[2]);
+        assert!(close(sol.pts[5], [9.7, 0.3]), "{:?}", sol.pts[5]);
+        assert!(close(sol.pts[4], [5.2, 0.3]), "{:?}", sol.pts[4]);
+        // The outline has not moved.
+        for (k, o) in outline.iter().enumerate() {
+            assert_eq!(sol.pts[8 + k], *o);
+        }
+        // Without a thickness the dialog says what is missing.
+        let mut no_t = saved.clone();
+        no_t.outer_t = String::new();
+        assert!(s.parse(&no_t, &num).is_err());
+    }
+
+    #[test]
     fn names_and_parsing() {
         let s = two();
         assert_eq!(s.names[0], "1A");
@@ -746,7 +999,7 @@ mod tests {
         others[0][3] = "5,0".into();
         others.push(vec!["1B-1C".into(), "2A".into(), "".into(), "0,30".into()]);
         others.push(vec!["1C".into(), "2a".into(), "".into(), "3,02".into()]);
-        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false };
+        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false, outer: String::new(), outer_t: String::new(), outer_walls: vec![] };
         let m = s.parse(&saved, &num).unwrap().measures;
         assert_eq!(m.len(), 8 + 3);
         assert_eq!(m[8].kind, Kind::Diagonal);
@@ -775,6 +1028,9 @@ mod tests {
             unit: 0,
             fill: true,
             replace: false,
+            outer: String::new(),
+            outer_t: String::new(),
+            outer_walls: vec![],
         };
         let e = s.parse(&saved, &num).unwrap_err();
         assert!(e.contains("1") && e.contains("\"A\""), "{e}");
@@ -820,6 +1076,9 @@ mod tests {
             unit: 0,
             fill: true,
             replace: false,
+            outer: String::new(),
+            outer_t: String::new(),
+            outer_walls: vec![],
         };
         let p = s.parse(&saved, &num).unwrap();
         let kinds: Vec<Kind> = p.measures.iter().map(|m| m.kind).collect();
@@ -856,6 +1115,9 @@ mod tests {
             unit: 0,
             fill: true,
             replace: false,
+            outer: String::new(),
+            outer_t: String::new(),
+            outer_walls: vec![],
         };
         assert!(s.parse(&saved, &num).unwrap_err().contains("P1"));
     }

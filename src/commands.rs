@@ -99,6 +99,50 @@ fn fetch_rooms(host: &dyn HostApi, hs: &[Handle]) -> Option<Vec<Room>> {
     hs.iter().map(|&h| fetch_room(host, h)).collect()
 }
 
+/// Weight of an outer-wall measure: the outline is surveyed exactly and the
+/// thickness is given, so the room keeps it.
+const OUTER_WEIGHT: f64 = 30.0;
+
+/// Add the fixed outer outline named in `saved`, read live from the drawing.
+/// When it is gone, the survey goes on without it and the message says so.
+fn add_outer(host: &dyn HostApi, survey: Survey, saved: &mut Saved) -> (Survey, Option<String>) {
+    if saved.outer.trim().is_empty() {
+        return (survey, None);
+    }
+    match parse_handle(&saved.outer).and_then(|h| fetch_room(host, h)) {
+        Some(o) => (survey.with_outer(o.pts), None),
+        None => {
+            saved.outer.clear();
+            (
+                survey,
+                Some(tr!(
+                    "il poligono esterno non è più nel disegno: sceglilo di nuovo",
+                    "the outer outline is no longer in the drawing: choose it again",
+                    "el polígono exterior ya no está en el dibujo: elíjalo de nuevo",
+                    "le polygone extérieur n'est plus dans le dessin : choisissez-le de nouveau",
+                    "dış poligon artık çizimde yok: yeniden seçin",
+                    "o polígono exterior já não está no desenho: escolha-o de novo",
+                    "obrysu zewnętrznego nie ma już na rysunku: wybierz go ponownie",
+                )
+                .to_string()),
+            )
+        }
+    }
+}
+
+/// Weights for the measures: outer walls held firmly.
+fn weights_of(measures: &[Measure]) -> Vec<f64> {
+    measures.iter().map(|m| if m.kind == Kind::Outer { OUTER_WEIGHT } else { 1.0 }).collect()
+}
+
+/// Reach within which a room side counts as running along the outline: four
+/// times a usual outer wall (30 cm), or 5 % of the outline's longest side.
+fn outer_reach(survey: &Survey, unit: usize) -> f64 {
+    let o = survey.outline();
+    let longest = (0..o.len()).map(|i| solve::dist(o[i], o[(i + 1) % o.len()])).fold(0.0f64, f64::max);
+    (4.0 * 0.30 / survey::unit_factor(unit)).max(longest * 0.05)
+}
+
 pub fn point_in_polygon(poly: &[P2], p: P2) -> bool {
     let mut inside = false;
     let n = poly.len();
@@ -342,6 +386,54 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                     host.start_interactive(Box::new(tools::PickDoorTool::new(pts, z, key(&hs))));
                 }
                 _ => host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing.", "RV_VANO: una estancia elegida ya no está en el dibujo.", "RV_VANO : une pièce choisie n'est plus dans le dessin.", "RV_VANO: seçilen bir oda artık çizimde yok.", "RV_VANO: um compartimento escolhido já não está no desenho.", "RV_VANO: wybranego pomieszczenia nie ma już na rysunku.")),
+            }
+        }
+        "RV_ESTERNOPICK" => {
+            let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            if !hs.is_empty() {
+                host.start_interactive(Box::new(tools::PickOuterTool::new(key(&hs))));
+            }
+        }
+        "RV_ESTERNOSET" => {
+            let a = arg.unwrap_or_default();
+            let mut parts = a.splitn(2, '|');
+            let hs = parse_handles(parts.next().unwrap_or(""));
+            let picked = parts.next().and_then(parse_handle);
+            if hs.is_empty() {
+                return true;
+            }
+            let msg = match picked {
+                Some(h) if hs.contains(&h) => Some(tr!(
+                    "quella polilinea è uno dei vani: scegli il poligono esterno, rilevato a parte",
+                    "that polyline is one of the rooms: choose the outer outline, surveyed apart",
+                    "esa polilínea es una de las estancias: elija el polígono exterior, levantado aparte",
+                    "cette polyligne est une des pièces : choisissez le polygone extérieur, relevé à part",
+                    "bu çoklu çizgi odalardan biri: ayrıca ölçülmüş dış poligonu seçin",
+                    "essa polilinha é um dos compartimentos: escolha o polígono exterior, levantado à parte",
+                    "ta polilinia to jedno z pomieszczeń: wybierz obrys zewnętrzny, zmierzony osobno",
+                )),
+                Some(h) if fetch_room(host, h).is_some() => {
+                    if let (Some(mut s), Some(rooms)) = (saved_for(&hs), fetch_rooms(host, &hs)) {
+                        s.outer = hex(h);
+                        let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect()).with_outer(fetch_room(host, h).map(|o| o.pts).unwrap_or_default());
+                        s.outer_walls = survey.suggest_outer_walls(outer_reach(&survey, s.unit));
+                        remember(&hs, s);
+                    }
+                    None
+                }
+                _ => Some(tr!(
+                    "lì non c'è una polilinea chiusa: il poligono esterno va disegnato come polilinea chiusa",
+                    "no closed polyline there: the outer outline must be a closed polyline",
+                    "ahí no hay ninguna polilínea cerrada: el polígono exterior debe ser una polilínea cerrada",
+                    "pas de polyligne fermée à cet endroit : le polygone extérieur doit être une polyligne fermée",
+                    "orada kapalı çoklu çizgi yok: dış poligon kapalı bir çoklu çizgi olmalı",
+                    "não há aí nenhuma polilinha fechada: o polígono exterior tem de ser uma polilinha fechada",
+                    "nie ma tu zamkniętej polilinii: obrys zewnętrzny musi być zamkniętą polilinią",
+                )),
+            };
+            match msg {
+                Some(m) => open_dialog_at(host, &hs, Some(m.to_string()), tools::Start::Hub, false),
+                None => open_dialog_at(host, &hs, None, tools::Start::Outer, false),
             }
         }
         "RV_PORTAOPEN" => {
@@ -633,6 +725,9 @@ fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, st
                 unit: survey::guess_unit(longest),
                 fill: true,
                 replace: false,
+                outer: String::new(),
+                outer_t: String::new(),
+                outer_walls: vec![],
             }
         }
     };
@@ -653,6 +748,10 @@ fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, st
         host.end_undo_group();
         host.set_dirty();
     }
+    let mut saved = saved;
+    let (survey, lost) = add_outer(host, survey, &mut saved);
+    let msg = msg.or(lost);
+    remember(hs, saved.clone());
     host.start_interactive(Box::new(tools::MeasureDialog::new(hs.to_vec(), &survey, &saved, msg).starting(start)));
 }
 
@@ -1049,6 +1148,7 @@ fn kind_name(k: Kind) -> &'static str {
         Kind::Angle => tr!("angolo", "angle", "ángulo", "angle", "açı", "ângulo", "kąt"),
         Kind::Level => tr!("orizzontale / verticale", "horizontal / vertical", "horizontal / vertical", "horizontal / vertical", "yatay / dikey", "horizontal / vertical", "poziomy / pionowy"),
         Kind::Door => tr!("porta comune", "shared door", "puerta común", "porte commune", "ortak kapı", "porta comum", "wspólne drzwi"),
+        Kind::Outer => tr!("muro esterno", "outer wall", "muro exterior", "mur extérieur", "dış duvar", "parede exterior", "ściana zewnętrzna"),
     }
 }
 
@@ -1074,7 +1174,14 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
         host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing.", "RV_VANO: una estancia elegida ya no está en el dibujo.", "RV_VANO : une pièce choisie n'est plus dans le dessin.", "RV_VANO: seçilen bir oda artık çizimde yok.", "RV_VANO: um compartimento escolhido já não está no desenho.", "RV_VANO: wybranego pomieszczenia nie ma już na rysunku."));
         return;
     };
-    let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
+    let mut saved = saved;
+    let (survey, lost) = add_outer(host, Survey::new(rooms.iter().map(|r| r.pts.clone()).collect()), &mut saved);
+    if let Some(msg) = lost {
+        remember(hs, saved.clone());
+        host.push_error(&format!("RV_VANO: {msg}."));
+        open_dialog(host, hs, Some(msg));
+        return;
+    }
     let (measures, openings) = match survey.parse(&saved, &parse_num) {
         Ok(p) => (p.measures, p.openings),
         Err(msg) => {
@@ -1087,13 +1194,14 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     // When the measures leave part of the shape free (furniture in the way of
     // a diagonal…), finish it from the drawing if the user allows it.
     let mut filled: Option<String> = None;
-    let sol = match solve::solve_network(&survey.points, &meas, &survey.datum()) {
+    let weights = weights_of(&measures);
+    let sol = match solve::solve_network_fixed(&survey.points, &meas, &weights, meas.len(), &survey.datum(), &survey.fixed()) {
         Ok(s) => s,
         Err(e @ (SolveError::NotEnough { .. } | SolveError::NotRigid { .. }))
-            if saved.fill && solve_filled(&survey, &meas).is_some() =>
+            if saved.fill && solve_filled(&survey, &meas, &weights).is_some() =>
         {
             filled = Some(explain(&e, &survey, &measures));
-            solve_filled(&survey, &meas).unwrap()
+            solve_filled(&survey, &meas, &weights).unwrap()
         }
         Err(e) => {
             let msg = explain(&e, &survey, &measures);
@@ -1614,13 +1722,13 @@ fn rows_width(sol: &Solution, measures: &[Measure], dec: usize) -> usize {
 
 /// Solve with stand-ins from the drawing added (low weight), returning only
 /// the real measures' residuals.
-fn solve_filled(survey: &Survey, meas: &[Meas]) -> Option<Solution> {
+fn solve_filled(survey: &Survey, meas: &[Meas], weights: &[f64]) -> Option<Solution> {
     let extra = survey.stand_ins(meas);
     let mut all = meas.to_vec();
     all.extend(extra.iter().copied());
-    let mut w = vec![1.0; meas.len()];
+    let mut w = weights.to_vec();
     w.extend(std::iter::repeat_n(0.05, extra.len()));
-    let mut s = solve::solve_network_weighted(&survey.points, &all, &w, meas.len(), &survey.datum()).ok()?;
+    let mut s = solve::solve_network_fixed(&survey.points, &all, &w, meas.len(), &survey.datum(), &survey.fixed()).ok()?;
     s.residuals.truncate(meas.len());
     s.scaled.truncate(meas.len());
     Some(s)
@@ -1794,7 +1902,7 @@ fn dimension(host: &mut dyn HostApi, survey: &Survey, pts: &[P2], measures: &[Me
                     failed.push((a, b, at));
                 }
             }
-            (Kind::Angle | Kind::Level | Kind::Door, _) => {}
+            (Kind::Angle | Kind::Level | Kind::Door | Kind::Outer, _) => {}
             (_, Meas::Dist { i, j, .. }) => {
                 // Diagonals cross near the middle of a room, so the length
                 // goes at 35 % or 65 % of the way, alternately.
@@ -2025,7 +2133,7 @@ mod tests {
         ];
         let m: Vec<Meas> = meas.iter().map(|x| x.meas).collect();
         let sol = solve::solve_network(&survey.points, &m, &survey.datum()).unwrap();
-        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false };
+        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false, outer: String::new(), outer_t: String::new(), outer_walls: vec![] };
         let csv = book_csv(&survey, &sol, &meas, &[], &[], &saved, 3, Some("C:\\x.dwg"), None);
         assert!(csv.starts_with('\u{feff}'));
         assert!(csv.contains("A–C"));
