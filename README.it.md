@@ -123,7 +123,7 @@ e pubblica la release.
 
 ## Compatibilità
 
-Compilato contro `ocs_plugin_api` del tag **v2026.45** (Plugin API 16), come
+Compilato contro `ocs_plugin_api` del tag **v2026.45** (Plugin API 23), come
 Raster Tools 0.8.0. Per una versione successiva del CAD, aggiorna `rev` in
 `Cargo.toml` con il commit del nuovo tag e `api_version` in `plugin.toml`.
 

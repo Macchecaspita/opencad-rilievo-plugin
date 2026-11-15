@@ -12,6 +12,18 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.10.0] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Compilato per Open CAD Studio 2026.46** (Plugin API 23): con la 2026.46 la
+  0.9.x non si caricava ("codec types of wire schema"), perché Open CAD Studio
+  accetta solo plugin compilati con la sua stessa versione dei tipi del disegno.
+  Da questa versione serve Open CAD Studio 2026.46.
+
 ## [0.9.9] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

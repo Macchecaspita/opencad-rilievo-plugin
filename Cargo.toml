@@ -1,6 +1,6 @@
 [package]
 name = "opencad-rilievo-plugin"
-version = "0.9.9"
+version = "0.10.0"
 edition = "2021"
 description = "Room Survey add-on for Open CAD Studio — adjust a room drawn by eye to the measured sides and diagonals (least squares), with dimensions and a table of residuals."
 license = "GPL-3.0-only"
@@ -12,13 +12,13 @@ repository = "https://github.com/Macchecaspita/opencad-rilievo-plugin"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# Same pin as Raster Tools: the v2026.45 release tag commit (Plugin API 16).
+# Pinned to the v2026.46 release tag commit (Plugin API 23).
 # The host refuses a plugin whose codec types differ from its own, so a build
 # works only with the CAD release it was pinned to. To target a newer Open CAD
 # Studio release, replace `rev` with that release tag's commit
 # (`git ls-remote --tags https://github.com/HakanSeven12/OpenCADStudio`) and
 # update `api_version` in plugin.toml to the API_VERSION it exports.
-ocs_plugin_api = { git = "https://github.com/HakanSeven12/OpenCADStudio", rev = "fb0a667e269b6c924233ecd450a11dd7cba40eea", features = ["host"] }
+ocs_plugin_api = { git = "https://github.com/HakanSeven12/OpenCADStudio", rev = "8b4d27046040b27eb07d3faed7b7472bd7bdaea9", features = ["host"] }
 # Reads Open CAD Studio's settings.json to follow its interface language.
 serde_json = "1"
 
