@@ -251,6 +251,28 @@ pub fn sizes_for(rooms: &[Vec<P2>]) -> (f64, f64) {
     (nice(h), nice(longest / 250.0))
 }
 
+/// Corner letters are never taller than this share of the shortest side of
+/// the smallest room.
+pub const LETTER_CAP: f64 = 0.15;
+
+/// Largest corner-letter height for these rooms: 15 % of the shortest side
+/// of the smallest room (by area). Infinite when there is nothing to measure.
+pub fn letter_cap(rooms: &[Vec<P2>]) -> f64 {
+    rooms
+        .iter()
+        .filter(|p| p.len() >= 3)
+        .map(|p| (solve::signed_area(p).abs(), p))
+        .filter(|(a, _)| *a > 0.0)
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .and_then(|(_, p)| {
+            (0..p.len())
+                .map(|i| solve::dist(p[i], p[(i + 1) % p.len()]))
+                .filter(|d| *d > 0.0)
+                .min_by(f64::total_cmp)
+        })
+        .map_or(f64::INFINITY, |d| d * LETTER_CAP)
+}
+
 /// Decimals to show for measures checked to `tol`: one more than the
 /// tolerance needs (0.02 → 3, 20 → 0).
 pub fn decimals(tol: f64) -> usize {
@@ -341,6 +363,21 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             // Second word: the letter height chosen in the small dialog.
             match rest.split_whitespace().nth(1).and_then(parse_num) {
                 Some(h) if h > 0.0 => {
+                    if let Some(rooms) = fetch_rooms(host, &hs) {
+                        let cap = letter_cap(&rooms.iter().map(|r| r.pts.clone()).collect::<Vec<_>>());
+                        if h > cap {
+                            let c = fmt_num(cap, 3);
+                            host.push_info(&tr!(
+                                format!("RV_ETICHETTE: lettere ridotte a {c}, il 15% del lato più corto del vano più piccolo."),
+                                format!("RV_ETICHETTE: letters reduced to {c}, 15% of the shortest side of the smallest room."),
+                                format!("RV_ETICHETTE: letras reducidas a {c}, el 15 % del lado más corto de la estancia más pequeña."),
+                                format!("RV_ETICHETTE : lettres réduites à {c}, 15 % du plus petit côté de la plus petite pièce."),
+                                format!("RV_ETICHETTE: harfler {c} değerine küçültüldü, en küçük odanın en kısa kenarının %15'i."),
+                                format!("RV_ETICHETTE: letras reduzidas a {c}, 15% do lado mais curto do compartimento mais pequeno."),
+                                format!("RV_ETICHETTE: litery zmniejszone do {c}, 15% najkrótszego boku najmniejszego pomieszczenia."),
+                            ));
+                        }
+                    }
                     *LETTER_H.lock().unwrap_or_else(|e| e.into_inner()) = Some(h);
                     if let Some(mut s) = saved_for(&hs) {
                         s.h = h;
@@ -350,8 +387,10 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                 }
                 _ => match fetch_rooms(host, &hs) {
                     Some(rooms) => {
-                        let auto = sizes_for(&rooms.iter().map(|r| r.pts.clone()).collect::<Vec<_>>()).0;
-                        let h = saved_for(&hs).map(|s| s.h).or_else(letter_height).unwrap_or(auto);
+                        let pts: Vec<Vec<P2>> = rooms.iter().map(|r| r.pts.clone()).collect();
+                        let cap = letter_cap(&pts);
+                        let auto = sizes_for(&pts).0.min(cap);
+                        let h = saved_for(&hs).map(|s| s.h).or_else(letter_height).unwrap_or(auto).min(cap);
                         host.start_interactive(Box::new(tools::LetterSizeDialog::new(key(&hs), h, auto)));
                     }
                     None => host.push_error(tr!("RV_ETICHETTE: un vano scelto non è più nel disegno.", "RV_ETICHETTE: a chosen room is no longer in the drawing.", "RV_ETICHETTE: una estancia elegida ya no está en el dibujo.", "RV_ETICHETTE : une pièce choisie n'est plus dans le dessin.", "RV_ETICHETTE: seçilen bir oda artık çizimde yok.", "RV_ETICHETTE: um compartimento escolhido já não está no desenho.", "RV_ETICHETTE: wybranego pomieszczenia nie ma już na rysunku.")),
@@ -720,6 +759,8 @@ fn existing_leaders(host: &dyn HostApi) -> Vec<(Handle, P2)> {
 /// Letters (with leaders where moved) and, with several rooms, room titles,
 /// placed so that none covers another.
 fn label_entities(rooms: &[Vec<P2>], survey: &Survey, h: f64, z: f64, layer: &str, letter_h: f64, area_unit: Option<usize>) -> Vec<EntityType> {
+    // Never taller than 15 % of the shortest side of the smallest room.
+    let letter_h = letter_h.min(letter_cap(rooms));
     // Room name and area, fitted inside the room with some room to spare.
     let mut titles: Vec<(String, P2, f64)> = Vec::new();
     let mut title_ents: Vec<EntityType> = Vec::new();
@@ -1914,6 +1955,16 @@ fn along_text(value: &str, a: P2, b: P2, at: P2, h: f64, z: f64) -> EntityType {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn letters_capped_by_smallest_room() {
+        let big = vec![(0.0, 0.0), (10.0, 0.0), (10.0, 8.0), (0.0, 8.0)];
+        let small = vec![(20.0, 0.0), (22.0, 0.0), (22.0, 1.2), (20.0, 1.2)];
+        let rooms: Vec<Vec<P2>> = [big.clone(), small].iter().map(|r| r.iter().map(|&(x, y)| [x, y]).collect()).collect();
+        assert!((letter_cap(&rooms) - 0.18).abs() < 1e-9);
+        assert!((letter_cap(&rooms[..1]) - 1.2).abs() < 1e-9);
+        assert!(letter_cap(&[]).is_infinite());
+    }
 
     #[test]
     fn numbers() {

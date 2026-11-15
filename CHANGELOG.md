@@ -12,6 +12,18 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.7.1] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Lettere dei vertici mai più alte del 15% del lato più corto del vano più
+  piccolo** (il vano di superficie minore tra quelli scelti). Vale per la proposta
+  della finestrella, per l'altezza scelta a mano (se è più grande viene ridotta, con
+  un messaggio) e per le lettere scritte dal calcolo.
+
 ## [0.7.0] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
