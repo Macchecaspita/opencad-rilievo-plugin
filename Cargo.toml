@@ -1,6 +1,6 @@
 [package]
 name = "opencad-rilievo-plugin"
-version = "0.9.3"
+version = "0.9.4"
 edition = "2021"
 description = "Room Survey add-on for Open CAD Studio — adjust a room drawn by eye to the measured sides and diagonals (least squares), with dimensions and a table of residuals."
 license = "GPL-3.0-only"

@@ -439,6 +439,30 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                 host.start_interactive(Box::new(tools::PerimeterAskDialog::new(key(&hs))));
             }
         }
+        "RV_PULISCI" => {
+            let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            if let Some(rooms) = fetch_rooms(host, &hs) {
+                let pts: Vec<Vec<P2>> = rooms.iter().map(|r| r.pts.clone()).collect();
+                let survey = Survey::new(pts.clone());
+                let h = saved_for(&hs).map(|s| s.h).or_else(letter_height).unwrap_or_else(|| sizes_for(&pts).0);
+                let before = host.document().entities().filter(|e| e.common().layer.eq_ignore_ascii_case(LAYER_LABELS)).count();
+                host.begin_undo_group("RV_PULISCI");
+                remove_labels(host, &rooms, &survey, h);
+                host.end_undo_group();
+                host.set_dirty();
+                let after = host.document().entities().filter(|e| e.common().layer.eq_ignore_ascii_case(LAYER_LABELS)).count();
+                let n = before.saturating_sub(after);
+                host.push_info(&tr!(
+                    format!("RV_VANO: {n} tra lettere, nomi e linee di richiamo cancellati (Ctrl+Z per ripristinarli)."),
+                    format!("RV_VANO: {n} letters, names and leader lines deleted (Ctrl+Z to bring them back)."),
+                    format!("RV_VANO: {n} letras, nombres y líneas de referencia borrados (Ctrl+Z para recuperarlos)."),
+                    format!("RV_VANO : {n} lettres, noms et lignes de rappel effacés (Ctrl+Z pour les rétablir)."),
+                    format!("RV_VANO: {n} harf, ad ve kılavuz çizgisi silindi (geri getirmek için Ctrl+Z)."),
+                    format!("RV_VANO: {n} letras, nomes e linhas de chamada apagados (Ctrl+Z para os repor)."),
+                    format!("RV_VANO: usunięto {n} liter, nazw i linii odniesienia (Ctrl+Z, aby je przywrócić)."),
+                ));
+            }
+        }
         "RV_ESTERNOFIRST" => {
             let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
             if !hs.is_empty() {

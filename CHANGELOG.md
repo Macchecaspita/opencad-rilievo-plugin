@@ -12,6 +12,18 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.4] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Chiudendo Misure e diagonali senza calcolare**, una finestra chiede se cancellare
+  dal disegno le lettere degli spigoli, i nomi dei vani e le linee di richiamo
+  (*Sì, cancellale* / *No, lasciale*). La cancellazione si annulla con Ctrl+Z; le
+  misure scritte restano in memoria.
+
 ## [0.9.3] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

@@ -856,6 +856,8 @@ enum Page {
     Door(DoorSpot),
     Outer,
     Inner,
+    /// Closing without a calculation: delete the letters?
+    AskClean,
     Done,
 }
 
@@ -1573,6 +1575,27 @@ impl MeasureDialog {
         self.saved.outer_walls = rows;
     }
 
+    fn clean_page(&self) -> DialogDef {
+        DialogDef::new(tr!("Chiudi senza calcolare", "Close without calculating", "Cerrar sin calcular", "Fermer sans calculer", "Hesaplamadan kapat", "Fechar sem calcular", "Zamknij bez obliczania"))
+            .with_control(info(
+                tr!(
+                    "Vuoi cancellare dal disegno le lettere degli spigoli, i nomi dei vani e le linee di richiamo? Le misure \
+                     scritte restano comunque in memoria fino alla chiusura di Open CAD Studio.",
+                    "Delete the corner letters, the room names and the leader lines from the drawing? The measures typed are \
+                     kept anyway until Open CAD Studio is closed.",
+                    "¿Borrar del dibujo las letras de las esquinas, los nombres de las estancias y las líneas de referencia? Las medidas escritas se conservan de todos modos hasta cerrar Open CAD Studio.",
+                    "Effacer du dessin les lettres des angles, les noms des pièces et les lignes de rappel ? Les mesures saisies sont gardées de toute façon jusqu'à la fermeture d'Open CAD Studio.",
+                    "Köşe harfleri, oda adları ve kılavuz çizgileri çizimden silinsin mi? Yazılan ölçüler Open CAD Studio kapanana kadar yine de saklanır.",
+                    "Apagar do desenho as letras dos cantos, os nomes dos compartimentos e as linhas de chamada? As medidas escritas ficam guardadas de qualquer modo até fechar o Open CAD Studio.",
+                    "Usunąć z rysunku litery narożników, nazwy pomieszczeń i linie odniesienia? Wpisane pomiary i tak zostają zapamiętane do zamknięcia Open CAD Studio.",
+                )
+                .to_string(),
+            ))
+            .submit_label(tr!("Sì, cancellale", "Yes, delete them", "Sí, borrarlas", "Oui, les effacer", "Evet, sil", "Sim, apagar", "Tak, usuń"))
+            .cancel_label(tr!("No, lasciale", "No, keep them", "No, dejarlas", "Non, les garder", "Hayır, kalsın", "Não, deixar", "Nie, zostaw"))
+            .width(520.0)
+    }
+
     /// The rows of solid walls shown: the ones kept, then two spare ones.
     fn inner_view(&self) -> Vec<Vec<String>> {
         let mut rows: Vec<Vec<String>> = self.saved.inner_walls.iter().filter(|r| filled(r, &[0, 1, 2])).cloned().collect();
@@ -1993,6 +2016,7 @@ impl InteractiveCommand for MeasureDialog {
             Page::Door(spot) => Some(self.door_page(spot)),
             Page::Outer => Some(self.outer_page()),
             Page::Inner => Some(self.inner_page()),
+            Page::AskClean => Some(self.clean_page()),
             Page::Done => None,
         }
     }
@@ -2029,7 +2053,17 @@ impl InteractiveCommand for MeasureDialog {
                 CommandStep::NeedPoint
             }
             (Page::Hub, _) => {
+                // Closed without calculating: offer to clear the drawing of
+                // the corner letters, room names and leaders.
                 self.keep();
+                self.page = Page::AskClean;
+                CommandStep::NeedPoint
+            }
+            (Page::AskClean, DialogResponse::Submitted(_)) => {
+                self.page = Page::Done;
+                deferred("RV_PULISCI", self.key())
+            }
+            (Page::AskClean, _) => {
                 self.page = Page::Done;
                 CommandStep::Cancel
             }
@@ -2673,6 +2707,9 @@ mod tests {
         d.on_dialog_response(DialogResponse::Submitted(m));
         assert!(d.saved.others.iter().any(|r| r[0] == "b" && r[3] == "5"));
         // Closing the hub ends the command.
+        // Closing asks whether to delete the letters; "No" ends the command.
+        assert!(matches!(d.on_dialog_response(DialogResponse::Cancelled), CommandStep::NeedPoint));
+        assert_eq!(d.page, Page::AskClean);
         assert!(matches!(d.on_dialog_response(DialogResponse::Cancelled), CommandStep::Cancel));
     }
 }
