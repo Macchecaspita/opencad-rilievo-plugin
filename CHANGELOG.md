@@ -12,6 +12,17 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.7] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Dentro ogni vano solo il numero**, in grassetto e alto il doppio delle lettere
+  degli spigoli, al posto della scritta "Vano N". Le scritte delle versioni
+  precedenti vengono riconosciute e sostituite.
+
 ## [0.9.6] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

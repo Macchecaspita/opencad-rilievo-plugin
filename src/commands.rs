@@ -980,6 +980,17 @@ fn pline(pts: &[P2], z: f64, closed: bool, layer: &str) -> EntityType {
     EntityType::LwPolyline(p)
 }
 
+/// The room's number as written inside it: bold (MText inline font code).
+fn room_number_text(r: usize) -> String {
+    format!("{{\\fArial|b1|i0;{}}}", r + 1)
+}
+
+/// Every form a room's name has had inside it: the bold number of now and
+/// "Vano N" / "Room N" of earlier versions, to find and replace them.
+fn room_title_forms(r: usize) -> Vec<String> {
+    vec![room_number_text(r), room_title(r), format!("Vano {}", r + 1), format!("Room {}", r + 1), (r + 1).to_string()]
+}
+
 fn room_title(r: usize) -> String {
     tr!(format!("Vano {}", r + 1), format!("Room {}", r + 1), format!("Estancia {}", r + 1), format!("Pièce {}", r + 1), format!("Oda {}", r + 1), format!("Compartimento {}", r + 1), format!("Pomieszczenie {}", r + 1))
 }
@@ -1019,21 +1030,24 @@ fn label_entities(rooms: &[Vec<P2>], survey: &Survey, h: f64, z: f64, layer: &st
     let mut titles: Vec<(String, P2, f64)> = Vec::new();
     let mut title_ents: Vec<EntityType> = Vec::new();
     for (r, pts) in rooms.iter().enumerate() {
-        let mut lines: Vec<(String, f64)> = Vec::new();
+        // (text written, text shown, height as a multiple of the letters')
+        let mut lines: Vec<(String, String, f64)> = Vec::new();
         if survey.multi() {
-            lines.push((room_title(r), 1.4));
+            // Just the number, bold, twice as tall as the corner letters.
+            lines.push((room_number_text(r), (r + 1).to_string(), 2.0));
         }
         if let Some(u) = area_unit {
             let f = survey::unit_factor(u);
             let area = solve::signed_area(pts).abs() * f * f;
-            lines.push((format!("{} m²", fmt_num(area, 2)), 1.1));
+            let t = format!("{} m²", fmt_num(area, 2));
+            lines.push((t.clone(), t, 1.1 * h / letter_h.max(1e-12)));
         }
         if lines.is_empty() {
             continue;
         }
-        let spec: Vec<(usize, f64)> = lines.iter().map(|(t, k)| (t.chars().count(), *k)).collect();
-        let fit = labels::fit_block(pts, &spec, h, centroid(pts));
-        for ((t, _), (at, hh)) in lines.iter().zip(fit.at.iter().zip(&fit.heights)) {
+        let spec: Vec<(usize, f64)> = lines.iter().map(|(_, t, k)| (t.chars().count(), *k)).collect();
+        let fit = labels::fit_block(pts, &spec, letter_h, centroid(pts));
+        for ((t, shown, _), (at, hh)) in lines.iter().zip(fit.at.iter().zip(&fit.heights)) {
             let mut e = mtext(t, *at, z, *hh, AttachmentPoint::MiddleCenter, layer);
             if fit.vertical {
                 if let EntityType::MText(m) = &mut e {
@@ -1042,7 +1056,7 @@ fn label_entities(rooms: &[Vec<P2>], survey: &Survey, h: f64, z: f64, layer: &st
             }
             title_ents.push(e);
             // Letters keep clear of the title (as a circle around each line).
-            titles.push((t.clone(), *at, *hh));
+            titles.push((shown.clone(), *at, *hh));
         }
     }
     // On the drawing the corners carry the letter only: the room's number is
@@ -1083,18 +1097,14 @@ fn remove_labels(host: &mut dyn HostApi, rooms: &[Room], survey: &Survey, h: f64
         if survey.multi() {
             targets.extend((0..room.pts.len()).map(|i| (survey.corner(r, i), room.pts[i])));
         }
+        // A room's name (now its bold number) may sit anywhere inside it.
         if survey.multi() {
-            targets.push((room_title(r), centroid(&room.pts)));
-        }
-        let title = room_title(r);
-        for (name, near) in targets {
-            // A room's name may sit anywhere inside it.
-            if name == title {
-                if let Some((hd, _, _)) = have.iter().find(|(hd, v, p)| *v == title && !gone.contains(hd) && point_in_polygon(&room.pts, *p)) {
-                    gone.push(*hd);
-                    continue;
-                }
+            let forms = room_title_forms(r);
+            if let Some((hd, _, _)) = have.iter().find(|(hd, v, p)| forms.contains(v) && !gone.contains(hd) && point_in_polygon(&room.pts, *p)) {
+                gone.push(*hd);
             }
+        }
+        for (name, near) in targets {
             let best = have
                 .iter()
                 .filter(|(hd, v, _)| *v == name && !gone.contains(hd))
