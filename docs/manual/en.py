@@ -108,6 +108,14 @@ S = {
                "corridor with its door: living room and bedroom on the left, kitchen and bedroom 2 on the right; the "
                "bathroom is tied to the bedroom. This way every room hangs on a short chain and an error stays local.",
 
+    "h_fix": "Fixed perimeter surveyed with a total station",
+    "p_fix": "If the outer perimeter of the building was surveyed with a total station (or is exact anyway), the plugin uses it as a fixed reference: it is never moved, and the rooms place themselves inside it.",
+    "fix": ["draw the perimeter as a <b>closed polyline</b>, in true coordinates, and the rooms by eye inside it;", "after choosing the rooms in <b>Sides and diagonals</b>, the command line asks for the <b>fixed perimeter</b> (optional): click it, or press Enter to go on without it. It can also be added later, from the window's list;", "on the <b>Outer walls</b> page type the thickness of the outer walls (measured at the windows) and check the room sides proposed along the perimeter: each stays parallel to the perimeter, at that distance;", "a corner room with two sides on the perimeter needs no diagonals for its position; a room with only one side on the perimeter must still be tied to the others (for example with a door)."],
+    "h_hatch": "Solid walls between rooms: the hatch",
+    "p_hatch": "A solid wall cannot be crossed to measure, but its thickness is measured at the doors. If you put a <b>hatch</b> in the walls between the rooms in the drawing, the plugin finds them by itself:",
+    "hatch": ["it finds the two sides of different rooms facing each other with the hatch between them and proposes them on the <b>Solid walls between rooms</b> page;", "type the <b>thickness measured at a door</b>; if the same wall already has a shared door with its thickness, the box can stay empty;", "in the calculation the two sides stay parallel at that distance, with their residual in the table."],
+    "p_hatch2": "A solid wall fixes the distance and the turn between two rooms, but not the shift along the wall: you still need a door in the same wall, a second non-parallel wall towards the same room, or the fixed perimeter.",
+
     "h5": "5. Doors, windows and outer walls",
     "h_dw": "Doors and windows",
     "p_dw": "Windows and outside doors are also added with <b>Add a door or window</b> and a click on the wall: kind "

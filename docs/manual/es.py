@@ -110,6 +110,14 @@ S = {
                "pasillo con su puerta: salón y dormitorio a la izquierda, cocina y dormitorio 2 a la derecha; el baño "
                "se enlaza al dormitorio. Así cada estancia queda unida por una cadena corta y un error queda localizado.",
 
+    "h_fix": "Perímetro fijo levantado con la estación total",
+    "p_fix": "Si el perímetro exterior del edificio se ha levantado con la estación total (o es exacto de todos modos), el plugin lo usa como referencia fija: nunca se mueve, y las estancias se colocan solas dentro de él.",
+    "fix": ["dibuje el perímetro como <b>polilínea cerrada</b>, en coordenadas reales, y las estancias a ojo dentro de él;", "después de elegir las estancias en <b>Lados y diagonales</b>, la línea de comandos pide el <b>perímetro fijo</b> (opcional): haga clic en él, o pulse Intro para seguir sin él. También se puede añadir después, desde la lista de la ventana;", "en la página <b>Muros exteriores</b> escriba el espesor de los muros exteriores (medido en las ventanas) y compruebe los lados de las estancias propuestos a lo largo del perímetro: cada uno queda paralelo al perímetro, a esa distancia;", "una estancia de esquina con dos lados sobre el perímetro no necesita diagonales para su posición; una estancia con un solo lado sobre el perímetro aún debe enlazarse con las demás (por ejemplo con una puerta)."],
+    "h_hatch": "Muros macizos entre estancias: el sombreado",
+    "p_hatch": "Un muro macizo no se puede atravesar para medir, pero su espesor se mide en las puertas. Si en el dibujo pone un <b>sombreado</b> en los muros entre las estancias, el plugin los reconoce solo:",
+    "hatch": ["encuentra los dos lados de estancias distintas que se miran con el sombreado en medio y los propone en la página <b>Muros macizos entre estancias</b>;", "escriba el <b>espesor medido en una puerta</b>; si en el mismo muro ya hay una puerta común con su espesor, la casilla puede quedar vacía;", "en el cálculo los dos lados se mantienen paralelos a esa distancia, con su residuo en la tabla."],
+    "p_hatch2": "Un muro macizo fija la distancia y el giro entre dos estancias, pero no el deslizamiento a lo largo del muro: aún hace falta una puerta en el mismo muro, un segundo muro no paralelo hacia la misma estancia, o el perímetro fijo.",
+
     "h5": "5. Puertas, ventanas y muros exteriores",
     "h_dw": "Puertas y ventanas",
     "p_dw": "También las ventanas y las puertas al exterior se añaden con <b>Añadir puerta o ventana</b> y un clic en "

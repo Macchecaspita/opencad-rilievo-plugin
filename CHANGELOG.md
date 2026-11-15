@@ -12,6 +12,18 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.1] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Manuali PDF aggiornati in tutte e sette le lingue**: nuove sezioni sul
+  perimetro fisso rilevato con la stazione totale (con lo spessore dei muri esterni)
+  e sui muri pieni tra vani riconosciuti dal retino, con lo spessore misurato nelle
+  porte.
+
 ## [0.9.0] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

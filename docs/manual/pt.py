@@ -108,6 +108,14 @@ S = {
                "ao corredor pela sua porta: sala e quarto à esquerda, cozinha e quarto 2 à direita; a casa de banho "
                "liga-se ao quarto. Assim cada compartimento fica preso a uma cadeia curta e um erro fica localizado.",
 
+    "h_fix": "Perímetro fixo levantado com a estação total",
+    "p_fix": "Se o perímetro exterior do edifício foi levantado com a estação total (ou é exato de qualquer modo), o plugin usa-o como referência fixa: nunca é movido, e os compartimentos colocam-se sozinhos dentro dele.",
+    "fix": ["desenhe o perímetro como <b>polilinha fechada</b>, em coordenadas reais, e os compartimentos à mão dentro dele;", "depois de escolher os compartimentos em <b>Lados e diagonais</b>, a linha de comandos pede o <b>perímetro fixo</b> (opcional): clique nele, ou prima Enter para continuar sem ele. Também se pode acrescentar depois, a partir da lista da janela;", "na página <b>Paredes exteriores</b> escreva a espessura das paredes exteriores (medida nas janelas) e verifique os lados dos compartimentos propostos ao longo do perímetro: cada um fica paralelo ao perímetro, a essa distância;", "um compartimento de canto com dois lados no perímetro não precisa de diagonais para a sua posição; um compartimento com um só lado no perímetro ainda tem de ser ligado aos outros (por exemplo com uma porta)."],
+    "h_hatch": "Paredes cheias entre compartimentos: a trama",
+    "p_hatch": "Uma parede cheia não se pode atravessar para medir, mas a sua espessura mede-se nas portas. Se puser uma <b>trama</b> nas paredes entre os compartimentos do desenho, o plugin reconhece-as sozinho:",
+    "hatch": ["encontra os dois lados de compartimentos diferentes que se defrontam com a trama no meio e propõe-nos na página <b>Paredes cheias entre compartimentos</b>;", "escreva a <b>espessura medida numa porta</b>; se na mesma parede já houver uma porta comum com a espessura, a caixa pode ficar vazia;", "no cálculo os dois lados ficam paralelos a essa distância, com o seu resíduo na tabela."],
+    "p_hatch2": "Uma parede cheia fixa a distância e a rotação entre dois compartimentos, mas não o deslizamento ao longo da parede: ainda é precisa uma porta na mesma parede, uma segunda parede não paralela para o mesmo compartimento, ou o perímetro fixo.",
+
     "h5": "5. Portas, janelas e paredes exteriores",
     "h_dw": "Portas e janelas",
     "p_dw": "Também as janelas e as portas para o exterior se acrescentam com <b>Acrescentar porta ou janela</b> e um "

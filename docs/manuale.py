@@ -361,7 +361,14 @@ def build(lang):
           P(T["p4d"])]
     s += bullets(T["links"])
     s += [P(T["h_order"], h2),
-          P(T["p_order"])]
+          P(T["p_order"]),
+          P(T["h_fix"], h2),
+          P(T["p_fix"])]
+    s += bullets(T["fix"])
+    s += [P(T["h_hatch"], h2),
+          P(T["p_hatch"])]
+    s += bullets(T["hatch"])
+    s += [P(T["p_hatch2"])]
 
     s += [P(T["h5"], h1),
           P(T["h_dw"], h2),

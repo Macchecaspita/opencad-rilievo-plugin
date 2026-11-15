@@ -102,6 +102,14 @@ S = {
                "bağlayın: solda salon ve yatak odası, sağda mutfak ve 2. yatak odası; banyo yatak odasına bağlanır. "
                "Böylece her oda kısa bir zincirle bağlanır ve bir hata sınırlı kalır.",
 
+    "h_fix": "Total station ile ölçülen sabit çevre",
+    "p_fix": "Binanın dış çevresi total station ile ölçüldüyse (ya da zaten kesinse), eklenti onu sabit referans olarak kullanır: asla yerinden oynatılmaz ve odalar onun içine kendiliğinden yerleşir.",
+    "fix": ["çevreyi gerçek koordinatlarda <b>kapalı bir çoklu çizgi</b> olarak, odaları da içinde göz kararı çizin;", "<b>Kenarlar ve köşegenler</b>'de odaları seçtikten sonra komut satırı <b>sabit çevreyi</b> sorar (isteğe bağlı): ona tıklayın ya da onsuz devam etmek için Enter'a basın. Daha sonra pencerenin listesinden de eklenebilir;", "<b>Dış duvarlar</b> sayfasında dış duvarların kalınlığını (pencerelerde ölçülen) girin ve çevre boyunca önerilen oda kenarlarını kontrol edin: her biri çevreye paralel, bu uzaklıkta kalır;", "çevre üzerinde iki kenarı olan köşe oda, konumu için köşegene ihtiyaç duymaz; çevre üzerinde tek kenarı olan oda yine de diğerlerine bağlanmalıdır (örneğin bir kapıyla)."],
+    "h_hatch": "Odalar arası dolu duvarlar: tarama",
+    "p_hatch": "Dolu bir duvarın içinden ölçüm yapılamaz, ama kalınlığı kapılarda ölçülür. Çizimde odalar arasındaki duvarlara <b>tarama</b> koyarsanız eklenti onları kendiliğinden tanır:",
+    "hatch": ["aralarında tarama olan, karşılıklı duran farklı odaların iki kenarını bulur ve <b>Odalar arası dolu duvarlar</b> sayfasında önerir;", "<b>bir kapıda ölçülen kalınlığı</b> girin; aynı duvarda kalınlığıyla birlikte ortak bir kapı zaten varsa kutu boş kalabilir;", "hesapta iki kenar bu uzaklıkta paralel kalır, artıkları tabloda görünür."],
+    "p_hatch2": "Dolu bir duvar iki oda arasındaki uzaklığı ve dönüklüğü sabitler, ama duvar boyunca kaymayı sabitlemez: yine aynı duvarda bir kapı, aynı odaya doğru paralel olmayan ikinci bir duvar ya da sabit çevre gerekir.",
+
     "h5": "5. Kapılar, pencereler ve dış duvarlar",
     "h_dw": "Kapılar ve pencereler",
     "p_dw": "Pencereler ve dışarıya açılan kapılar da <b>Kapı veya pencere ekle</b> ve duvara bir tıklamayla eklenir: "
