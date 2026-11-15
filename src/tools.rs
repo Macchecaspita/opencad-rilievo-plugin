@@ -663,10 +663,16 @@ impl InteractiveCommand for PickOuterTool {
         true
     }
     fn on_object_pick(&mut self, handle: Handle, _pt: [f64; 3]) -> CommandStep {
+        if self.key.is_empty() {
+            return deferred("RV_ESTERNOPREPICKED", format!("{:X}", handle.value()));
+        }
         let tail = if self.first { "|first" } else { "" };
         deferred("RV_ESTERNOSET", format!("{}|{:X}{tail}", self.key, handle.value()))
     }
     fn on_enter(&mut self) -> CommandStep {
+        if self.key.is_empty() {
+            return deferred("RV_VANOPICK", String::new());
+        }
         deferred(if self.first { "RV_VANOFIRST" } else { "RV_VANOREOPEN" }, self.key.clone())
     }
 }
@@ -746,7 +752,12 @@ impl InteractiveCommand for PerimeterAskDialog {
         let DialogResponse::Submitted(m) = response else {
             return CommandStep::Cancel;
         };
-        if get_choice(&m, "do", 0) == 1 {
+        let pick = get_choice(&m, "do", 0) == 1;
+        // No rooms yet: asked before choosing them.
+        if self.key.is_empty() {
+            return if pick { deferred("RV_ESTERNOPRE", String::new()) } else { deferred("RV_VANOPICK", String::new()) };
+        }
+        if pick {
             deferred("RV_ESTERNOFIRST", self.key.clone())
         } else {
             deferred("RV_VANOFIRST", self.key.clone())

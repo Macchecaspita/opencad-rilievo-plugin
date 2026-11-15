@@ -232,8 +232,8 @@ fn centroid(p: &[P2]) -> P2 {
 
 static SAVED: Mutex<Option<HashMap<String, Saved>>> = Mutex::new(None);
 static PENDING: Mutex<Option<(Vec<Handle>, Saved)>> = Mutex::new(None);
-/// Rooms for which the fixed perimeter has already been asked.
-static ASKED_OUTER: Mutex<std::collections::BTreeSet<String>> = Mutex::new(std::collections::BTreeSet::new());
+/// The fixed perimeter chosen before the rooms (handle, hex), until they are.
+static PRE_OUTER: Mutex<Option<String>> = Mutex::new(None);
 /// The letter height last chosen in Corner letters, used by the next
 /// calculations too.
 static LETTER_H: Mutex<Option<f64>> = Mutex::new(None);
@@ -421,7 +421,36 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         "RV_LANG" => lang(host, &rest),
         "RV_GUIDE" => host.start_interactive(Box::new(tools::GuideDialog::new())),
         "RV_MANUALE" => open_manual(host),
-        "RV_VANO" => start_pick(host, "RV_VANOOPEN", "RV_VANO"),
+        // First the fixed perimeter of the building (optional, in a window
+        // of its own), then the rooms.
+        "RV_VANO" => {
+            *PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            if rooms(host).is_empty() {
+                start_pick(host, "RV_VANOOPEN", "RV_VANO");
+            } else {
+                host.start_interactive(Box::new(tools::PerimeterAskDialog::new(String::new())));
+            }
+        }
+        "RV_VANOPICK" => start_pick_except(host, "RV_VANOOPEN", "RV_VANO", PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()).as_deref().and_then(parse_handle)),
+        "RV_ESTERNOPRE" => host.start_interactive(Box::new(tools::PickOuterTool::first(String::new()))),
+        "RV_ESTERNOPREPICKED" => match arg.as_deref().and_then(parse_handle) {
+            Some(h) if fetch_room(host, h).is_some() => {
+                *PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()) = Some(hex(h));
+                start_pick_except(host, "RV_VANOOPEN", "RV_VANO", Some(h));
+            }
+            _ => {
+                host.push_error(tr!(
+                    "RV_VANO: lì non c'è una polilinea chiusa: il perimetro va disegnato come polilinea chiusa. Riprova, o premi Invio per continuare senza.",
+                    "RV_VANO: no closed polyline there: the perimeter must be a closed polyline. Try again, or press Enter to go on without it.",
+                    "RV_VANO: ahí no hay ninguna polilínea cerrada: el perímetro debe ser una polilínea cerrada. Inténtelo de nuevo, o pulse Intro para seguir sin él.",
+                    "RV_VANO : pas de polyligne fermée à cet endroit : le périmètre doit être une polyligne fermée. Réessayez, ou appuyez sur Entrée pour continuer sans.",
+                    "RV_VANO: orada kapalı çoklu çizgi yok: çevre kapalı bir çoklu çizgi olmalı. Yeniden deneyin ya da onsuz devam etmek için Enter'a basın.",
+                    "RV_VANO: não há aí nenhuma polilinha fechada: o perímetro tem de ser uma polilinha fechada. Tente de novo, ou prima Enter para continuar sem ele.",
+                    "RV_VANO: nie ma tu zamkniętej polilinii: obrys musi być zamkniętą polilinią. Spróbuj ponownie albo naciśnij Enter, aby kontynuować bez niego.",
+                ));
+                host.start_interactive(Box::new(tools::PickOuterTool::first(String::new())));
+            }
+        },
         "RV_ETICHETTE" => start_pick(host, "RV_ETICHETTEAPPLY", "RV_ETICHETTE"),
         "RV_VANOOPEN" => {
             let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
@@ -430,13 +459,13 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             if hs.is_empty() {
                 return true;
             }
-            // First time for these rooms: the fixed perimeter of the building,
-            // surveyed with a total station, may be chosen now (optional).
-            let asked = saved_for(&hs).is_some_and(|s| !s.outer.is_empty()) || !ASKED_OUTER.lock().unwrap_or_else(|e| e.into_inner()).insert(key(&hs));
-            if asked {
-                open_dialog(host, &hs, None);
-            } else {
-                host.start_interactive(Box::new(tools::PerimeterAskDialog::new(key(&hs))));
+            // The fixed perimeter chosen before the rooms, if any.
+            let pre = PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()).take();
+            match pre {
+                Some(o) if !hs.contains(&parse_handle(&o).unwrap_or(Handle::new(0))) => {
+                    handle(host, &format!("RV_ESTERNOSET {}|{o}|first", key(&hs)));
+                }
+                _ => open_dialog(host, &hs, None),
             }
         }
         "RV_PULISCI" => {
@@ -759,7 +788,12 @@ fn lang(host: &mut dyn HostApi, rest: &str) {
 
 /// Pick the rooms, or take the closed polylines already selected.
 fn start_pick(host: &mut dyn HostApi, verb: &'static str, title: &'static str) {
-    let all = rooms(host);
+    start_pick_except(host, verb, title, None);
+}
+
+/// Like [`start_pick`], leaving out one polyline (the fixed perimeter).
+fn start_pick_except(host: &mut dyn HostApi, verb: &'static str, title: &'static str, except: Option<Handle>) {
+    let all: Vec<Room> = rooms(host).into_iter().filter(|r| Some(r.handle) != except).collect();
     if all.is_empty() {
         host.push_error(&tr!(
             format!("{title}: nel disegno non ci sono polilinee chiuse. Disegna ogni vano con PLINEA … Chiudi, poi riprova."),

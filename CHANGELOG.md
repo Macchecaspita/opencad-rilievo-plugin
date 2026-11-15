@@ -12,6 +12,18 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.5] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Il perimetro fisso si sceglie prima dei vani**: avviando Misure e diagonali si
+  apre subito una finestra a parte (*Continua senza perimetro fisso* / *Scegli il
+  perimetro*); se lo scegli, lo clicchi sul disegno e solo dopo selezioni i vani. Il
+  perimetro scelto non può essere preso per sbaglio come vano. Manuali aggiornati.
+
 ## [0.9.4] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
