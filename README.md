@@ -36,7 +36,11 @@ length and a *measured / computed / residual* table, with residuals over the
 tolerance in red.
 
 Commands: `RV_VANO` (sides, diagonals, links), `RV_ETICHETTE` (corner letters),
-`RV_APPLICA` (move the original rooms to the result), `RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_MANUALE` (surveying manual, PDF, in Italian), `RV_LANG IT|EN|AUTO`.
+`RV_APPLICA` (move the original rooms to the result), `RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_MANUALE` (surveying manual, PDF), `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO`.
+
+The interface and the PDF manual are in English, Italian, Spanish, French,
+Turkish, Portuguese and Polish, following the language of Open CAD Studio
+(English for any other language); `RV_LANG` forces one.
 
 Build with `cargo build --release`; install the library and `plugin.toml` in
 `<config>/OpenCADStudio/plugins/opencad.rilievovani/`, or add the repository

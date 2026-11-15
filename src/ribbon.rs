@@ -19,7 +19,7 @@ impl CadModule for RilievoModule {
     }
 
     fn title(&self) -> &'static str {
-        tr!("Rilievo", "Survey")
+        tr!("Rilievo", "Survey", "Levantamiento", "Relevé", "Ölçüm", "Levantamento", "Pomiar")
     }
 
     fn ribbon_groups(&self) -> &[RibbonGroup] {
@@ -27,19 +27,19 @@ impl CadModule for RilievoModule {
         GROUPS.get_or_init(|| {
             vec![
                 RibbonGroup {
-                    title: tr!("Vano", "Room"),
+                    title: tr!("Vano", "Room", "Estancia", "Pièce", "Oda", "Compartimento", "Pomieszczenie"),
                     tools: vec![
-                        cmd("RV_ETICHETTE", tr!("Lettere vertici", "Corner letters"), include_bytes!("../icons/labels.svg")),
-                        cmd("RV_VANO", tr!("Misure e diagonali", "Sides and diagonals"), include_bytes!("../icons/room.svg")),
-                        cmd("RV_APPLICA", tr!("Applica al disegno", "Apply to drawing"), include_bytes!("../icons/apply.svg")),
-                        cmd("RV_LIBRETTO", tr!("Libretto misure", "Measures book"), include_bytes!("../icons/book.svg")),
+                        cmd("RV_ETICHETTE", tr!("Lettere vertici", "Corner letters", "Letras de esquinas", "Lettres des angles", "Köşe harfleri", "Letras dos cantos", "Litery narożników"), include_bytes!("../icons/labels.svg")),
+                        cmd("RV_VANO", tr!("Misure e diagonali", "Sides and diagonals", "Lados y diagonales", "Côtés et diagonales", "Kenarlar ve köşegenler", "Lados e diagonais", "Boki i przekątne"), include_bytes!("../icons/room.svg")),
+                        cmd("RV_APPLICA", tr!("Applica al disegno", "Apply to drawing", "Aplicar al dibujo", "Appliquer au dessin", "Çizime uygula", "Aplicar ao desenho", "Zastosuj na rysunku"), include_bytes!("../icons/apply.svg")),
+                        cmd("RV_LIBRETTO", tr!("Libretto misure", "Measures book", "Libro de medidas", "Carnet de mesures", "Ölçü defteri", "Caderno de medidas", "Dziennik pomiarów"), include_bytes!("../icons/book.svg")),
                     ],
                 },
                 RibbonGroup {
-                    title: tr!("Aiuto", "Help"),
+                    title: tr!("Aiuto", "Help", "Ayuda", "Aide", "Yardım", "Ajuda", "Pomoc"),
                     tools: vec![
-                        cmd("RV_GUIDE", tr!("Guida", "Guide"), include_bytes!("../icons/guide.svg")),
-                        cmd("RV_MANUALE", tr!("Manuale PDF", "PDF manual"), include_bytes!("../icons/manual.svg")),
+                        cmd("RV_GUIDE", tr!("Guida", "Guide", "Guía", "Guide", "Rehber", "Guia", "Przewodnik"), include_bytes!("../icons/guide.svg")),
+                        cmd("RV_MANUALE", tr!("Manuale PDF", "PDF manual", "Manual PDF", "Manuel PDF", "PDF kılavuz", "Manual PDF", "Podręcznik PDF"), include_bytes!("../icons/manual.svg")),
                     ],
                 },
             ]

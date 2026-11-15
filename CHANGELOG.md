@@ -12,11 +12,23 @@ del rilascio.
 
 ## [Non rilasciato]
 
-## [0.6.3] - 2026-11-15
+## [0.7.0] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
 > professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
 > responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Sette lingue**: oltre a italiano e inglese, interfaccia (barra multifunzione,
+  finestre, messaggi, guida, libretto CSV) in **spagnolo, francese, turco,
+  portoghese e polacco**. La lingua segue quella di Open CAD Studio (inglese per
+  le altre); `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO` la forza. Virgola decimale in
+  tutte le lingue tranne l'inglese.
+- **Manuale PDF tradotto** in tutte e sette le lingue: `RV_MANUALE` apre quello
+  della lingua in uso (`docs/manual_<lingua>.pdf`). Il manuale è aggiornato alle
+  lettere solo sul disegno e alla scelta della loro altezza.
+- Tipo di porta/finestra e vincoli orizzontale/verticale riconosciuti in ogni
+  lingua (porta, door, puerta, porte, kapı, drzwi …; yatay, poziomy, dikey, pionowy …).
 
 ### Modificato
 - **Nome del vano (e superficie) sempre dentro il vano**, con un margine libero

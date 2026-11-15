@@ -39,8 +39,9 @@ direzione disegnata); il disegno originale resta per confronto. Sul layer
 diagonali con la loro misura e una tabella *misurata / calcolata / scarto*, con in
 rosso gli scarti oltre la tolleranza.
 
-L'interfaccia è in **inglese**, oppure in **italiano** quando Open CAD Studio è in
-italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
+L'interfaccia e il manuale PDF sono in **italiano, inglese, spagnolo, francese,
+turco, portoghese e polacco** e seguono la lingua di Open CAD Studio (inglese per
+le altre lingue). `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO` forza una lingua.
 
 ## Comandi
 
@@ -51,8 +52,8 @@ italiano. `RV_LANG IT|EN|AUTO` forza una lingua.
 | `RV_APPLICA` | **Applica al disegno** | porta le polilinee originali nella forma calcolata (dopo aver controllato il risultato) |
 | `RV_LIBRETTO` | **Libretto misure** | salva l'ultimo calcolo in CSV: misure, scarti, σ₀, coordinate, superfici |
 | `RV_GUIDE` | **Guida** | breve guida |
-| `RV_MANUALE` | **Manuale PDF** | manuale di rilievo di un appartamento, con disegni ([docs/Manuale_rilievo.pdf](docs/Manuale_rilievo.pdf)) |
-| `RV_LANG IT\|EN\|AUTO` | | lingua dei messaggi |
+| `RV_MANUALE` | **Manuale PDF** | manuale di rilievo di un appartamento, con disegni ([docs/Manuale_rilievo.pdf](docs/Manuale_rilievo.pdf); nelle altre lingue `docs/manual_<lingua>.pdf`) |
+| `RV_LANG IT\|EN\|ES\|FR\|TR\|PT\|PL\|AUTO` | | lingua dei messaggi e del manuale |
 
 ### Consigli di rilievo
 

@@ -288,7 +288,12 @@ impl Survey {
                     _ => {
                         return Err(tr!(
                             format!("lato {name}: \"{cell}\" non è una misura valida"),
-                            format!("side {name}: \"{cell}\" is not a valid measure")
+                            format!("side {name}: \"{cell}\" is not a valid measure"),
+                            format!("lado {name}: \"{cell}\" no es una medida válida"),
+                            format!("côté {name} : \"{cell}\" n'est pas une mesure valable"),
+                            format!("kenar {name}: \"{cell}\" geçerli bir ölçü değil"),
+                            format!("lado {name}: \"{cell}\" não é uma medida válida"),
+                            format!("bok {name}: \"{cell}\" nie jest prawidłowym pomiarem"),
                         ))
                     }
                 }
@@ -304,12 +309,22 @@ impl Survey {
             let hint = if self.multi() {
                 tr!(
                     format!("scrivi i vertici con numero del vano e lettera ({}); per uno spessore di muro, un lato come 1B-1C e un vertice", self.ranges()),
-                    format!("write corners as room number and letter ({}); for a wall thickness, a side like 1B-1C and a corner", self.ranges())
+                    format!("write corners as room number and letter ({}); for a wall thickness, a side like 1B-1C and a corner", self.ranges()),
+                    format!("escriba las esquinas con número de estancia y letra ({}); para un espesor de muro, un lado como 1B-1C y una esquina", self.ranges()),
+                    format!("écrivez les angles avec le numéro de pièce et la lettre ({}) ; pour une épaisseur de mur, un côté comme 1B-1C et un angle", self.ranges()),
+                    format!("köşeleri oda numarası ve harfle yazın ({}); duvar kalınlığı için 1B-1C gibi bir kenar ve bir köşe", self.ranges()),
+                    format!("escreva os cantos com o número do compartimento e a letra ({}); para uma espessura de parede, um lado como 1B-1C e um canto", self.ranges()),
+                    format!("wpisz narożniki z numerem pomieszczenia i literą ({}); dla grubości ściany bok, np. 1B-1C, i narożnik", self.ranges()),
                 )
             } else {
                 tr!(
                     format!("scrivi i due vertici con le loro lettere ({})", self.ranges()),
-                    format!("write the two corners by letter ({})", self.ranges())
+                    format!("write the two corners by letter ({})", self.ranges()),
+                    format!("escriba las dos esquinas con su letra ({})", self.ranges()),
+                    format!("écrivez les deux angles par leur lettre ({})", self.ranges()),
+                    format!("iki köşeyi harfleriyle yazın ({})", self.ranges()),
+                    format!("escreva os dois cantos com a sua letra ({})", self.ranges()),
+                    format!("wpisz oba narożniki ich literą ({})", self.ranges()),
                 )
             };
             let (meas, name, kind) = match (self.parse_point(&a), self.parse_point(&b), self.parse_side(&a), self.parse_side(&b)) {
@@ -325,7 +340,12 @@ impl Survey {
                 _ => {
                     return Err(tr!(
                         format!("riga {r} delle altre misure (\"{a}\" e \"{b}\"): {hint}"),
-                        format!("row {r} of the other measures (\"{a}\" and \"{b}\"): {hint}")
+                        format!("row {r} of the other measures (\"{a}\" and \"{b}\"): {hint}"),
+                        format!("fila {r} de las otras medidas (\"{a}\" y \"{b}\"): {hint}"),
+                        format!("ligne {r} des autres mesures (\"{a}\" et \"{b}\") : {hint}"),
+                        format!("diğer ölçülerin {r}. satırı (\"{a}\" ve \"{b}\"): {hint}"),
+                        format!("linha {r} das outras medidas (\"{a}\" e \"{b}\"): {hint}"),
+                        format!("wiersz {r} innych pomiarów (\"{a}\" i \"{b}\"): {hint}"),
                     ))
                 }
             };
@@ -334,7 +354,12 @@ impl Survey {
                 _ => {
                     return Err(tr!(
                         format!("{name}: \"{m}\" non è una misura valida"),
-                        format!("{name}: \"{m}\" is not a valid measure")
+                        format!("{name}: \"{m}\" is not a valid measure"),
+                        format!("{name}: \"{m}\" no es una medida válida"),
+                        format!("{name} : \"{m}\" n'est pas une mesure valable"),
+                        format!("{name}: \"{m}\" geçerli bir ölçü değil"),
+                        format!("{name}: \"{m}\" não é uma medida válida"),
+                        format!("{name}: \"{m}\" nie jest prawidłowym pomiarem"),
                     ))
                 }
             };
@@ -369,7 +394,12 @@ impl Survey {
                 let Some(mut deg) = deg.filter(|d| *d > 0.0 && *d < 360.0) else {
                     return Err(tr!(
                         format!("vincolo alla riga {r}: per lo spigolo {at} scrivi l'angolo in gradi (per esempio 90)"),
-                        format!("constraint on row {r}: for corner {at} type the angle in degrees (for example 90)")
+                        format!("constraint on row {r}: for corner {at} type the angle in degrees (for example 90)"),
+                        format!("restricción en la fila {r}: para la esquina {at} escriba el ángulo en grados (por ejemplo 90)"),
+                        format!("contrainte à la ligne {r} : pour l'angle {at}, saisissez l'angle en degrés (par exemple 90)"),
+                        format!("{r}. satırdaki kısıt: {at} köşesi için açıyı derece olarak girin (örneğin 90)"),
+                        format!("restrição na linha {r}: para o canto {at} introduza o ângulo em graus (por exemplo 90)"),
+                        format!("warunek w wierszu {r}: dla narożnika {at} wpisz kąt w stopniach (np. 90)"),
                     ));
                 };
                 if deg > 180.0 {
@@ -378,14 +408,19 @@ impl Survey {
                 if (deg - 180.0).abs() < 1e-9 {
                     return Err(tr!(
                         format!("vincolo alla riga {r}: un angolo piatto (180°) non serve; se {at} non è uno spigolo, toglilo dalla polilinea"),
-                        format!("constraint on row {r}: a straight angle (180°) is not needed; if {at} is not a corner, remove it from the polyline")
+                        format!("constraint on row {r}: a straight angle (180°) is not needed; if {at} is not a corner, remove it from the polyline"),
+                        format!("restricción en la fila {r}: un ángulo llano (180°) no hace falta; si {at} no es una esquina, quítela de la polilínea"),
+                        format!("contrainte à la ligne {r} : un angle plat (180°) est inutile ; si {at} n'est pas un angle, retirez-le de la polyligne"),
+                        format!("{r}. satırdaki kısıt: düz açı (180°) gereksiz; {at} köşe değilse çoklu çizgiden kaldırın"),
+                        format!("restrição na linha {r}: um ângulo raso (180°) não é necessário; se {at} não é um canto, retire-o da polilinha"),
+                        format!("warunek w wierszu {r}: kąt półpełny (180°) jest zbędny; jeśli {at} nie jest narożnikiem, usuń go z polilinii"),
                     ));
                 }
                 let n = self.rooms[room].len();
                 let ids = &self.point_of[room];
                 out.push(Measure {
                     meas: Meas::Angle { a: ids[(i + n - 1) % n], b: ids[i], c: ids[(i + 1) % n], rad: deg.to_radians() },
-                    name: format!("{} {}", tr!("ang.", "ang."), self.corner(room, i)),
+                    name: format!("{} {}", tr!("ang.", "ang.", "áng.", "ang.", "açı", "âng.", "kąt"), self.corner(room, i)),
                     kind: Kind::Angle,
                 });
             } else if let Some((room, i, j)) = self.parse_room_side(&at).or_else(|| {
@@ -396,14 +431,21 @@ impl Survey {
                 let ib = self.point_of[ra].iter().position(|&p| p == b)?;
                 Some((ra, ia, ib))
             }) {
-                let vertical = if ["o", "or", "orizz", "orizzontale", "h", "horizontal", "oriz"].contains(&low) || low.starts_with("oriz") || low.starts_with("hor") {
+                // Every language of the plugin: orizzontale, horizontal,
+                // yatay, poziomy / verticale, vertical, dikey, pionowy.
+                let vertical = if ["o", "h", "y"].contains(&low) || ["oriz", "hor", "yat", "poz"].iter().any(|p| low.starts_with(p)) {
                     false
-                } else if ["v", "vert", "verticale", "vertical"].contains(&low) || low.starts_with("vert") {
+                } else if ["v", "d"].contains(&low) || ["vert", "dik", "pion"].iter().any(|p| low.starts_with(p)) {
                     true
                 } else {
                     return Err(tr!(
                         format!("vincolo alla riga {r}: per il lato {at} scrivi orizzontale oppure verticale"),
-                        format!("constraint on row {r}: for side {at} type horizontal or vertical")
+                        format!("constraint on row {r}: for side {at} type horizontal or vertical"),
+                        format!("restricción en la fila {r}: para el lado {at} escriba horizontal o vertical"),
+                        format!("contrainte à la ligne {r} : pour le côté {at}, saisissez horizontal ou vertical"),
+                        format!("{r}. satırdaki kısıt: {at} kenarı için yatay veya dikey girin"),
+                        format!("restrição na linha {r}: para o lado {at} introduza horizontal ou vertical"),
+                        format!("warunek w wierszu {r}: dla boku {at} wpisz poziomy lub pionowy"),
                     ));
                 };
                 out.push(Measure {
@@ -412,14 +454,19 @@ impl Survey {
                         "{}–{} {}",
                         self.corner(room, i),
                         self.corner(room, j),
-                        if vertical { tr!("vert.", "vert.") } else { tr!("orizz.", "horiz.") }
+                        if vertical { tr!("vert.", "vert.", "vert.", "vert.", "dikey", "vert.", "pion.") } else { tr!("orizz.", "horiz.", "horiz.", "horiz.", "yatay", "horiz.", "poz.") }
                     ),
                     kind: Kind::Level,
                 });
             } else {
                 return Err(tr!(
                     format!("vincolo alla riga {r}: \"{at}\" non è uno spigolo né un lato ({})", self.ranges()),
-                    format!("constraint on row {r}: \"{at}\" is neither a corner nor a side ({})", self.ranges())
+                    format!("constraint on row {r}: \"{at}\" is neither a corner nor a side ({})", self.ranges()),
+                    format!("restricción en la fila {r}: \"{at}\" no es ni una esquina ni un lado ({})", self.ranges()),
+                    format!("contrainte à la ligne {r} : \"{at}\" n'est ni un angle ni un côté ({})", self.ranges()),
+                    format!("{r}. satırdaki kısıt: \"{at}\" ne köşe ne de kenar ({})", self.ranges()),
+                    format!("restrição na linha {r}: \"{at}\" não é nem um canto nem um lado ({})", self.ranges()),
+                    format!("warunek w wierszu {r}: \"{at}\" nie jest ani narożnikiem, ani bokiem ({})", self.ranges()),
                 ));
             }
         }
@@ -438,20 +485,26 @@ impl Survey {
             let Some((room, i, j)) = self.parse_room_side(&cell(1)) else {
                 return Err(tr!(
                     format!("porta o finestra alla riga {r}: \"{}\" non è un lato di un vano (scrivi due spigoli vicini, per esempio {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1)),
-                    format!("door or window on row {r}: \"{}\" is not a room side (write two neighbouring corners, for example {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1))
+                    format!("door or window on row {r}: \"{}\" is not a room side (write two neighbouring corners, for example {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1)),
+                    format!("puerta o ventana en la fila {r}: \"{}\" no es un lado de estancia (escriba dos esquinas contiguas, por ejemplo {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1)),
+                    format!("porte ou fenêtre à la ligne {r} : \"{}\" n'est pas un côté de pièce (écrivez deux angles voisins, par exemple {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1)),
+                    format!("{r}. satırdaki kapı veya pencere: \"{}\" bir oda kenarı değil (iki komşu köşe yazın, örneğin {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1)),
+                    format!("porta ou janela na linha {r}: \"{}\" não é um lado de compartimento (escreva dois cantos vizinhos, por exemplo {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1)),
+                    format!("drzwi lub okno w wierszu {r}: \"{}\" nie jest bokiem pomieszczenia (wpisz dwa sąsiednie narożniki, np. {}-{})", cell(1), self.corner(0, 0), self.corner(0, 1)),
                 ));
             };
             let t = cell(2).to_lowercase();
-            let kind = if t.is_empty() || t.starts_with('p') || t.starts_with('d') {
-                OpKind::Door
-            } else if t.starts_with('f') || t.starts_with('w') {
-                OpKind::Window
-            } else if t.starts_with('a') || t.starts_with('o') || t.starts_with('v') {
-                OpKind::Opening
+            let kind = if let Some(k) = op_kind(&t) {
+                k
             } else {
                 return Err(tr!(
                     format!("riga {r} di porte e finestre: tipo \"{}\" sconosciuto (porta, finestra o apertura)", cell(2)),
-                    format!("row {r} of doors and windows: unknown kind \"{}\" (door, window or opening)", cell(2))
+                    format!("row {r} of doors and windows: unknown kind \"{}\" (door, window or opening)", cell(2)),
+                    format!("fila {r} de puertas y ventanas: tipo \"{}\" desconocido (puerta, ventana o abertura)", cell(2)),
+                    format!("ligne {r} des portes et fenêtres : type \"{}\" inconnu (porte, fenêtre ou ouverture)", cell(2)),
+                    format!("kapı ve pencerelerin {r}. satırı: bilinmeyen tür \"{}\" (kapı, pencere veya açıklık)", cell(2)),
+                    format!("linha {r} das portas e janelas: tipo \"{}\" desconhecido (porta, janela ou abertura)", cell(2)),
+                    format!("wiersz {r} drzwi i okien: nieznany typ \"{}\" (drzwi, okno lub otwór)", cell(2)),
                 ));
             };
             let s0 = parse_num(&cell(3)).filter(|v| *v >= 0.0);
@@ -459,7 +512,12 @@ impl Survey {
             let (Some(s0), Some(w)) = (s0, w) else {
                 return Err(tr!(
                     format!("{name}: scrivi la distanza dallo spigolo {} e la larghezza", self.corner(room, i)),
-                    format!("{name}: type the distance from corner {} and the width", self.corner(room, i))
+                    format!("{name}: type the distance from corner {} and the width", self.corner(room, i)),
+                    format!("{name}: escriba la distancia desde la esquina {} y la anchura", self.corner(room, i)),
+                    format!("{name} : saisissez la distance depuis l'angle {} et la largeur", self.corner(room, i)),
+                    format!("{name}: {} köşesinden uzaklığı ve genişliği girin", self.corner(room, i)),
+                    format!("{name}: introduza a distância a partir do canto {} e a largura", self.corner(room, i)),
+                    format!("{name}: wpisz odległość od narożnika {} i szerokość", self.corner(room, i)),
                 ));
             };
             let thick = parse_num(&cell(5)).filter(|v| *v > 0.0);
@@ -474,14 +532,24 @@ impl Survey {
             if same.len() > 2 || ops[same[0]].room == ops[same[1]].room {
                 return Err(tr!(
                     format!("il nome {} è usato più volte: una porta comune va scritta una volta per ciascuno dei due vani", ops[x].name),
-                    format!("the name {} is used too often: a shared door is written once for each of the two rooms", ops[x].name)
+                    format!("the name {} is used too often: a shared door is written once for each of the two rooms", ops[x].name),
+                    format!("el nombre {} se usa demasiadas veces: una puerta común se escribe una vez para cada una de las dos estancias", ops[x].name),
+                    format!("le nom {} est utilisé trop de fois : une porte commune s'écrit une fois pour chacune des deux pièces", ops[x].name),
+                    format!("{} adı çok fazla kez kullanılmış: ortak kapı iki odanın her biri için bir kez yazılır", ops[x].name),
+                    format!("o nome {} é usado vezes demais: uma porta comum escreve-se uma vez para cada um dos dois compartimentos", ops[x].name),
+                    format!("nazwa {} jest użyta zbyt wiele razy: wspólne drzwi wpisuje się raz dla każdego z dwóch pomieszczeń", ops[x].name),
                 ));
             }
             let (o1, o2) = (same[0], same[1]);
             let Some(t) = ops[o1].thick.or(ops[o2].thick) else {
                 return Err(tr!(
                     format!("la porta {} è comune a due vani: scrivi lo spessore del muro", ops[x].name),
-                    format!("door {} is shared by two rooms: type the wall thickness", ops[x].name)
+                    format!("door {} is shared by two rooms: type the wall thickness", ops[x].name),
+                    format!("la puerta {} es común a dos estancias: escriba el espesor del muro", ops[x].name),
+                    format!("la porte {} est commune à deux pièces : saisissez l'épaisseur du mur", ops[x].name),
+                    format!("{} kapısı iki odada ortak: duvar kalınlığını girin", ops[x].name),
+                    format!("a porta {} é comum a dois compartimentos: introduza a espessura da parede", ops[x].name),
+                    format!("drzwi {} są wspólne dla dwóch pomieszczeń: wpisz grubość ściany", ops[x].name),
                 ));
             };
             ops[o1].twin = Some(o2);
@@ -498,7 +566,7 @@ impl Survey {
             let cross = solve::dist(j1.eval(pts), k2.eval(pts)) + solve::dist(k1.eval(pts), j2.eval(pts));
             let straight = solve::dist(j1.eval(pts), j2.eval(pts)) + solve::dist(k1.eval(pts), k2.eval(pts));
             let partner = if cross <= straight { k2 } else { j2 };
-            let nm = |n: usize| format!("{} {} ({n})", tr!("porta", "door"), p.name);
+            let nm = |n: usize| format!("{} {} ({n})", tr!("porta", "door", "puerta", "porte", "kapı", "porta", "drzwi"), p.name);
             out.push(Measure { meas: Meas::PerpAt { p: j2, a: p.a, b: p.b, d: t }, name: nm(1), kind: Kind::Door });
             out.push(Measure { meas: Meas::PerpAt { p: k2, a: p.a, b: p.b, d: t }, name: nm(2), kind: Kind::Door });
             // The facing jambs square across the wall: no shift along it.
@@ -584,6 +652,37 @@ fn corner_name(multi: bool, r: usize, i: usize) -> String {
         format!("{}{}", r + 1, label(i))
     } else {
         label(i)
+    }
+}
+
+/// Door, window or opening, from a word in any language of the plugin (or
+/// its first letters).
+fn op_kind(t: &str) -> Option<OpKind> {
+    const WORDS: [(OpKind, &[&str]); 3] = [
+        (OpKind::Door, &["porta", "door", "puerta", "porte", "kapı", "kapi", "drzwi"]),
+        (OpKind::Window, &["finestra", "window", "ventana", "fenêtre", "fenetre", "pencere", "janela", "okno"]),
+        (OpKind::Opening, &["apertura", "opening", "abertura", "ouverture", "açıklık", "aciklik", "otwór", "otwor", "vano"]),
+    ];
+    let t = t.trim().to_lowercase();
+    if t.is_empty() {
+        return Some(OpKind::Door);
+    }
+    // "plain opening", "doğramasız açıklık": any word may carry the kind.
+    for word in t.split_whitespace().filter(|w| w.chars().count() >= 2) {
+        let hits: Vec<OpKind> = WORDS
+            .iter()
+            .filter(|(_, ws)| ws.iter().any(|w| w.starts_with(word) || word.starts_with(w)))
+            .map(|(k, _)| *k)
+            .collect();
+        if let [k] = hits[..] {
+            return Some(k);
+        }
+    }
+    match t.chars().next()? {
+        'p' | 'd' | 'k' => Some(OpKind::Door),
+        'f' | 'w' | 'j' => Some(OpKind::Window),
+        'a' | 'o' | 'v' => Some(OpKind::Opening),
+        _ => None,
     }
 }
 
@@ -680,6 +779,20 @@ mod tests {
         let e = s.parse(&saved, &num).unwrap_err();
         assert!(e.contains("1") && e.contains("\"A\""), "{e}");
     }
+    #[test]
+    fn opening_kinds_in_every_language() {
+        use OpKind::*;
+        for (t, k) in [
+            ("porta", Door), ("door", Door), ("puerta", Door), ("porte", Door), ("kapı", Door), ("drzwi", Door), ("", Door),
+            ("finestra", Window), ("window", Window), ("ventana", Window), ("fenêtre", Window), ("pencere", Window), ("janela", Window), ("okno", Window), ("f", Window),
+            ("apertura senza serramento", Opening), ("plain opening", Opening), ("abertura sin carpintería", Opening),
+            ("ouverture sans menuiserie", Opening), ("doğramasız açıklık", Opening), ("abertura sem caixilharia", Opening), ("otwór bez stolarki", Opening),
+        ] {
+            assert_eq!(op_kind(t), Some(k), "{t}");
+        }
+        assert_eq!(op_kind("xyz"), None);
+    }
+
     #[test]
     fn constraints_and_openings() {
         let s = two();

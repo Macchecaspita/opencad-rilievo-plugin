@@ -1,10 +1,14 @@
-"""Genera docs/Manuale_rilievo.pdf — come rilevare un appartamento con
-Rilievo Vani. Esegui:  python docs/manuale.py   (serve reportlab).
+"""Genera i manuali di rilievo di Rilievo Vani, uno per lingua:
+docs/Manuale_rilievo.pdf (italiano) e docs/manual_<lingua>.pdf (en, es, fr,
+tr, pt, pl). I testi sono in docs/manual/<lingua>.py.
+Esegui:  python docs/manuale.py [lingua …]   (serve reportlab).
 
-Il PDF viene anche incorporato nel plugin (comando RV_MANUALE)."""
+I PDF vengono anche incorporati nel plugin (comando RV_MANUALE)."""
 
+import importlib.util
 import math
 import os
+import sys
 
 from reportlab.graphics.shapes import Circle, Drawing, Line, PolyLine, Polygon, String, Wedge
 from reportlab.lib import colors
@@ -18,7 +22,23 @@ from reportlab.platypus import (KeepTogether, PageBreak, Paragraph, SimpleDocTem
                                 TableStyle)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "Manuale_rilievo.pdf")
+LANGS = ["it", "en", "es", "fr", "tr", "pt", "pl"]
+
+# Testi della lingua in corso (impostati da build()).
+T = {}
+DEC = ","
+
+
+def num(s):
+    """Numero d'esempio con il separatore decimale della lingua."""
+    return s.replace(",", DEC)
+
+
+def load(lang):
+    spec = importlib.util.spec_from_file_location(f"manual_{lang}", os.path.join(HERE, "manual", f"{lang}.py"))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 for name, file in [("DV", "DejaVuSans.ttf"), ("DV-B", "DejaVuSans-Bold.ttf"), ("DV-I", "DejaVuSans-Oblique.ttf")]:
@@ -147,10 +167,10 @@ def plan_overview():
     for r, pts in ROOMS.items():
         cx = sum(p[0] for p in pts) / len(pts)
         cy = sum(p[1] for p in pts) / len(pts)
-        pl.text((cx, cy), f"Vano {r}", 8.5, ACCENT, bold=True)
+        pl.text((cx, cy), str(r), 14, ACCENT, bold=True)
         for i in range(len(pts)):
             q = inside_offset(pts, i, 0.42)
-            pl.text(q, f"{r}{chr(65 + i)}", 5.6, INK)
+            pl.text(q, chr(65 + i), 5.6, INK)
     # porte (schematiche)
     pl.door((5.4, 8.0), (5.4, 8.9), (-1, 0))
     pl.door((5.4, 3.6), (5.4, 4.5), (-1, 0))
@@ -160,7 +180,7 @@ def plan_overview():
     # finestre (doppia linea nel muro esterno)
     for a, b in [((1.6, 11.45), (3.4, 11.45)), ((8.6, 11.5), (10.6, 11.5)), ((13.0, 2.0), (13.0, 4.0))]:
         pl.line(a, b, SIDE, 2.2)
-    pl.text((6.4, -0.45), "eidotipo: vani numerati, spigoli con lettere (scritte da Lettere vertici)", 6.5, GREY)
+    pl.text((6.4, -0.45), T["d_sketch"], 6.5, GREY)
     return pl.d
 
 
@@ -173,7 +193,7 @@ def plan_room(check=True):
         pl.dot(q)
         o = inside_offset(pts, i, -0.32)
         pl.text(o, names[i], 8, INK, bold=True)
-    labels = ["5,00", "4,00", "5,25", "4,05"]
+    labels = [num(x) for x in ["5,00", "4,00", "5,25", "4,05"]]
     for i in range(4):
         a, b = pts[i], pts[(i + 1) % 4]
         m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
@@ -184,7 +204,7 @@ def plan_room(check=True):
     pl.text((2.2, 2.25), "A–C", 6.5, DIAG)
     if check:
         pl.line(pts[1], pts[3], CHECK, 1.0, [1, 2])
-        pl.text((3.0, 1.35), "B–D controllo", 6.5, CHECK)
+        pl.text((3.0, 1.35), T["d_check"], 6.5, CHECK)
     return pl.d
 
 
@@ -198,8 +218,8 @@ def plan_l():
     for a, b in [(0, 2), (0, 3), (3, 5)]:
         pl.line(pts[a], pts[b], DIAG, 1.0, [3, 2])
     pl.line(pts[2], pts[4], ACCENT, 0.9, [1, 1.5])
-    pl.text((4.9, 3.9), "C–E: passa fuori,", 6, ACCENT)
-    pl.text((4.9, 3.5), "non misurabile", 6, ACCENT)
+    pl.text((4.9, 3.9), T["d_out1"], 6, ACCENT)
+    pl.text((4.9, 3.5), T["d_out2"], 6, ACCENT)
     pl.text((1.6, 1.1), "A–C, A–D, D–F", 6.5, DIAG)
     return pl.d
 
@@ -223,16 +243,16 @@ def plan_door():
     pl.dot((t, 0)); pl.text((t + 0.25, -0.2), "2A", 7, INK, bold=True)
     # quote
     pl.line((-0.6, 0), (-0.6, 1.0), SIDE, 1.0)
-    pl.text((-0.75, 0.5), "1,00", 6.5, SIDE, anchor="end")
-    pl.text((-0.75, 0.2), "distanza da 1B", 5.5, GREY, anchor="end")
+    pl.text((-0.75, 0.5), num("1,00"), 6.5, SIDE, anchor="end")
+    pl.text((-0.75, 0.2), T["d_from1b"], 5.5, GREY, anchor="end")
     pl.line((-1.4, 1.0), (-1.4, 1.9), DIAG, 1.4)
-    pl.text((-1.55, 1.45), "0,90 larghezza", 6.5, DIAG, anchor="end")
+    pl.text((-1.55, 1.45), T["d_width"], 6.5, DIAG, anchor="end")
     pl.line((0, 1.45), (t, 1.45), CHECK, 1.2)
-    pl.text((t + 0.15, 1.45), "spessore 0,30 (nello stipite)", 6.5, CHECK, anchor="start")
+    pl.text((t + 0.15, 1.45), T["d_thick"], 6.5, CHECK, anchor="start")
     pl.line((t + 0.6, 4.0), (t + 0.6, 1.9), SIDE, 1.0)
-    pl.text((t + 0.75, 3.0), "1,10 distanza da 2D", 6.5, SIDE, anchor="start")
-    pl.text((-1.0, 3.4), "Vano 1", 9, ACCENT, bold=True)
-    pl.text((2.6, 3.4), "Vano 2", 9, ACCENT, bold=True)
+    pl.text((t + 0.75, 3.0), T["d_from2d"], 6.5, SIDE, anchor="start")
+    pl.text((-1.0, 3.4), T["d_room"].format(r=1), 9, ACCENT, bold=True)
+    pl.text((2.6, 3.4), T["d_room"].format(r=2), 9, ACCENT, bold=True)
     return pl.d
 
 
@@ -244,13 +264,13 @@ def plan_obstacle():
         pl.dot(q)
         pl.text(inside_offset(pts, i, -0.32), "ABCD"[i], 8, INK, bold=True)
     pl.poly([(1.8, 1.4), (3.4, 1.4), (3.4, 2.6), (1.8, 2.6)], GREY, 0.6, fill=colors.HexColor("#e8e8e8"))
-    pl.text((2.6, 2.0), "mobile", 6.5, GREY)
+    pl.text((2.6, 2.0), T["d_furn"], 6.5, GREY)
     pl.line(pts[0], pts[2], ACCENT, 0.8, [1, 1.5])
     x, y = pl.p(0, 0)
     pl.d.add(Line(x + 10, y, x + 10, y + 10, strokeColor=CHECK, strokeWidth=1))
     pl.d.add(Line(x, y + 10, x + 10, y + 10, strokeColor=CHECK, strokeWidth=1))
     pl.text((0.85, 0.75), "A: 90°", 7, CHECK, bold=True)
-    pl.text((3.9, 3.1), "A–C bloccata", 6.5, ACCENT)
+    pl.text((3.9, 3.1), T["d_blocked"], 6.5, ACCENT)
     return pl.d
 
 
@@ -279,162 +299,90 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("DV", 7.5)
     canvas.setFillColor(GREY)
-    canvas.drawString(18 * mm, 10 * mm, "Rilievo Vani — manuale di rilievo · progetto hobbistico, non per uso professionale")
+    canvas.drawString(18 * mm, 10 * mm, T["foot"])
     canvas.drawRightString(A4[0] - 18 * mm, 10 * mm, str(doc.page))
     canvas.restoreState()
 
 
-def build():
+def rows(t):
+    """Tabella: ogni cella come paragrafo, così il testo va a capo."""
+    out = [t[0]]
+    for r in t[1:]:
+        out.append([cell(c) for c in r])
+    return out
+
+
+def build(lang):
+    global T, DEC
+    m = load(lang)
+    T, DEC = m.S, m.DEC
+    out = os.path.join(HERE, m.OUT)
     s = []
     s += [Spacer(1, 30 * mm), P("Rilievo Vani", title),
-          P("Come rilevare un appartamento a misure dirette<br/>e ricostruirlo in Open CAD Studio", subtitle),
+          P(T["subtitle"], subtitle),
           plan_overview(),
           Spacer(1, 6 * mm),
-          P("<b>Avvertenza.</b> Rilievo Vani è un progetto hobbistico, realizzato per divertimento e <b>non adatto "
-            "a un uso professionale</b>. È fornito così com'è, senza alcuna garanzia; l'autore non si assume alcuna "
-            "responsabilità per il suo uso né per i risultati. Controlla sempre i risultati con misure di verifica.", note),
+          P(T["warn"], note),
           PageBreak()]
 
-    s += [P("1. Il metodo in breve", h1),
-          P("Si disegna la pianta <b>a occhio</b>, si misurano in cantiere i lati e alcune diagonali di ogni vano, "
-            "più qualche misura che lega i vani tra loro, e il plugin ricostruisce la pianta <b>vera</b> compensando "
-            "le misure ai minimi quadrati. Gli scarti dicono subito se una misura è sbagliata."),
-          table([["", "Dove", "Cosa si fa"],
-                 ["1", "in studio", "eidotipo: si disegna ogni vano come polilinea chiusa (a occhio) e si scrivono le lettere"],
-                 ["2", "in cantiere", "si misurano lati, diagonali, spessori dei muri, porte e finestre, segnandoli sull'eidotipo"],
-                 ["3", "in studio", "si inseriscono le misure, si calcola, si leggono gli scarti, si completa il disegno"]],
-                [10, 26, 128]),
+    s += [P(T["h1"], h1),
+          P(T["p1"]),
+          table(rows(T["t1"]), [10, 30, 124]),
           Spacer(1, 4 * mm),
-          P("Attrezzatura", h2)]
-    s += bullets([
-        "distanziometro laser (meglio con misura dal retro dello strumento) e una cordella metrica da 5 m per le "
-        "misure corte (spessori, mazzette, riseghe);",
-        "l'eidotipo stampato, matita e gomma; una tavoletta rigida;",
-        "un metro rigido o una squadra per verificare gli angoli quando le diagonali sono impedite;",
-        "macchina fotografica o telefono: una foto per vano, con le lettere degli spigoli scritte a matita sull'eidotipo.",
-    ])
+          P(T["h_tools"], h2)]
+    s += bullets(T["tools"])
 
-    s += [P("2. Prima del sopralluogo: l'eidotipo nel CAD", h1),
-          P("Disegna <b>ogni vano</b> come <b>polilinea chiusa</b> (PLINEA … Chiudi), seguendo il <b>filo interno</b> "
-            "dei muri. Le misure non contano: conta che ogni spigolo vero sia un vertice della polilinea, nell'ordine "
-            "giusto. Riseghe, nicchie, pilastri sporgenti e smussi sono vertici anche loro (vano 3 dell'esempio). "
-            "Il corridoio è un vano come gli altri."),
-          P("Con <b>Lettere vertici</b> seleziona i vani — uno alla volta nell'ordine che vuoi dare ai numeri, "
-            "oppure tutti insieme con una finestra (numerati dall'alto in basso, da sinistra a destra) — e premi Invio: compaiono 1A, 1B … 2A … Stampa la pianta: è il tuo eidotipo. "
-            "Se due lettere sono troppo vicine il plugin le sposta e le collega allo spigolo con una linea."),
-          table([["Consiglio", "Perché"],
-                 [cell("Numera i vani in un ordine che segui anche in cantiere"), cell("Si scrive più in fretta e si sbaglia meno vano.")],
-                 [cell("Polilinea sul filo interno"), cell("Le misure si prendono da dentro i vani; i muri esterni si ricavano dopo dagli spessori.")],
-                 [cell("Nessun vertice inutile"), cell("Un vertice su un lato dritto (angolo di 180°) chiede misure inutili.")]],
-                [62, 102]),
+    s += [P(T["h2"], h1),
+          P(T["p2a"]),
+          P(T["p2b"]),
+          table(rows(T["t2"]), [62, 102]),
           PageBreak()]
 
-    s += [P("3. In cantiere: misurare un vano", h1),
-          P("Un vano di <b>n</b> spigoli ha 2n − 3 incognite: si chiude con <b>tutti i lati</b> più <b>n − 3 "
-            "diagonali</b>. Un rettangolo vuole 1 diagonale, un vano a L 3, il bagno con risega dell'esempio 3."),
-          P("Misura i lati <b>alla stessa altezza</b> (per esempio a 1 m da terra, sopra battiscopa e mobili bassi), "
-            "da spigolo a spigolo. Poi le diagonali. Le diagonali proposte dal plugin passano tutte <b>dentro</b> il vano: "
-            "in un vano a L non c'è mai una diagonale che attraversa il muro."),
+    s += [P(T["h3"], h1),
+          P(T["p3a"]),
+          P(T["p3b"]),
           Table([[plan_room(), plan_l()]], colWidths=[82 * mm, 82 * mm]),
-          P("Sinistra: lati (blu) e diagonale (arancio) di un vano fuori squadra; la seconda diagonale (verde) è la misura "
-            "di controllo. Destra: vano a L, le tre diagonali utili e una da evitare.", cap),
-          P("La misura di controllo", h2),
-          P("Prendi <b>sempre una diagonale in più</b> del minimo. Senza misure in più la forma è esatta qualunque cosa "
-            "tu scriva, e una cifra letta male (6,85 al posto di 6,58) passa inosservata. Con una misura in più il "
-            "plugin calcola gli <b>scarti</b> e σ₀ e colora in rosso le misure oltre la tolleranza (di solito 1–2 cm)."),
-          P("Quando un mobile impedisce una diagonale", h2),
-          Table([[plan_obstacle(), [
-              P("Prova prima una diagonale diversa (B–D al posto di A–C), o alzala sopra il mobile tenendo il "
-                "distanziometro in bolla."),
-              P("Se non si può, usa un <b>vincolo</b> (nella scheda del vano): spigolo e angolo, per esempio "
-                "<b>A, 90</b>, dopo averlo verificato con la squadra; oppure un lato <b>orizzontale</b> o <b>verticale</b>. "
-                "Ogni vincolo vale una misura e riceve anche lui uno scarto."),
-              P("Se manca ancora qualcosa, l'opzione <b>completa la forma con gli angoli del disegno</b> (attiva di "
-                "solito) prende dal disegno quello che manca, e la tabella lo segnala in rosso. In quel punto il "
-                "risultato vale quanto il tuo disegno a occhio: annotalo."),
-          ]]], colWidths=[82 * mm, 82 * mm], style=[("VALIGN", (0, 0), (-1, -1), "TOP")]),
+          P(T["cap3"], cap),
+          P(T["h_check"], h2),
+          P(T["p_check"]),
+          P(T["h_obst"], h2),
+          Table([[plan_obstacle(), [P(x) for x in T["obst"]]]], colWidths=[82 * mm, 82 * mm],
+                style=[("VALIGN", (0, 0), (-1, -1), "TOP")]),
           PageBreak()]
 
-    s += [P("4. Collegare i vani tra loro", h1),
-          P("Ogni vano, misurato da solo, ha la forma giusta ma non sa dove si trova rispetto agli altri. Per "
-            "collegarlo servono <b>almeno 3 misure</b> verso il vano accanto, oppure una <b>porta comune</b>. "
-            "Il modo più comodo è la porta."),
+    s += [P(T["h4"], h1),
+          P(T["p4a"]),
           plan_door(),
-          P("Una porta tra il vano 1 e il vano 2: distanza dallo spigolo e larghezza misurate da ciascuna parte, "
-            "spessore del muro misurato nello stipite.", cap),
-          P("Dall'elenco della finestra scegli <b>Aggiungi porta o finestra</b> e <b>clicca sul disegno</b>, sul muro tra i "
-            "due vani, vicino alla porta. Il plugin riconosce da solo i due lati (li evidenzia in verde) e chiede:"),
-          table([["Casella", "Esempio"],
-                 ["Distanza dallo spigolo 1B allo stipite (misurata nel vano 1)", "1,00"],
-                 ["Larghezza", "0,90"],
-                 ["Spessore del muro, misurato nella porta", "0,30"],
-                 ["Distanza dallo spigolo 2D allo stipite (misurata nel vano 2)", "1,10"]],
-                [110, 30]),
+          P(T["cap4"], cap),
+          P(T["p4b"]),
+          table(rows(T["t4"]), [110, 30]),
           Spacer(1, 3 * mm),
-          P("La distanza si prende dallo spigolo fino allo stipite; il plugin propone lo spigolo più vicino al punto "
-            "cliccato e puoi sceglierne l'altro. Basta questo: i due vani "
-            "risultano collegati (stipiti affacciati, muro parallelo, spessore noto). Una misura in più attraverso la "
-            "porta (per esempio da 1B a 2D) fa da controllo."),
-          P("Senza porta (o per controllo) scegli dall'elenco <b>Altre misure tra vani</b>:"),
-          ]
-    s += bullets([
-        "<b>spessore di un muro</b>: Da = un lato (1B-1C), A = lo spigolo dell'altro vano dietro quel muro (2A), "
-        "Misurata = lo spessore preso in squadra nella porta;",
-        "<b>misure attraverso la porta</b>: Da = 1B, A = 2D, tra spigoli dei due vani che si vedono dalla porta; "
-        "prendine due verso spigoli diversi.",
-    ])
-    s += [P("Ordine consigliato per l'appartamento d'esempio", h2),
-          P("Parti dal <b>corridoio</b> (vano 4), che tocca quasi tutti gli altri, e collega ogni vano al corridoio con "
-            "la sua porta: soggiorno e camera a sinistra, cucina e camera 2 a destra; il bagno si collega alla camera. "
-            "In questo modo ogni vano è legato da una catena corta e un errore resta circoscritto.")]
+          P(T["p4c"]),
+          P(T["p4d"])]
+    s += bullets(T["links"])
+    s += [P(T["h_order"], h2),
+          P(T["p_order"])]
 
-    s += [P("5. Porte, finestre e muri esterni", h1),
-          P("Porte e finestre", h2),
-          P("Anche finestre e porte verso l'esterno si aggiungono con <b>Aggiungi porta o finestra</b> e un clic sul muro: "
-            "tipo (<b>porta</b>, <b>finestra</b>, <b>apertura</b>), distanza dallo spigolo fino alla spalla e larghezza "
-            "della luce. La porta è incernierata dalla parte dello spigolo da cui misuri. Le altezze (davanzale, "
-            "architrave) annotale sull'eidotipo: il plugin lavora in pianta."),
-          P("Muri esterni", h2),
-          P("Il plugin ricostruisce i vani sul filo interno. Per il perimetro esterno misura lo <b>spessore del muro "
-            "nelle finestre</b> (mazzetta compresa) e almeno uno per facciata; poi nel CAD ricava il filo esterno "
-            "con OFFSET dai lati dei vani, alla distanza misurata, e raccorda gli spigoli. Dove possibile verifica "
-            "con una misura esterna (la lunghezza di una facciata) presa da fuori."),
-          P("6. In studio: calcolo e controllo", h1)]
-    s += bullets([
-        "<b>Misure e diagonali</b>: clicca tutti i vani (stesso ordine dell'eidotipo) e premi Invio. Si apre l'elenco dei "
-        "vani con il loro stato: apri un vano alla volta e scrivi lati e diagonali, aggiungi le porte con un clic sul "
-        "disegno; quando tutto è completo l'elenco propone <b>Calcola</b>.",
-        "Se le misure non bastano o non tornano, la finestra si riapre con il motivo e con le misure già scritte.",
-        "Il risultato va sul layer <b>RILIEVO_CORRETTO</b>, con la superficie di ogni vano; quote, diagonali e tabella su "
-        "<b>RILIEVO_QUOTE</b>; porte e finestre su <b>RILIEVO_APERTURE</b>. Il disegno a occhio resta per confronto.",
-        "Leggi la tabella degli scarti: uno scarto rosso indica la misura da ricontrollare. Con una sola misura in più "
-        "l'errore si spalma su più misure: prenderne un'altra aiuta a trovarlo.",
-        "<b>Libretto misure</b> salva tutto in un CSV per Excel o Calc (misure, scarti, coordinate, superfici).",
-    ])
-    s += [P("Valori indicativi", h2),
-          table([["Grandezza", "Valore tipico", "Se è più alto"],
-                 [cell("scarto di un lato o una diagonale"), cell("entro 1 cm"), cell("rimisura; controlla cifre invertite e spigolo giusto")],
-                 [cell("σ₀ di un vano"), cell("0,3–0,8 cm"), cell("misure prese ad altezze diverse, spigoli non netti")],
-                 [cell("angolo vincolato a 90°"), cell("scarto entro 0,2°"), cell("l'angolo non è retto: togli il vincolo e misura una diagonale")]],
-                [56, 36, 72]),
+    s += [P(T["h5"], h1),
+          P(T["h_dw"], h2),
+          P(T["p_dw"]),
+          P(T["h_ext"], h2),
+          P(T["p_ext"]),
+          P(T["h6"], h1)]
+    s += bullets(T["calc"])
+    s += [P(T["h_vals"], h2),
+          table(rows(T["t6"]), [56, 36, 72]),
           Spacer(1, 4 * mm),
-          P("Lista di controllo prima di lasciare il cantiere", h2)]
-    s += bullets([
-        "ogni vano ha tutti i lati e almeno n − 3 diagonali (o vincoli verificati), più una misura di controllo;",
-        "ogni vano è collegato: porta comune con spessore, oppure 3 misure verso un vano già collegato;",
-        "spessori dei muri esterni presi nelle finestre, almeno uno per facciata;",
-        "porte e finestre: distanza dallo spigolo, larghezza, altezze annotate;",
-        "una foto per vano.",
-    ])
-    s += [Spacer(1, 6 * mm),
-          P("Rilievo Vani è un progetto hobbistico, non adatto a un uso professionale: l'autore non si assume "
-            "responsabilità per il suo uso. Codice e aggiornamenti: github.com/Macchecaspita/opencad-rilievo-plugin", small)]
+          P(T["h_list"], h2)]
+    s += bullets(T["list"])
+    s += [Spacer(1, 6 * mm), P(T["end"], small)]
 
-    doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm,
-                            bottomMargin=18 * mm, title="Rilievo Vani — manuale di rilievo", author="Macchecaspita")
+    doc = SimpleDocTemplate(out, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm,
+                            bottomMargin=18 * mm, title=T["doc_title"], author="Macchecaspita", lang=lang)
     doc.build(s, onFirstPage=footer, onLaterPages=footer)
-    print(OUT)
+    print(out)
 
 
 if __name__ == "__main__":
-    build()
+    for lang in sys.argv[1:] or LANGS:
+        build(lang)
