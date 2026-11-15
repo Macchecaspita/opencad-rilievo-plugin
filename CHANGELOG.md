@@ -12,6 +12,18 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.2] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- **Lettere vertici**: dopo la scelta dei vani e Invio le lettere vengono scritte
+  subito, con l'altezza proposta (o l'ultima scelta). La finestrella dell'altezza
+  si apre dopo e serve solo a cambiarla (*Riscrivi*) o a chiudere: se per qualche
+  motivo non si apre o viene chiusa, le lettere restano comunque sul disegno.
+
 ## [0.9.1] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

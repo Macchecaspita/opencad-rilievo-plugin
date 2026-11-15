@@ -562,6 +562,9 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                         let cap = letter_cap(&pts);
                         let auto = sizes_for(&pts).0.min(cap);
                         let h = saved_for(&hs).map(|s| s.h).or_else(letter_height).unwrap_or(auto).min(cap);
+                        // The letters go on the drawing straight away; the
+                        // small window only offers another height.
+                        labels_only(host, &hs, h);
                         host.start_interactive(Box::new(tools::LetterSizeDialog::new(key(&hs), h, auto)));
                     }
                     None => host.push_error(tr!("RV_ETICHETTE: un vano scelto non è più nel disegno.", "RV_ETICHETTE: a chosen room is no longer in the drawing.", "RV_ETICHETTE: una estancia elegida ya no está en el dibujo.", "RV_ETICHETTE : une pièce choisie n'est plus dans le dessin.", "RV_ETICHETTE: seçilen bir oda artık çizimde yok.", "RV_ETICHETTE: um compartimento escolhido já não está no desenho.", "RV_ETICHETTE: wybranego pomieszczenia nie ma już na rysunku.")),

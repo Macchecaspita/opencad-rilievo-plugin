@@ -1968,6 +1968,15 @@ impl LetterSizeDialog {
         let fmt = |v: f64| commands::fmt_num(v, 3);
         let def = DialogDef::new(tr!("Lettere vertici — dimensione", "Corner letters — size", "Letras de esquinas — tamaño", "Lettres des angles — taille", "Köşe harfleri — boyut", "Letras dos cantos — tamanho", "Litery narożników — rozmiar"))
             .with_control(info(tr!(
+                format!("Le lettere sono già sul disegno, alte {}. Per cambiarle scrivi un'altra altezza e premi Riscrivi; altrimenti chiudi.", fmt(h)),
+                format!("The letters are already on the drawing, {} high. To change them type another height and press Rewrite; otherwise close.", fmt(h)),
+                format!("Las letras ya están en el dibujo, con altura {}. Para cambiarlas escriba otra altura y pulse Reescribir; si no, cierre.", fmt(h)),
+                format!("Les lettres sont déjà sur le dessin, hautes de {}. Pour les changer, saisissez une autre hauteur et appuyez sur Réécrire ; sinon fermez.", fmt(h)),
+                format!("Harfler çizimde zaten var, yükseklik {}. Değiştirmek için başka bir yükseklik yazıp Yeniden yaz'a basın; yoksa kapatın.", fmt(h)),
+                format!("As letras já estão no desenho, com altura {}. Para as mudar escreva outra altura e prima Reescrever; caso contrário feche.", fmt(h)),
+                format!("Litery są już na rysunku, wysokość {}. Aby je zmienić, wpisz inną wysokość i naciśnij Napisz ponownie; w przeciwnym razie zamknij.", fmt(h)),
+            )))
+            .with_control(info(tr!(
                 format!(
                     "Altezza delle lettere, nelle unità del disegno. Proposta per questi vani: {}. Se le lettere si \
                      ammucchiano su riseghe e spigoli vicini, rimpiccioliscile (per esempio alla metà); se si leggono male \
@@ -2009,8 +2018,8 @@ impl LetterSizeDialog {
                 max: None,
                 step: Some(auto / 4.0),
             })
-            .submit_label(tr!("Scrivi le lettere", "Write the letters", "Escribir las letras", "Écrire les lettres", "Harfleri yaz", "Escrever as letras", "Napisz litery"))
-            .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
+            .submit_label(tr!("Riscrivi", "Rewrite", "Reescribir", "Réécrire", "Yeniden yaz", "Reescrever", "Napisz ponownie"))
+            .cancel_label(tr!("Chiudi", "Close", "Cerrar", "Fermer", "Kapat", "Fechar", "Zamknij"))
             .width(520.0);
         LetterSizeDialog { key, def, done: false, h }
     }
@@ -2037,6 +2046,10 @@ impl InteractiveCommand for LetterSizeDialog {
         // An empty or unreadable box (a decimal comma the number box does not
         // take, for instance) writes the letters at the height shown.
         let h = get_num(&m, "h").filter(|v| v.is_finite() && *v > 0.0).unwrap_or(self.h);
+        // Same height: the letters on the drawing are already right.
+        if (h - self.h).abs() <= self.h * 1e-9 {
+            return CommandStep::Cancel;
+        }
         if h > 0.0 && h.is_finite() {
             deferred("RV_ETICHETTEAPPLY", format!("{} {h}", self.key))
         } else {
