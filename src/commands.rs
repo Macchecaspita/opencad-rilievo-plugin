@@ -431,12 +431,22 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                 host.start_interactive(Box::new(tools::PerimeterAskDialog::new(String::new())));
             }
         }
-        "RV_VANOPICK" => start_pick_except(host, "RV_VANOOPEN", "RV_VANO", PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()).as_deref().and_then(parse_handle)),
+        "RV_VANOPICK" => {
+            let except = PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()).as_deref().and_then(parse_handle);
+            if except.is_some() {
+                let _ = host.set_selection(&[]);
+            }
+            start_pick_except(host, "RV_VANOOPEN", "RV_VANO", except);
+        }
         "RV_ESTERNOPRE" => host.start_interactive(Box::new(tools::PickOuterTool::first(String::new()))),
         "RV_ESTERNOPREPICKED" => match arg.as_deref().and_then(parse_handle) {
             Some(h) if fetch_room(host, h).is_some() => {
                 *PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()) = Some(hex(h));
-                start_pick_except(host, "RV_VANOOPEN", "RV_VANO", Some(h));
+                // The click may have left the perimeter selected: clear it, and
+                // go on to the rooms through a window (not straight from the click).
+                let _ = host.set_selection(&[]);
+                let n = fetch_room(host, h).map_or(0, |r| r.pts.len());
+                host.start_interactive(Box::new(tools::OuterChosenDialog::new(n)));
             }
             _ => {
                 host.push_error(tr!(

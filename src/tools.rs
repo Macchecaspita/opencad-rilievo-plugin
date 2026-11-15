@@ -805,6 +805,67 @@ impl InteractiveCommand for ReportDialog {
     }
 }
 
+/// Shown after the fixed perimeter is clicked, before choosing the rooms.
+pub struct OuterChosenDialog {
+    corners: usize,
+    done: bool,
+}
+
+impl OuterChosenDialog {
+    pub fn new(corners: usize) -> Self {
+        OuterChosenDialog { corners, done: false }
+    }
+}
+
+impl InteractiveCommand for OuterChosenDialog {
+    fn prompt(&self) -> String {
+        tr!(
+            "RV_VANO: rispondi nella finestra",
+            "RV_VANO: answer in the window",
+            "RV_VANO: responda en la ventana",
+            "RV_VANO : répondez dans la fenêtre",
+            "RV_VANO: pencerede yanıtlayın",
+            "RV_VANO: responda na janela",
+            "RV_VANO: odpowiedz w oknie",
+        )
+        .into()
+    }
+    fn on_point(&mut self, _pt: [f64; 3]) -> CommandStep {
+        CommandStep::NeedPoint
+    }
+    fn on_enter(&mut self) -> CommandStep {
+        CommandStep::Cancel
+    }
+    fn modal_dialog(&self) -> Option<DialogDef> {
+        if self.done {
+            return None;
+        }
+        let n = self.corners;
+        Some(
+            DialogDef::new(tr!("Perimetro fisso dell'edificio", "Fixed perimeter of the building", "Perímetro fijo del edificio", "Périmètre fixe du bâtiment", "Binanın sabit çevresi", "Perímetro fixo do edifício", "Stały obrys budynku"))
+                .with_control(info(tr!(
+                    format!("Perimetro scelto ({n} vertici): resterà fermo. Ora seleziona i vani (non il perimetro) e premi Invio."),
+                    format!("Perimeter chosen ({n} corners): it will stay still. Now select the rooms (not the perimeter) and press Enter."),
+                    format!("Perímetro elegido ({n} vértices): quedará fijo. Ahora seleccione las estancias (no el perímetro) y pulse Intro."),
+                    format!("Périmètre choisi ({n} sommets) : il restera fixe. Sélectionnez maintenant les pièces (pas le périmètre) et appuyez sur Entrée."),
+                    format!("Çevre seçildi ({n} köşe): sabit kalacak. Şimdi odaları seçin (çevreyi değil) ve Enter'a basın."),
+                    format!("Perímetro escolhido ({n} vértices): ficará fixo. Agora selecione os compartimentos (não o perímetro) e prima Enter."),
+                    format!("Wybrano obrys ({n} wierzchołków): pozostanie nieruchomy. Teraz zaznacz pomieszczenia (nie obrys) i naciśnij Enter."),
+                )))
+                .submit_label(tr!("Seleziona i vani ▸", "Select the rooms ▸", "Seleccionar las estancias ▸", "Sélectionner les pièces ▸", "Odaları seç ▸", "Selecionar os compartimentos ▸", "Zaznacz pomieszczenia ▸"))
+                .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
+                .width(520.0),
+        )
+    }
+    fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
+        self.done = true;
+        match response {
+            DialogResponse::Submitted(_) => deferred("RV_VANOPICK", String::new()),
+            _ => CommandStep::Cancel,
+        }
+    }
+}
+
 // ── Measures dialog ─────────────────────────────────────────────────────────
 
 fn tf(id: String, label: String, default: String) -> DialogControl {

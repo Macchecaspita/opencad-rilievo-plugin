@@ -12,6 +12,19 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.8] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- **Chiusura di Open CAD Studio dopo il clic sul perimetro fisso**: la selezione
+  dei vani partiva direttamente dal clic sul perimetro, che restava anche
+  selezionato. Ora il perimetro viene deselezionato e una finestra conferma la
+  scelta (*Perimetro scelto: N vertici*) prima di passare alla selezione dei vani
+  con *Seleziona i vani*.
+
 ## [0.9.7] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
