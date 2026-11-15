@@ -12,6 +12,23 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.8.3] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Misure e diagonali chiede subito il perimetro fisso dell'edificio**, dopo la
+  scelta dei vani: si clicca la polilinea rilevata con la stazione totale, oppure si
+  preme Invio per continuare senza (è facoltativo). Si può sempre aggiungere o
+  togliere dopo dalla finestra delle misure.
+
+### Corretto
+- **Lettere vertici**: se la casella dell'altezza tornava vuota o illeggibile (per
+  esempio con la virgola decimale), il comando finiva senza scrivere le lettere e
+  senza dire nulla. Ora le scrive con l'altezza proposta.
+
 ## [0.8.2] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

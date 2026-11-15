@@ -179,6 +179,8 @@ fn centroid(p: &[P2]) -> P2 {
 
 static SAVED: Mutex<Option<HashMap<String, Saved>>> = Mutex::new(None);
 static PENDING: Mutex<Option<(Vec<Handle>, Saved)>> = Mutex::new(None);
+/// Rooms for which the fixed perimeter has already been asked.
+static ASKED_OUTER: Mutex<std::collections::BTreeSet<String>> = Mutex::new(std::collections::BTreeSet::new());
 /// The letter height last chosen in Corner letters, used by the next
 /// calculations too.
 static LETTER_H: Mutex<Option<f64>> = Mutex::new(None);
@@ -372,6 +374,20 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
             // The rooms were chosen with the CAD's selection: clear it.
             let _ = host.set_selection(&[]);
+            if hs.is_empty() {
+                return true;
+            }
+            // First time for these rooms: the fixed perimeter of the building,
+            // surveyed with a total station, may be chosen now (optional).
+            let asked = saved_for(&hs).is_some_and(|s| !s.outer.is_empty()) || !ASKED_OUTER.lock().unwrap_or_else(|e| e.into_inner()).insert(key(&hs));
+            if asked {
+                open_dialog(host, &hs, None);
+            } else {
+                host.start_interactive(Box::new(tools::PickOuterTool::first(key(&hs))));
+            }
+        }
+        "RV_VANOFIRST" => {
+            let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
             if !hs.is_empty() {
                 open_dialog(host, &hs, None);
             }
@@ -403,7 +419,11 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             let a = arg.unwrap_or_default();
             let mut parts = a.splitn(2, '|');
             let hs = parse_handles(parts.next().unwrap_or(""));
-            let picked = parts.next().and_then(parse_handle);
+            let rest2 = parts.next().unwrap_or("");
+            let mut more = rest2.splitn(2, '|');
+            let picked = more.next().and_then(parse_handle);
+            // Chosen right after the rooms: the corner letters are still to write.
+            let first = more.next() == Some("first");
             if hs.is_empty() {
                 return true;
             }
@@ -418,7 +438,8 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                     "ta polilinia to jedno z pomieszczeń: wybierz obrys zewnętrzny, zmierzony osobno",
                 )),
                 Some(h) if fetch_room(host, h).is_some() => {
-                    if let (Some(mut s), Some(rooms)) = (saved_for(&hs), fetch_rooms(host, &hs)) {
+                    if let Some(rooms) = fetch_rooms(host, &hs) {
+                        let mut s = saved_or_new(host, &hs, &rooms, &Survey::new(rooms.iter().map(|r| r.pts.clone()).collect()));
                         s.outer = hex(h);
                         let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect()).with_outer(fetch_room(host, h).map(|o| o.pts).unwrap_or_default());
                         s.outer_walls = survey.suggest_outer_walls(outer_reach(&survey, s.unit));
@@ -437,8 +458,8 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                 )),
             };
             match msg {
-                Some(m) => open_dialog_at(host, &hs, Some(m.to_string()), tools::Start::Hub, false),
-                None => open_dialog_at(host, &hs, None, tools::Start::Outer, false),
+                Some(m) => open_dialog_at(host, &hs, Some(m.to_string()), tools::Start::Hub, first),
+                None => open_dialog_at(host, &hs, None, tools::Start::Outer, first),
             }
         }
         "RV_PORTAOPEN" => {
@@ -698,16 +719,11 @@ fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
     open_dialog_at(host, hs, msg, tools::Start::Hub, labels);
 }
 
-/// Open the measures dialog on its hub or on a door's page; `labels`
-/// (re)writes the corner letters on the rooms drawn by eye.
-fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, start: tools::Start, labels: bool) {
-    let Some(rooms) = fetch_rooms(host, hs) else {
-        host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing.", "RV_VANO: una estancia elegida ya no está en el dibujo.", "RV_VANO : une pièce choisie n'est plus dans le dessin.", "RV_VANO: seçilen bir oda artık çizimde yok.", "RV_VANO: um compartimento escolhido já não está no desenho.", "RV_VANO: wybranego pomieszczenia nie ma już na rysunku."));
-        return;
-    };
-    let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
+/// What the user typed for these rooms, or a fresh start: every side, the
+/// diagonals each room needs, sizes from the drawing.
+fn saved_or_new(host: &dyn HostApi, hs: &[Handle], rooms: &[Room], survey: &Survey) -> Saved {
     let n_sides: usize = rooms.iter().map(|r| r.pts.len()).sum();
-    let saved = match saved_for(hs) {
+    match saved_for(hs) {
         Some(s) if s.sides.len() == n_sides => s,
         _ => {
             let all: Vec<P2> = rooms.iter().flat_map(|r| r.pts.iter().copied()).collect();
@@ -735,7 +751,18 @@ fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, st
                 outer_walls: vec![],
             }
         }
+    }
+}
+
+/// Open the measures dialog on its hub or on a door's page; `labels`
+/// (re)writes the corner letters on the rooms drawn by eye.
+fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, start: tools::Start, labels: bool) {
+    let Some(rooms) = fetch_rooms(host, hs) else {
+        host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing.", "RV_VANO: una estancia elegida ya no está en el dibujo.", "RV_VANO : une pièce choisie n'est plus dans le dessin.", "RV_VANO: seçilen bir oda artık çizimde yok.", "RV_VANO: um compartimento escolhido já não está no desenho.", "RV_VANO: wybranego pomieszczenia nie ma już na rysunku."));
+        return;
     };
+    let survey = Survey::new(rooms.iter().map(|r| r.pts.clone()).collect());
+    let saved = saved_or_new(host, hs, &rooms, &survey);
     if labels {
         if rooms.iter().any(|r| r.had_arcs) {
             host.push_info(tr!(

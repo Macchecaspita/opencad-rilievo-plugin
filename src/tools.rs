@@ -617,16 +617,34 @@ impl InteractiveCommand for PickDoorTool {
 /// the measures dialog opens again on the outer walls page.
 pub struct PickOuterTool {
     key: String,
+    /// Asked right after choosing the rooms: optional, Enter goes on.
+    first: bool,
 }
 
 impl PickOuterTool {
     pub fn new(key: String) -> Self {
-        PickOuterTool { key }
+        PickOuterTool { key, first: false }
+    }
+
+    pub fn first(key: String) -> Self {
+        PickOuterTool { key, first: true }
     }
 }
 
 impl InteractiveCommand for PickOuterTool {
     fn prompt(&self) -> String {
+        if self.first {
+            return tr!(
+                "Perimetro fisso dell'edificio (facoltativo): clicca la polilinea chiusa rilevata con la stazione totale, oppure premi Invio per continuare senza",
+                "Fixed perimeter of the building (optional): click the closed polyline surveyed with the total station, or press Enter to go on without it",
+                "Perímetro fijo del edificio (opcional): haga clic en la polilínea cerrada levantada con la estación total, o pulse Intro para seguir sin él",
+                "Périmètre fixe du bâtiment (facultatif) : cliquez sur la polyligne fermée relevée à la station totale, ou appuyez sur Entrée pour continuer sans",
+                "Binanın sabit çevresi (isteğe bağlı): total station ile ölçülen kapalı çoklu çizgiye tıklayın veya onsuz devam etmek için Enter'a basın",
+                "Perímetro fixo do edifício (opcional): clique na polilinha fechada levantada com a estação total, ou prima Enter para continuar sem ele",
+                "Stały obrys budynku (opcjonalnie): kliknij zamkniętą polilinię zmierzoną tachimetrem albo naciśnij Enter, aby kontynuować bez niego",
+            )
+            .to_string();
+        }
         tr!(
             "Poligono esterno: clicca sulla polilinea chiusa rilevata con la stazione totale (resterà ferma). Invio per tornare alla finestra",
             "Outer outline: click the closed polyline surveyed with the total station (it will not move). Enter to go back to the window",
@@ -645,10 +663,11 @@ impl InteractiveCommand for PickOuterTool {
         true
     }
     fn on_object_pick(&mut self, handle: Handle, _pt: [f64; 3]) -> CommandStep {
-        deferred("RV_ESTERNOSET", format!("{}|{:X}", self.key, handle.value()))
+        let tail = if self.first { "|first" } else { "" };
+        deferred("RV_ESTERNOSET", format!("{}|{:X}{tail}", self.key, handle.value()))
     }
     fn on_enter(&mut self) -> CommandStep {
-        deferred("RV_VANOREOPEN", self.key.clone())
+        deferred(if self.first { "RV_VANOFIRST" } else { "RV_VANOREOPEN" }, self.key.clone())
     }
 }
 
@@ -1848,6 +1867,8 @@ pub struct LetterSizeDialog {
     key: String,
     def: DialogDef,
     done: bool,
+    /// The height shown, used when the box comes back empty or unreadable.
+    h: f64,
 }
 
 impl LetterSizeDialog {
@@ -1899,7 +1920,7 @@ impl LetterSizeDialog {
             .submit_label(tr!("Scrivi le lettere", "Write the letters", "Escribir las letras", "Écrire les lettres", "Harfleri yaz", "Escrever as letras", "Napisz litery"))
             .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
             .width(520.0);
-        LetterSizeDialog { key, def, done: false }
+        LetterSizeDialog { key, def, done: false, h }
     }
 }
 
@@ -1921,9 +1942,13 @@ impl InteractiveCommand for LetterSizeDialog {
         let DialogResponse::Submitted(m) = response else {
             return CommandStep::Cancel;
         };
-        match get_num(&m, "h").filter(|v| *v > 0.0) {
-            Some(h) => deferred("RV_ETICHETTEAPPLY", format!("{} {h}", self.key)),
-            None => CommandStep::Cancel,
+        // An empty or unreadable box (a decimal comma the number box does not
+        // take, for instance) writes the letters at the height shown.
+        let h = get_num(&m, "h").filter(|v| v.is_finite() && *v > 0.0).unwrap_or(self.h);
+        if h > 0.0 && h.is_finite() {
+            deferred("RV_ETICHETTEAPPLY", format!("{} {h}", self.key))
+        } else {
+            CommandStep::Cancel
         }
     }
 }
