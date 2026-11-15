@@ -671,6 +671,129 @@ impl InteractiveCommand for PickOuterTool {
     }
 }
 
+/// Asked in a window right after choosing the rooms: is there a fixed
+/// perimeter of the building, surveyed with a total station? (Optional.)
+pub struct PerimeterAskDialog {
+    key: String,
+    done: bool,
+}
+
+impl PerimeterAskDialog {
+    pub fn new(key: String) -> Self {
+        PerimeterAskDialog { key, done: false }
+    }
+}
+
+impl InteractiveCommand for PerimeterAskDialog {
+    fn prompt(&self) -> String {
+        tr!(
+            "RV_VANO: rispondi nella finestra",
+            "RV_VANO: answer in the window",
+            "RV_VANO: responda en la ventana",
+            "RV_VANO : répondez dans la fenêtre",
+            "RV_VANO: pencerede yanıtlayın",
+            "RV_VANO: responda na janela",
+            "RV_VANO: odpowiedz w oknie",
+        )
+        .into()
+    }
+    fn on_point(&mut self, _pt: [f64; 3]) -> CommandStep {
+        CommandStep::NeedPoint
+    }
+    fn on_enter(&mut self) -> CommandStep {
+        CommandStep::Cancel
+    }
+    fn modal_dialog(&self) -> Option<DialogDef> {
+        if self.done {
+            return None;
+        }
+        Some(
+            DialogDef::new(tr!("Perimetro fisso dell'edificio", "Fixed perimeter of the building", "Perímetro fijo del edificio", "Périmètre fixe du bâtiment", "Binanın sabit çevresi", "Perímetro fixo do edifício", "Stały obrys budynku"))
+                .with_control(info(
+                    tr!(
+                        "Facoltativo. Se il perimetro esterno dell'edificio è stato rilevato con la stazione totale ed è \
+                         disegnato come polilinea chiusa, puoi usarlo come riferimento fisso: non verrà mai spostato e i vani \
+                         si posizioneranno al suo interno, alla distanza dello spessore dei muri esterni. Si può aggiungere \
+                         anche dopo, dalla finestra delle misure.",
+                        "Optional. If the outer perimeter of the building was surveyed with a total station and is drawn as \
+                         a closed polyline, you can use it as a fixed reference: it will never move and the rooms will place \
+                         themselves inside it, at the thickness of the outer walls. It can also be added later, from the \
+                         measures window.",
+                        "Opcional. Si el perímetro exterior del edificio se ha levantado con la estación total y está dibujado como polilínea cerrada, puede usarlo como referencia fija: nunca se moverá y las estancias se colocarán dentro de él, a la distancia del espesor de los muros exteriores. También se puede añadir después, desde la ventana de medidas.",
+                        "Facultatif. Si le périmètre extérieur du bâtiment a été relevé à la station totale et dessiné comme une polyligne fermée, vous pouvez l'utiliser comme référence fixe : il ne bougera jamais et les pièces se placeront à l'intérieur, à l'épaisseur des murs extérieurs. On peut aussi l'ajouter plus tard, depuis la fenêtre des mesures.",
+                        "İsteğe bağlı. Binanın dış çevresi total station ile ölçüldüyse ve kapalı bir çoklu çizgi olarak çizildiyse, onu sabit referans olarak kullanabilirsiniz: asla yerinden oynamaz ve odalar dış duvar kalınlığı kadar içeride, onun içine yerleşir. Daha sonra ölçü penceresinden de eklenebilir.",
+                        "Opcional. Se o perímetro exterior do edifício foi levantado com a estação total e está desenhado como polilinha fechada, pode usá-lo como referência fixa: nunca será movido e os compartimentos colocam-se dentro dele, à distância da espessura das paredes exteriores. Também se pode acrescentar depois, a partir da janela das medidas.",
+                        "Opcjonalnie. Jeśli obrys zewnętrzny budynku zmierzono tachimetrem i narysowano jako zamkniętą polilinię, możesz użyć go jako stałego odniesienia: nigdy nie zostanie przesunięty, a pomieszczenia ustawią się w jego wnętrzu, w odległości grubości ścian zewnętrznych. Można go też dodać później w oknie pomiarów.",
+                    )
+                    .to_string(),
+                ))
+                .with_control(DialogControl::Choice {
+                    id: "do".into(),
+                    label: tr!("Cosa vuoi fare?", "What next?", "¿Qué quiere hacer?", "Que voulez-vous faire ?", "Ne yapmak istiyorsunuz?", "O que quer fazer?", "Co chcesz zrobić?").into(),
+                    options: vec![
+                        tr!("Continua senza perimetro fisso", "Go on without a fixed perimeter", "Seguir sin perímetro fijo", "Continuer sans périmètre fixe", "Sabit çevre olmadan devam et", "Continuar sem perímetro fixo", "Kontynuuj bez stałego obrysu").into(),
+                        tr!("Scegli il perimetro: clic sulla sua polilinea nel disegno", "Choose the perimeter: click its polyline in the drawing", "Elegir el perímetro: clic en su polilínea en el dibujo", "Choisir le périmètre : clic sur sa polyligne dans le dessin", "Çevreyi seç: çizimde çoklu çizgisine tıkla", "Escolher o perímetro: clique na sua polilinha no desenho", "Wybierz obrys: kliknij jego polilinię na rysunku").into(),
+                    ],
+                    default_index: 0,
+                })
+                .submit_label(tr!("Continua ▸", "Continue ▸", "Continuar ▸", "Continuer ▸", "Devam ▸", "Continuar ▸", "Dalej ▸"))
+                .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
+                .width(560.0),
+        )
+    }
+    fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
+        self.done = true;
+        let DialogResponse::Submitted(m) = response else {
+            return CommandStep::Cancel;
+        };
+        if get_choice(&m, "do", 0) == 1 {
+            deferred("RV_ESTERNOFIRST", self.key.clone())
+        } else {
+            deferred("RV_VANOFIRST", self.key.clone())
+        }
+    }
+}
+
+/// The result of a calculation, in a window: the same lines as the command
+/// line, which is easy to miss.
+pub struct ReportDialog {
+    lines: Vec<String>,
+    done: bool,
+}
+
+impl ReportDialog {
+    pub fn new(lines: Vec<String>) -> Self {
+        ReportDialog { lines, done: false }
+    }
+}
+
+impl InteractiveCommand for ReportDialog {
+    fn prompt(&self) -> String {
+        tr!("RV_VANO: risultato del calcolo", "RV_VANO: result of the calculation", "RV_VANO: resultado del cálculo", "RV_VANO : résultat du calcul", "RV_VANO: hesap sonucu", "RV_VANO: resultado do cálculo", "RV_VANO: wynik obliczenia").into()
+    }
+    fn on_point(&mut self, _pt: [f64; 3]) -> CommandStep {
+        CommandStep::NeedPoint
+    }
+    fn on_enter(&mut self) -> CommandStep {
+        CommandStep::Cancel
+    }
+    fn modal_dialog(&self) -> Option<DialogDef> {
+        if self.done {
+            return None;
+        }
+        let mut def = DialogDef::new(tr!("Risultato del calcolo", "Result of the calculation", "Resultado del cálculo", "Résultat du calcul", "Hesap sonucu", "Resultado do cálculo", "Wynik obliczenia"));
+        for l in &self.lines {
+            let t = l.replacen("RV_VANO: ", "", 1).replacen("RV_VANO : ", "", 1);
+            def = def.with_control(info(t.trim().to_string()));
+        }
+        Some(def.submit_label("OK").cancel_label(tr!("Chiudi", "Close", "Cerrar", "Fermer", "Kapat", "Fechar", "Zamknij")).width(640.0))
+    }
+    fn on_dialog_response(&mut self, _response: DialogResponse) -> CommandStep {
+        self.done = true;
+        CommandStep::Cancel
+    }
+}
+
 // ── Measures dialog ─────────────────────────────────────────────────────────
 
 fn tf(id: String, label: String, default: String) -> DialogControl {

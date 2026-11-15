@@ -436,6 +436,12 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             if asked {
                 open_dialog(host, &hs, None);
             } else {
+                host.start_interactive(Box::new(tools::PerimeterAskDialog::new(key(&hs))));
+            }
+        }
+        "RV_ESTERNOFIRST" => {
+            let hs = arg.as_deref().map(parse_handles).unwrap_or_default();
+            if !hs.is_empty() {
                 host.start_interactive(Box::new(tools::PickOuterTool::first(key(&hs))));
             }
         }
@@ -1259,7 +1265,30 @@ fn show_res(m: &Measure, v: f64, dec: usize) -> String {
     }
 }
 
+/// What the last calculation said, shown again in a window at the end:
+/// the command line is easy to miss.
+static REPORT: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+fn report_info(host: &mut dyn HostApi, m: &str) {
+    host.push_info(m);
+    REPORT.lock().unwrap_or_else(|e| e.into_inner()).push(m.to_string());
+}
+
+fn report_error(host: &mut dyn HostApi, m: &str) {
+    host.push_error(m);
+    REPORT.lock().unwrap_or_else(|e| e.into_inner()).push(format!("⚠ {m}"));
+}
+
 fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
+    REPORT.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    apply_inner(host, hs, saved);
+    let lines = std::mem::take(&mut *REPORT.lock().unwrap_or_else(|e| e.into_inner()));
+    if !lines.is_empty() {
+        host.start_interactive(Box::new(tools::ReportDialog::new(lines)));
+    }
+}
+
+fn apply_inner(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     remember(hs, saved.clone());
     let Some(rooms) = fetch_rooms(host, hs) else {
         host.push_error(tr!("RV_VANO: un vano scelto non è più nel disegno.", "RV_VANO: a chosen room is no longer in the drawing.", "RV_VANO: una estancia elegida ya no está en el dibujo.", "RV_VANO : une pièce choisie n'est plus dans le dessin.", "RV_VANO: seçilen bir oda artık çizimde yok.", "RV_VANO: um compartimento escolhido já não está no desenho.", "RV_VANO: wybranego pomieszczenia nie ma już na rysunku."));
@@ -1318,7 +1347,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     }
     if resized {
         remember(hs, saved.clone());
-        host.push_info(&tr!(
+        report_info(host, &tr!(
             format!(
                 "RV_VANO: il disegno a occhio era a una scala diversa dalle misure: altezza testi {} e tolleranza {} adattate ai vani calcolati.",
                 fmt_num(saved.h, 3),
@@ -1461,11 +1490,11 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
         }
     }
     for l in &lines {
-        host.push_output(l);
+        report_info(host, l);
     }
     if !bad.is_empty() {
         let names: Vec<&str> = bad.iter().map(|&k| measures[k].name.as_str()).collect();
-        host.push_error(&tr!(
+        report_error(host, &tr!(
             format!(
                 "RV_VANO: scarti oltre la tolleranza ({}) su {}: ricontrolla queste misure (cifra letta male, vertice sbagliato?). \
                  Con una sola misura in più l'errore si spalma su più misure: misurarne un'altra aiuta a trovarlo.",
@@ -1506,7 +1535,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
         ));
     }
     if let Some(why) = &filled {
-        host.push_error(&tr!(
+        report_error(host, &tr!(
             format!(
                 "RV_VANO: misure non sufficienti ({why}). Il calcolo è stato completato con gli angoli e le posizioni del \
                  disegno: le parti non misurate sono solo indicative. Se puoi, aggiungi le misure mancanti o dei vincoli."
@@ -1533,10 +1562,10 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
         ));
     }
     for w in &op_warn {
-        host.push_error(&format!("RV_VANO: {w}."));
+        report_error(host, &format!("RV_VANO: {w}."));
     }
     if dims_failed > 0 {
-        host.push_error(&tr!(
+        report_error(host, &tr!(
             format!("RV_VANO: {dims_failed} quote non create dal CAD; le misure sono scritte come testo."),
             format!("RV_VANO: the CAD did not create {dims_failed} dimensions; the measures are written as text."),
             format!("RV_VANO: el CAD no ha creado {dims_failed} cotas; las medidas se han escrito como texto."),
@@ -1549,7 +1578,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     if saved.replace {
         apply_to_drawing(host, false);
     } else {
-        host.push_info(tr!(
+        report_info(host, tr!(
             "RV_VANO: controllato il risultato, Applica al disegno (RV_APPLICA) porta le polilinee originali nella forma calcolata.",
             "RV_VANO: once the result is checked, Apply to drawing (RV_APPLICA) moves the original polylines to the computed shape.",
             "RV_VANO: una vez comprobado el resultado, Aplicar al dibujo (RV_APPLICA) lleva las polilíneas originales a la forma calculada.",
@@ -1562,7 +1591,7 @@ fn apply(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
     if saved.csv {
         write_book(host, &path, &book);
     } else {
-        host.push_info(tr!(
+        report_info(host, tr!(
             "RV_VANO: per salvare il libretto delle misure (CSV) usa Libretto misure (RV_LIBRETTO).",
             "RV_VANO: to save the measures book (CSV) use Measures book (RV_LIBRETTO).",
             "RV_VANO: para guardar el libro de medidas (CSV) use Libro de medidas (RV_LIBRETTO).",

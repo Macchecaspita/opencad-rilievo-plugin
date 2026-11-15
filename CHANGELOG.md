@@ -12,6 +12,21 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.3] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Domande in una finestra invece che nella riga di comando**: dopo la scelta dei
+  vani in Misure e diagonali, la domanda sul perimetro fisso dell'edificio si apre
+  in una finestra (*Continua senza perimetro fisso* oppure *Scegli il perimetro*).
+- **Risultato del calcolo in una finestra**: alla fine del calcolo una finestra
+  riassume quello che prima si leggeva solo nella riga di comando (vani ricalcolati,
+  misure in più e σ₀, scarti oltre la tolleranza, misure insufficienti, quote non
+  create, libretto salvato).
+
 ## [0.9.2] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
