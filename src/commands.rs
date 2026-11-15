@@ -589,33 +589,33 @@ fn open_manual(host: &mut dyn HostApi) {
 fn help(host: &mut dyn HostApi) {
     host.push_output(&tr!(
         format!(
-            "Rilievo Vani {}: RV_VANO (misure di lati, diagonali e collegamenti di uno o più vani), RV_ETICHETTE \
+            "Room Survey {}: RV_VANO (misure di lati, diagonali e collegamenti di uno o più vani), RV_ETICHETTE \
              (lettere sui vertici), RV_APPLICA (porta i vani originali nella forma calcolata), RV_LIBRETTO (salva il libretto delle misure), RV_GUIDE (guida), RV_MANUALE (manuale di rilievo in PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Rilievo Vani {}: RV_VANO (sides, diagonals and links of one or more rooms), RV_ETICHETTE (corner letters), \
+            "Room Survey {}: RV_VANO (sides, diagonals and links of one or more rooms), RV_ETICHETTE (corner letters), \
              RV_APPLICA (move the original rooms to the computed shape), RV_LIBRETTO (save the measures book), RV_GUIDE (guide), RV_MANUALE (surveying manual, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Rilievo Vani {}: RV_VANO (lados, diagonales y enlaces de una o varias estancias), RV_ETICHETTE (letras de las esquinas), RV_APPLICA (lleva las estancias originales a la forma calculada), RV_LIBRETTO (guarda el libro de medidas), RV_GUIDE (guía), RV_MANUALE (manual de levantamiento, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {}: RV_VANO (lados, diagonales y enlaces de una o varias estancias), RV_ETICHETTE (letras de las esquinas), RV_APPLICA (lleva las estancias originales a la forma calculada), RV_LIBRETTO (guarda el libro de medidas), RV_GUIDE (guía), RV_MANUALE (manual de levantamiento, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Rilievo Vani {} : RV_VANO (côtés, diagonales et liaisons d'une ou plusieurs pièces), RV_ETICHETTE (lettres des angles), RV_APPLICA (amène les pièces d'origine à la forme calculée), RV_LIBRETTO (enregistre le carnet de mesures), RV_GUIDE (guide), RV_MANUALE (manuel de relevé, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {} : RV_VANO (côtés, diagonales et liaisons d'une ou plusieurs pièces), RV_ETICHETTE (lettres des angles), RV_APPLICA (amène les pièces d'origine à la forme calculée), RV_LIBRETTO (enregistre le carnet de mesures), RV_GUIDE (guide), RV_MANUALE (manuel de relevé, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Rilievo Vani {}: RV_VANO (bir veya birden çok odanın kenarları, köşegenleri ve bağlantıları), RV_ETICHETTE (köşe harfleri), RV_APPLICA (özgün odaları hesaplanan şekle getirir), RV_LIBRETTO (ölçü defterini kaydeder), RV_GUIDE (rehber), RV_MANUALE (ölçüm kılavuzu, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {}: RV_VANO (bir veya birden çok odanın kenarları, köşegenleri ve bağlantıları), RV_ETICHETTE (köşe harfleri), RV_APPLICA (özgün odaları hesaplanan şekle getirir), RV_LIBRETTO (ölçü defterini kaydeder), RV_GUIDE (rehber), RV_MANUALE (ölçüm kılavuzu, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Rilievo Vani {}: RV_VANO (lados, diagonais e ligações de um ou mais compartimentos), RV_ETICHETTE (letras dos cantos), RV_APPLICA (leva os compartimentos originais à forma calculada), RV_LIBRETTO (guarda o caderno de medidas), RV_GUIDE (guia), RV_MANUALE (manual de levantamento, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {}: RV_VANO (lados, diagonais e ligações de um ou mais compartimentos), RV_ETICHETTE (letras dos cantos), RV_APPLICA (leva os compartimentos originais à forma calculada), RV_LIBRETTO (guarda o caderno de medidas), RV_GUIDE (guia), RV_MANUALE (manual de levantamento, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Rilievo Vani {}: RV_VANO (boki, przekątne i powiązania jednego lub wielu pomieszczeń), RV_ETICHETTE (litery narożników), RV_APPLICA (doprowadza oryginalne pomieszczenia do obliczonego kształtu), RV_LIBRETTO (zapisuje dziennik pomiarów), RV_GUIDE (przewodnik), RV_MANUALE (podręcznik pomiaru, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {}: RV_VANO (boki, przekątne i powiązania jednego lub wielu pomieszczeń), RV_ETICHETTE (litery narożników), RV_APPLICA (doprowadza oryginalne pomieszczenia do obliczonego kształtu), RV_LIBRETTO (zapisuje dziennik pomiarów), RV_GUIDE (przewodnik), RV_MANUALE (podręcznik pomiaru, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
             env!("CARGO_PKG_VERSION")
         ),
     ));
@@ -1613,7 +1613,7 @@ pub fn book_csv(
         out.push_str(&row(v));
         out.push_str("\r\n");
     };
-    push(vec![tr!("RILIEVO VANI — LIBRETTO DELLE MISURE", "RILIEVO VANI — MEASURES BOOK", "RILIEVO VANI — LIBRO DE MEDIDAS", "RILIEVO VANI — CARNET DE MESURES", "RILIEVO VANI — ÖLÇÜ DEFTERİ", "RILIEVO VANI — CADERNO DE MEDIDAS", "RILIEVO VANI — DZIENNIK POMIARÓW").into()]);
+    push(vec![tr!("ROOM SURVEY — LIBRETTO DELLE MISURE", "ROOM SURVEY — MEASURES BOOK", "ROOM SURVEY — LIBRO DE MEDIDAS", "ROOM SURVEY — CARNET DE MESURES", "ROOM SURVEY — ÖLÇÜ DEFTERİ", "ROOM SURVEY — CADERNO DE MEDIDAS", "ROOM SURVEY — DZIENNIK POMIARÓW").into()]);
     push(vec![
         tr!("Progetto hobbistico, non adatto a uso professionale: controllare sempre i risultati.", "Hobby project, not for professional use: always check the results.", "Proyecto aficionado, no apto para uso profesional: compruebe siempre los resultados.", "Projet amateur, non destiné à un usage professionnel : vérifiez toujours les résultats.", "Hobi projesi, profesyonel kullanıma uygun değildir: sonuçları her zaman kontrol edin.", "Projeto amador, não adequado a uso profissional: verifique sempre os resultados.", "Projekt hobbystyczny, nieprzeznaczony do użytku zawodowego: zawsze sprawdzaj wyniki.").into(),
     ]);

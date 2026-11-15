@@ -3,10 +3,10 @@
 OUT = "manual_pl.pdf"
 DEC = ","
 S = {
-    "doc_title": "Rilievo Vani — podręcznik pomiaru",
-    "foot": "Rilievo Vani — podręcznik pomiaru · projekt hobbystyczny, nie do użytku zawodowego",
+    "doc_title": "Room Survey — podręcznik pomiaru",
+    "foot": "Room Survey — podręcznik pomiaru · projekt hobbystyczny, nie do użytku zawodowego",
     "subtitle": "Jak zmierzyć mieszkanie pomiarami bezpośrednimi<br/>i odtworzyć je w Open CAD Studio",
-    "warn": "<b>Uwaga.</b> Rilievo Vani to projekt hobbystyczny, zrobiony dla zabawy i <b>nieprzeznaczony do użytku "
+    "warn": "<b>Uwaga.</b> Room Survey to projekt hobbystyczny, zrobiony dla zabawy i <b>nieprzeznaczony do użytku "
             "zawodowego</b>. Jest udostępniany w obecnej postaci, bez żadnej gwarancji; autor nie ponosi żadnej "
             "odpowiedzialności za jego użycie ani za wyniki. Zawsze sprawdzaj wyniki pomiarami kontrolnymi.",
 
@@ -148,6 +148,6 @@ S = {
         "drzwi i okna: odległość od narożnika, szerokość, zanotowane wysokości;",
         "jedno zdjęcie na pomieszczenie.",
     ],
-    "end": "Rilievo Vani to projekt hobbystyczny, nieprzeznaczony do użytku zawodowego: autor nie ponosi "
+    "end": "Room Survey to projekt hobbystyczny, nieprzeznaczony do użytku zawodowego: autor nie ponosi "
            "odpowiedzialności za jego użycie. Kod i aktualizacje: github.com/Macchecaspita/opencad-rilievo-plugin",
 }

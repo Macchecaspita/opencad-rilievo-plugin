@@ -1,4 +1,4 @@
-//! Rilievo Vani — an external Open CAD Studio add-on for architectural
+//! Room Survey — an external Open CAD Studio add-on for architectural
 //! surveys measured with a tape or a laser meter.
 //!
 //! The room is first drawn by eye as a closed polyline. The plugin names its
@@ -34,7 +34,7 @@ pub const PLUGIN_ID: &str = "opencad.rilievovani";
 // Keep in sync with plugin.toml (the version comes from Cargo.toml).
 static MANIFEST: PluginManifest = PluginManifest {
     id: PLUGIN_ID,
-    name: "Rilievo Vani",
+    name: "Room Survey",
     version: env!("CARGO_PKG_VERSION"),
     description: "Room survey: adjust a room drawn by eye to the measured sides and diagonals \
                   (least squares), with residuals, dimensions and a table of measures. \

@@ -1,4 +1,4 @@
-# opencad-rilievo-plugin — Rilievo Vani per Open CAD Studio
+# opencad-rilievo-plugin — Room Survey per Open CAD Studio
 
 [English](README.md) · **Italiano**
 

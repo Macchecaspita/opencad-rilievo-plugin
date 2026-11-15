@@ -86,7 +86,7 @@ jobs:
           cp artifacts/*/* dist/
           cp plugin.toml dist/
           # Versions 0.x are marked "in fase di test" in the title.
-          title="Rilievo Vani ${GITHUB_REF_NAME}"
+          title="Room Survey ${GITHUB_REF_NAME}"
           case "$GITHUB_REF_NAME" in v0.*) title="$title (versione di test)";; esac
           # The release may already exist when it was drafted on github.com
           # (that is how the tag gets created): then fill it in.

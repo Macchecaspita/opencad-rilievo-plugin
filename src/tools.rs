@@ -2188,7 +2188,7 @@ pub struct GuideDialog {
 
 impl GuideDialog {
     pub fn new() -> Self {
-        let mut def = DialogDef::new(tr!("Rilievo Vani — guida", "Rilievo Vani — guide", "Rilievo Vani — guía", "Rilievo Vani — guide", "Rilievo Vani — rehber", "Rilievo Vani — guia", "Pomoc Rilievo Vani"));
+        let mut def = DialogDef::new(tr!("Room Survey — guida", "Room Survey — guide", "Room Survey — guía", "Room Survey — guide", "Room Survey — rehber", "Room Survey — guia", "Pomoc Room Survey"));
         for (title, body) in guide_sections() {
             def = def.with_control(info(title.to_string())).with_control(info(body.to_string()));
         }
@@ -2205,7 +2205,7 @@ impl Default for GuideDialog {
 
 impl InteractiveCommand for GuideDialog {
     fn prompt(&self) -> String {
-        tr!("Guida di Rilievo Vani", "Rilievo Vani guide", "Guía de Rilievo Vani", "Guide de Rilievo Vani", "Rilievo Vani rehberi", "Guia do Rilievo Vani", "Przewodnik Rilievo Vani").into()
+        tr!("Guida di Room Survey", "Room Survey guide", "Guía de Room Survey", "Guide de Room Survey", "Room Survey rehberi", "Guia do Room Survey", "Przewodnik Room Survey").into()
     }
     fn on_point(&mut self, _pt: [f64; 3]) -> CommandStep {
         CommandStep::NeedPoint

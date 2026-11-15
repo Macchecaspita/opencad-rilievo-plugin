@@ -1,4 +1,4 @@
-"""Genera i manuali di rilievo di Rilievo Vani, uno per lingua:
+"""Genera i manuali di rilievo di Room Survey, uno per lingua:
 docs/Manuale_rilievo.pdf (italiano) e docs/manual_<lingua>.pdf (en, es, fr,
 tr, pt, pl). I testi sono in docs/manual/<lingua>.py.
 Esegui:  python docs/manuale.py [lingua …]   (serve reportlab).
@@ -318,7 +318,7 @@ def build(lang):
     T, DEC = m.S, m.DEC
     out = os.path.join(HERE, m.OUT)
     s = []
-    s += [Spacer(1, 30 * mm), P("Rilievo Vani", title),
+    s += [Spacer(1, 30 * mm), P("Room Survey", title),
           P(T["subtitle"], subtitle),
           plan_overview(),
           Spacer(1, 6 * mm),

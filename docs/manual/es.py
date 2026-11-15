@@ -3,10 +3,10 @@
 OUT = "manual_es.pdf"
 DEC = ","
 S = {
-    "doc_title": "Rilievo Vani — manual de levantamiento",
-    "foot": "Rilievo Vani — manual de levantamiento · proyecto aficionado, no para uso profesional",
+    "doc_title": "Room Survey — manual de levantamiento",
+    "foot": "Room Survey — manual de levantamiento · proyecto aficionado, no para uso profesional",
     "subtitle": "Cómo levantar una vivienda con medidas directas<br/>y reconstruirla en Open CAD Studio",
-    "warn": "<b>Aviso.</b> Rilievo Vani es un proyecto aficionado, hecho por diversión y <b>no apto para uso "
+    "warn": "<b>Aviso.</b> Room Survey es un proyecto aficionado, hecho por diversión y <b>no apto para uso "
             "profesional</b>. Se ofrece tal cual, sin ninguna garantía; el autor no asume ninguna responsabilidad por "
             "su uso ni por los resultados. Compruebe siempre los resultados con medidas de control.",
 
@@ -150,6 +150,6 @@ S = {
         "puertas y ventanas: distancia desde la esquina, anchura, alturas anotadas;",
         "una foto por estancia.",
     ],
-    "end": "Rilievo Vani es un proyecto aficionado, no apto para uso profesional: el autor no asume responsabilidad "
+    "end": "Room Survey es un proyecto aficionado, no apto para uso profesional: el autor no asume responsabilidad "
            "por su uso. Código y actualizaciones: github.com/Macchecaspita/opencad-rilievo-plugin",
 }

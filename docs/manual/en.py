@@ -3,10 +3,10 @@
 OUT = "manual_en.pdf"
 DEC = "."
 S = {
-    "doc_title": "Rilievo Vani — surveying manual",
-    "foot": "Rilievo Vani — surveying manual · hobby project, not for professional use",
+    "doc_title": "Room Survey — surveying manual",
+    "foot": "Room Survey — surveying manual · hobby project, not for professional use",
     "subtitle": "How to survey a flat with direct measurements<br/>and rebuild it in Open CAD Studio",
-    "warn": "<b>Disclaimer.</b> Rilievo Vani is a hobby project, made for fun and <b>not suitable for professional "
+    "warn": "<b>Disclaimer.</b> Room Survey is a hobby project, made for fun and <b>not suitable for professional "
             "use</b>. It is provided as is, without any warranty; the author accepts no responsibility for its use "
             "or for the results. Always check the results with extra measurements.",
 
@@ -147,6 +147,6 @@ S = {
         "doors and windows: distance from the corner, width, heights noted;",
         "one photo per room.",
     ],
-    "end": "Rilievo Vani is a hobby project, not suitable for professional use: the author accepts no responsibility "
+    "end": "Room Survey is a hobby project, not suitable for professional use: the author accepts no responsibility "
            "for its use. Code and updates: github.com/Macchecaspita/opencad-rilievo-plugin",
 }

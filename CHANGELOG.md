@@ -1,6 +1,6 @@
 # Registro delle modifiche
 
-Tutte le modifiche rilevanti di Rilievo Vani sono annotate qui.
+Tutte le modifiche rilevanti di Room Survey (già Rilievo Vani) sono annotate qui.
 Formato: [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 Numerazione: [Semantic Versioning](https://semver.org/lang/it/) —
 `0.x.y` indica una versione iniziale, ancora in fase di test.
@@ -11,6 +11,19 @@ lo script `scripts/release.ps1` le sposta nella nuova versione al momento
 del rilascio.
 
 ## [Non rilasciato]
+
+## [0.8.1] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Nuovo nome: Room Survey** (prima Rilievo Vani), in tutte le lingue: Plugin
+  Manager, guida, messaggi, libretto CSV e manuali PDF. Restano invariati l'id del
+  plugin (`opencad.rilievovani`, così l'aggiornamento arriva sull'installazione
+  esistente), i comandi `RV_…`, i layer `RILIEVO_…` dei disegni già fatti e il
+  repository.
 
 ## [0.8.0] - 2026-11-15
 

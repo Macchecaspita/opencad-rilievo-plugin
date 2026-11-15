@@ -3,10 +3,10 @@
 OUT = "manual_tr.pdf"
 DEC = ","
 S = {
-    "doc_title": "Rilievo Vani — ölçüm kılavuzu",
-    "foot": "Rilievo Vani — ölçüm kılavuzu · hobi projesi, profesyonel kullanım için değildir",
+    "doc_title": "Room Survey — ölçüm kılavuzu",
+    "foot": "Room Survey — ölçüm kılavuzu · hobi projesi, profesyonel kullanım için değildir",
     "subtitle": "Bir daire doğrudan ölçülerle nasıl rölöve edilir<br/>ve Open CAD Studio'da nasıl yeniden çizilir",
-    "warn": "<b>Uyarı.</b> Rilievo Vani bir hobi projesidir; eğlence için yapılmıştır ve <b>profesyonel kullanıma "
+    "warn": "<b>Uyarı.</b> Room Survey bir hobi projesidir; eğlence için yapılmıştır ve <b>profesyonel kullanıma "
             "uygun değildir</b>. Olduğu gibi, hiçbir garanti olmadan sunulur; yazar, kullanımından veya sonuçlarından "
             "doğacak hiçbir sorumluluğu kabul etmez. Sonuçları her zaman kontrol ölçüleriyle doğrulayın.",
 
@@ -139,6 +139,6 @@ S = {
         "kapılar ve pencereler: köşeden uzaklık, genişlik, yükseklikler not edildi;",
         "her oda için bir fotoğraf.",
     ],
-    "end": "Rilievo Vani bir hobi projesidir, profesyonel kullanıma uygun değildir: yazar kullanımından doğacak hiçbir "
+    "end": "Room Survey bir hobi projesidir, profesyonel kullanıma uygun değildir: yazar kullanımından doğacak hiçbir "
            "sorumluluğu kabul etmez. Kod ve güncellemeler: github.com/Macchecaspita/opencad-rilievo-plugin",
 }
