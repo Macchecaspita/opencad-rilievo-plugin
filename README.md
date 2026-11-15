@@ -46,5 +46,5 @@ Build with `cargo build --release`; install the library and `plugin.toml` in
 `<config>/OpenCADStudio/plugins/opencad.rilievovani/`, or add the repository
 `Macchecaspita/opencad-rilievo-plugin` in the Plugin Manager (`PLUGINS`).
 
-Built against `ocs_plugin_api` at tag **v2026.45** (Plugin API 23).
+Built against `ocs_plugin_api` at tag **v2026.46** (Plugin API 23).
 Licence GPL-3.0-only, like Open CAD Studio.
