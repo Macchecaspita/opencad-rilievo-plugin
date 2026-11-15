@@ -12,6 +12,21 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.0] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **Muri pieni tra vani riconosciuti dal retino**: dove nel disegno c'è un retino
+  (tratteggio) tra due vani, il plugin trova da solo i due lati che si fronteggiano e
+  li propone nella nuova pagina *Muri pieni tra vani* della finestra delle misure. Si
+  scrive lo spessore misurato in una porta (se nello stesso muro c'è una porta comune
+  con lo spessore, lo prende da lì): nel calcolo i due lati restano paralleli a
+  quella distanza, così i vani si collegano senza dover misurare attraverso il muro.
+  Si possono correggere le righe, aggiungerne o riconoscerle di nuovo dal retino.
+
 ## [0.8.3] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

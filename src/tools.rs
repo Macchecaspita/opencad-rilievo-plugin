@@ -732,6 +732,7 @@ enum Page {
     Options,
     Door(DoorSpot),
     Outer,
+    Inner,
     Done,
 }
 
@@ -744,6 +745,7 @@ enum Action {
     Options,
     PickOuter,
     Outer,
+    Inner,
     Compute,
 }
 
@@ -997,6 +999,17 @@ impl MeasureDialog {
             .to_string());
         }
         if self.multi() {
+            let n = self.saved.inner_walls.iter().filter(|r| filled(r, &[0, 1])).count();
+            acts.push(Action::Inner);
+            labels.push(tr!(
+                format!("Muri pieni tra vani, dal retino ({n}): spessori"),
+                format!("Solid walls between rooms, from the hatch ({n}): thicknesses"),
+                format!("Muros macizos entre estancias, del sombreado ({n}): espesores"),
+                format!("Murs pleins entre pièces, d'après la hachure ({n}) : épaisseurs"),
+                format!("Odalar arası dolu duvarlar, taramadan ({n}): kalınlıklar"),
+                format!("Paredes cheias entre compartimentos, da trama ({n}): espessuras"),
+                format!("Pełne ściany między pomieszczeniami, z kreskowania ({n}): grubości"),
+            ));
             acts.push(Action::Links);
             labels.push(tr!("Altre misure tra vani (senza porta)", "Other measures between rooms (no door)", "Otras medidas entre estancias (sin puerta)", "Autres mesures entre pièces (sans porte)", "Odalar arası diğer ölçüler (kapısız)", "Outras medidas entre compartimentos (sem porta)", "Inne pomiary między pomieszczeniami (bez drzwi)").to_string());
         }
@@ -1437,6 +1450,82 @@ impl MeasureDialog {
         self.saved.outer_walls = rows;
     }
 
+    /// The rows of solid walls shown: the ones kept, then two spare ones.
+    fn inner_view(&self) -> Vec<Vec<String>> {
+        let mut rows: Vec<Vec<String>> = self.saved.inner_walls.iter().filter(|r| filled(r, &[0, 1, 2])).cloned().collect();
+        let total = (rows.len() + 2).div_ceil(2) * 2;
+        rows.resize(total, vec![String::new(); 3]);
+        rows
+    }
+
+    fn inner_page(&self) -> DialogDef {
+        let mut def = DialogDef::new(tr!("Muri pieni tra vani", "Solid walls between rooms", "Muros macizos entre estancias", "Murs pleins entre pièces", "Odalar arası dolu duvarlar", "Paredes cheias entre compartimentos", "Pełne ściany między pomieszczeniami")).with_control(info(
+            tr!(
+                "Dove tra due vani c'è un retino, il muro è pieno: non si può attraversare per misurare, ma il suo \
+                 spessore si misura nelle porte. Ogni riga tiene i due lati dei vani paralleli, alla distanza dello spessore: \
+                 bastano due righe su muri non paralleli per collegare due vani. Uno spessore vuoto prende quello della porta \
+                 comune sullo stesso muro, se c'è. Svuota le righe sbagliate, aggiungi quelle mancanti.",
+                "Where there is a hatch between two rooms, the wall is solid: it cannot be crossed to measure, but its \
+                 thickness is measured at the doors. Each row keeps the two room sides parallel, at the thickness apart: two \
+                 rows on walls that are not parallel are enough to link two rooms. An empty thickness takes the one of the \
+                 shared door in the same wall, if any. Empty the wrong rows, add the missing ones.",
+                "Donde entre dos estancias hay un sombreado, el muro es macizo: no se puede atravesar para medir, pero su espesor se mide en las puertas. Cada fila mantiene los dos lados de las estancias paralelos, a la distancia del espesor: bastan dos filas en muros no paralelos para enlazar dos estancias. Un espesor vacío toma el de la puerta común en el mismo muro, si la hay. Vacíe las filas equivocadas, añada las que falten.",
+                "Là où il y a une hachure entre deux pièces, le mur est plein : on ne peut pas le traverser pour mesurer, mais son épaisseur se mesure dans les portes. Chaque ligne garde les deux côtés des pièces parallèles, à l'épaisseur du mur : deux lignes sur des murs non parallèles suffisent pour lier deux pièces. Une épaisseur vide prend celle de la porte commune dans le même mur, s'il y en a une. Videz les lignes fausses, ajoutez celles qui manquent.",
+                "İki oda arasında tarama varsa duvar doludur: ölçmek için içinden geçilemez, ama kalınlığı kapılarda ölçülür. Her satır iki oda kenarını kalınlık kadar arayla paralel tutar: paralel olmayan duvarlardaki iki satır iki odayı bağlamaya yeter. Boş bir kalınlık, aynı duvardaki ortak kapınınkini alır (varsa). Yanlış satırları boşaltın, eksik olanları ekleyin.",
+                "Onde entre dois compartimentos há uma trama, a parede é cheia: não se pode atravessar para medir, mas a sua espessura mede-se nas portas. Cada linha mantém os dois lados dos compartimentos paralelos, à distância da espessura: bastam duas linhas em paredes não paralelas para ligar dois compartimentos. Uma espessura vazia toma a da porta comum na mesma parede, se houver. Esvazie as linhas erradas, acrescente as que faltam.",
+                "Tam, gdzie między dwoma pomieszczeniami jest kreskowanie, ściana jest pełna: nie da się przez nią mierzyć, ale jej grubość mierzy się w drzwiach. Każdy wiersz utrzymuje dwa boki pomieszczeń równolegle, w odległości grubości: wystarczą dwa wiersze na nierównoległych ścianach, aby powiązać dwa pomieszczenia. Pusta grubość przyjmuje grubość wspólnych drzwi w tej samej ścianie, jeśli są. Opróżnij błędne wiersze, dodaj brakujące.",
+            )
+            .to_string(),
+        ));
+        let mut cells = Vec::new();
+        for (k, r) in self.inner_view().iter().enumerate() {
+            cells.push(tf(format!("w{k}_0"), tr!("Lato del vano", "Room side", "Lado de la estancia", "Côté de la pièce", "Oda kenarı", "Lado do compartimento", "Bok pomieszczenia").into(), cell(r, 0)));
+            cells.push(tf(format!("w{k}_1"), tr!("Lato di fronte", "Facing side", "Lado de enfrente", "Côté en face", "Karşı kenar", "Lado em frente", "Bok naprzeciw").into(), cell(r, 1)));
+            cells.push(tf(format!("w{k}_2"), tr!("Spessore", "Thickness", "Espesor", "Épaisseur", "Kalınlık", "Espessura", "Grubość").into(), cell(r, 2)));
+        }
+        for row in grid(cells, 6) {
+            def = def.with_control(row);
+        }
+        def.with_control(checkbox(
+            "redo",
+            tr!(
+                "Riconosci di nuovo i muri dal retino (gli spessori scritti restano)",
+                "Find the walls from the hatch again (typed thicknesses are kept)",
+                "Reconocer de nuevo los muros del sombreado (los espesores escritos se conservan)",
+                "Reconnaître de nouveau les murs d'après la hachure (les épaisseurs saisies restent)",
+                "Duvarları taramadan yeniden bul (yazılan kalınlıklar korunur)",
+                "Reconhecer de novo as paredes pela trama (as espessuras escritas mantêm-se)",
+                "Rozpoznaj ponownie ściany z kreskowania (wpisane grubości zostają)",
+            ),
+            false,
+        ))
+        .submit_label("OK ▸")
+        .cancel_label(tr!("◂ Indietro", "◂ Back", "◂ Atrás", "◂ Retour", "◂ Geri", "◂ Voltar", "◂ Wstecz"))
+        .width(700.0)
+    }
+
+    fn read_inner(&mut self, m: &HashMap<String, DialogValue>) {
+        let mut rows = Vec::new();
+        for (k, old) in self.inner_view().iter().enumerate() {
+            let row: Vec<String> = (0..3).map(|c| if m.contains_key(&format!("w{k}_{c}")) { get_text(m, &format!("w{k}_{c}")) } else { cell(old, c) }).collect();
+            if !row[0].is_empty() || !row[1].is_empty() {
+                rows.push(row);
+            }
+        }
+        if get_bool(m, "redo", false) {
+            let reach = 1.2 / survey::unit_factor(self.saved.unit);
+            let mut found = self.survey.suggest_inner_walls(reach);
+            // Keep a thickness already typed for the same pair of sides.
+            for f in &mut found {
+                if let Some(old) = rows.iter().find(|r| r[0].eq_ignore_ascii_case(&f[0]) && r[1].eq_ignore_ascii_case(&f[1])) {
+                    f[2] = old[2].clone();
+                }
+            }
+            rows = found;
+        }
+        self.saved.inner_walls = rows;
+    }
+
     /// A name not used yet: P1, P2 … (F1 … for windows).
     fn free_name(&self, prefix: &str) -> String {
         (1..)
@@ -1780,6 +1869,7 @@ impl InteractiveCommand for MeasureDialog {
             Page::Options => Some(self.options_page()),
             Page::Door(spot) => Some(self.door_page(spot)),
             Page::Outer => Some(self.outer_page()),
+            Page::Inner => Some(self.inner_page()),
             Page::Done => None,
         }
     }
@@ -1798,6 +1888,7 @@ impl InteractiveCommand for MeasureDialog {
                     Action::Openings => self.page = Page::Openings,
                     Action::Options => self.page = Page::Options,
                     Action::Outer => self.page = Page::Outer,
+                    Action::Inner => self.page = Page::Inner,
                     Action::PickOuter => {
                         self.page = Page::Done;
                         return deferred("RV_ESTERNOPICK", self.key());
@@ -1841,6 +1932,7 @@ impl InteractiveCommand for MeasureDialog {
                     Page::Openings => self.read_openings(&m),
                     Page::Options => self.read_options(&m),
                     Page::Outer => self.read_outer(&m),
+                    Page::Inner => self.read_inner(&m),
                     _ => {}
                 }
                 self.keep();
@@ -2270,6 +2362,7 @@ mod tests {
             outer: String::new(),
             outer_t: String::new(),
             outer_walls: vec![],
+                inner_walls: vec![],
         }
     }
 

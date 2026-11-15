@@ -99,6 +99,59 @@ fn fetch_rooms(host: &dyn HostApi, hs: &[Handle]) -> Option<Vec<Room>> {
     hs.iter().map(|&h| fetch_room(host, h)).collect()
 }
 
+/// Every hatch of the drawing, as its boundary loops (arcs as short chords).
+/// A hatch between two rooms marks a solid wall.
+pub fn hatches(host: &dyn HostApi) -> Vec<Vec<Vec<P2>>> {
+    use codec::entities::BoundaryEdge;
+    let mut out = Vec::new();
+    for e in host.document().entities() {
+        let EntityType::Hatch(h) = e else { continue };
+        let mut loops = Vec::new();
+        for path in &h.paths {
+            let mut pts: Vec<P2> = Vec::new();
+            for edge in &path.edges {
+                match edge {
+                    BoundaryEdge::Line(l) => {
+                        pts.push([l.start.x, l.start.y]);
+                        pts.push([l.end.x, l.end.y]);
+                    }
+                    BoundaryEdge::Polyline(pl) => pts.extend(pl.vertices.iter().map(|v| [v.x, v.y])),
+                    BoundaryEdge::CircularArc(a) => {
+                        let (mut s0, mut s1) = (a.start_angle, a.end_angle);
+                        if !a.counter_clockwise {
+                            std::mem::swap(&mut s0, &mut s1);
+                        }
+                        if s1 < s0 {
+                            s1 += std::f64::consts::TAU;
+                        }
+                        let mut arc: Vec<P2> = (0..=8).map(|k| s0 + (s1 - s0) * k as f64 / 8.0).map(|t| [a.center.x + a.radius * t.cos(), a.center.y + a.radius * t.sin()]).collect();
+                        if !a.counter_clockwise {
+                            arc.reverse();
+                        }
+                        pts.extend(arc);
+                    }
+                    BoundaryEdge::Spline(sp) => pts.extend(sp.fit_points.iter().map(|v| [v.x, v.y])),
+                    _ => {}
+                }
+            }
+            pts.dedup_by(|a, b| solve::dist(*a, *b) < 1e-9);
+            if pts.len() >= 3 {
+                loops.push(pts);
+            }
+        }
+        if !loops.is_empty() {
+            out.push(loops);
+        }
+    }
+    out
+}
+
+/// Reach within which two facing sides with a hatch between them make a
+/// solid wall: 1,20 m in drawing units.
+fn inner_reach(unit: usize) -> f64 {
+    1.2 / survey::unit_factor(unit)
+}
+
 /// Weight of an outer-wall measure: the outline is surveyed exactly and the
 /// thickness is given, so the room keeps it.
 const OUTER_WEIGHT: f64 = 30.0;
@@ -749,6 +802,8 @@ fn saved_or_new(host: &dyn HostApi, hs: &[Handle], rooms: &[Room], survey: &Surv
                 outer: String::new(),
                 outer_t: String::new(),
                 outer_walls: vec![],
+                // Solid walls between rooms, from the hatches drawn in them.
+                inner_walls: survey.clone().with_hatches(hatches(host)).suggest_inner_walls(inner_reach(survey::guess_unit(longest))),
             }
         }
     }
@@ -782,6 +837,7 @@ fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, st
     }
     let mut saved = saved;
     let (survey, lost) = add_outer(host, survey, &mut saved);
+    let survey = survey.with_hatches(hatches(host));
     let msg = msg.or(lost);
     remember(hs, saved.clone());
     host.start_interactive(Box::new(tools::MeasureDialog::new(hs.to_vec(), &survey, &saved, msg).starting(start)));
@@ -2168,7 +2224,7 @@ mod tests {
         ];
         let m: Vec<Meas> = meas.iter().map(|x| x.meas).collect();
         let sol = solve::solve_network(&survey.points, &m, &survey.datum()).unwrap();
-        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false, outer: String::new(), outer_t: String::new(), outer_walls: vec![] };
+        let saved = Saved { sides: vec![], others: vec![], h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false, outer: String::new(), outer_t: String::new(), outer_walls: vec![], inner_walls: vec![] };
         let csv = book_csv(&survey, &sol, &meas, &[], &[], &saved, 3, Some("C:\\x.dwg"), None);
         assert!(csv.starts_with('\u{feff}'));
         assert!(csv.contains("A–C"));

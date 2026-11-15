@@ -60,6 +60,10 @@ pub struct Saved {
     pub outer_t: String,
     /// Rows `[room side, thickness]`: sides along the outer outline.
     pub outer_walls: Vec<Vec<String>>,
+    /// Rows `[side, facing side of another room, thickness]`: solid walls
+    /// between rooms (found from the hatch drawn in them); the thickness is
+    /// measured at a door.
+    pub inner_walls: Vec<Vec<String>>,
 }
 
 /// Metres per drawing unit, for the areas.
@@ -145,6 +149,9 @@ pub struct Survey {
     pub names: Vec<String>,
     /// Corners of the fixed outer outline: the last `outer` points.
     pub outer: usize,
+    /// Hatches of the drawing, each as its boundary loops: a hatch between
+    /// two rooms marks a solid wall.
+    pub hatches: Vec<Vec<Vec<P2>>>,
 }
 
 impl Survey {
@@ -174,7 +181,7 @@ impl Survey {
             }
             point_of.push(ids);
         }
-        Survey { rooms, point_of, points, names, outer: 0 }
+        Survey { rooms, point_of, points, names, outer: 0, hatches: Vec::new() }
     }
 
     /// Add the outer outline surveyed exactly: its corners (E1, E2 …) are
@@ -186,6 +193,87 @@ impl Survey {
             self.names.push(format!("E{}", k + 1));
         }
         self
+    }
+
+    /// The drawing's hatches, as boundary loops.
+    pub fn with_hatches(mut self, hatches: Vec<Vec<Vec<P2>>>) -> Self {
+        self.hatches = hatches;
+        self
+    }
+
+    /// Whether a point lies in a hatched area (inside an odd number of one
+    /// hatch's loops: islands are holes).
+    pub fn hatched(&self, p: P2) -> bool {
+        self.hatches.iter().any(|loops| loops.iter().filter(|l| l.len() >= 3 && inside(l, p)).count() % 2 == 1)
+    }
+
+    /// Solid walls between rooms: two sides of different rooms facing each
+    /// other (parallel within 10°, overlapping), at most `reach` apart, with
+    /// a hatch in the gap between them. One row per pair, the nearest.
+    pub fn suggest_inner_walls(&self, reach: f64) -> Vec<Vec<String>> {
+        let mut rows = Vec::new();
+        let n_rooms = self.rooms.len();
+        let side = |r: usize, i: usize| {
+            let room = &self.rooms[r];
+            (room[i], room[(i + 1) % room.len()])
+        };
+        for r in 0..n_rooms {
+            for i in 0..self.rooms[r].len() {
+                let (a, b) = side(r, i);
+                let l = solve::dist(a, b);
+                if l <= 0.0 {
+                    continue;
+                }
+                let u = [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+                let mut best: Option<(usize, usize, f64)> = None;
+                for q in r + 1..n_rooms {
+                    for k in 0..self.rooms[q].len() {
+                        let (c, d) = side(q, k);
+                        let lo = solve::dist(c, d);
+                        if lo <= 0.0 {
+                            continue;
+                        }
+                        let v = [(d[0] - c[0]) / lo, (d[1] - c[1]) / lo];
+                        if (u[0] * v[1] - u[1] * v[0]).abs() > 10f64.to_radians().sin() {
+                            continue;
+                        }
+                        // Overlap of the two sides along the first one.
+                        let t = |x: P2| (x[0] - a[0]) * u[0] + (x[1] - a[1]) * u[1];
+                        let (tc, td) = (t(c), t(d));
+                        let (lo_t, hi_t) = (tc.min(td).max(0.0), tc.max(td).min(l));
+                        if hi_t - lo_t < 0.3 * l.min(lo) {
+                            continue;
+                        }
+                        // Middle of the overlap on the first side, and its
+                        // foot on the second: the gap between them.
+                        let tm = (lo_t + hi_t) / 2.0;
+                        let p = [a[0] + u[0] * tm, a[1] + u[1] * tm];
+                        let f = solve::foot(p, c, d);
+                        let gap = solve::dist(p, f);
+                        if gap <= 0.0 || gap > reach {
+                            continue;
+                        }
+                        let mid = [(p[0] + f[0]) / 2.0, (p[1] + f[1]) / 2.0];
+                        if inside(&self.rooms[r], mid) || inside(&self.rooms[q], mid) || !self.hatched(mid) {
+                            continue;
+                        }
+                        if best.is_none_or(|x| gap < x.2) {
+                            best = Some((q, k, gap));
+                        }
+                    }
+                }
+                if let Some((q, k, _)) = best {
+                    let nq = self.rooms[q].len();
+                    let n = self.rooms[r].len();
+                    rows.push(vec![
+                        format!("{}–{}", self.corner(r, i), self.corner(r, (i + 1) % n)),
+                        format!("{}–{}", self.corner(q, k), self.corner(q, (k + 1) % nq)),
+                        String::new(),
+                    ]);
+                }
+            }
+        }
+        rows
     }
 
     /// Which points the solver must hold.
@@ -479,7 +567,88 @@ impl Survey {
         self.parse_constraints(saved, parse_num, &mut out)?;
         let openings = self.parse_openings(saved, parse_num, &mut out)?;
         self.parse_outer(saved, parse_num, &mut out)?;
+        self.parse_inner(saved, &openings, parse_num, &mut out)?;
         Ok(Parsed { measures: out, openings })
+    }
+
+    /// Solid walls between rooms: the second side kept at the wall's
+    /// thickness from the first, at both its ends. An empty thickness takes
+    /// the one of a shared door in the same wall.
+    fn parse_inner(&self, saved: &Saved, openings: &[Opening], parse_num: &dyn Fn(&str) -> Option<f64>, out: &mut Vec<Measure>) -> Result<(), String> {
+        for (k, cells) in saved.inner_walls.iter().enumerate() {
+            let cell = |c: usize| cells.get(c).map(|s| s.trim().to_string()).unwrap_or_default();
+            let (s1, s2, th) = (cell(0), cell(1), cell(2));
+            if s1.is_empty() && s2.is_empty() {
+                continue;
+            }
+            let r = k + 1;
+            let (Some((r1, i1, j1)), Some((r2, i2, j2))) = (self.parse_room_side(&s1), self.parse_room_side(&s2)) else {
+                return Err(tr!(
+                    format!("muro tra vani alla riga {r}: scrivi due lati di vani diversi, per esempio 1B-1C e 2D-2A"),
+                    format!("wall between rooms on row {r}: write two sides of different rooms, for example 1B-1C and 2D-2A"),
+                    format!("muro entre estancias en la fila {r}: escriba dos lados de estancias distintas, por ejemplo 1B-1C y 2D-2A"),
+                    format!("mur entre pièces à la ligne {r} : écrivez deux côtés de pièces différentes, par exemple 1B-1C et 2D-2A"),
+                    format!("{r}. satırdaki odalar arası duvar: farklı odaların iki kenarını yazın, örneğin 1B-1C ve 2D-2A"),
+                    format!("parede entre compartimentos na linha {r}: escreva dois lados de compartimentos diferentes, por exemplo 1B-1C e 2D-2A"),
+                    format!("ściana między pomieszczeniami w wierszu {r}: wpisz dwa boki różnych pomieszczeń, np. 1B-1C i 2D-2A"),
+                ));
+            };
+            if r1 == r2 {
+                return Err(tr!(
+                    format!("muro tra vani alla riga {r}: i due lati sono dello stesso vano"),
+                    format!("wall between rooms on row {r}: both sides are of the same room"),
+                    format!("muro entre estancias en la fila {r}: los dos lados son de la misma estancia"),
+                    format!("mur entre pièces à la ligne {r} : les deux côtés sont de la même pièce"),
+                    format!("{r}. satırdaki odalar arası duvar: iki kenar da aynı odaya ait"),
+                    format!("parede entre compartimentos na linha {r}: os dois lados são do mesmo compartimento"),
+                    format!("ściana między pomieszczeniami w wierszu {r}: oba boki należą do tego samego pomieszczenia"),
+                ));
+            }
+            let (a, b) = (self.point_of[r1][i1], self.point_of[r1][j1]);
+            let (c, d) = (self.point_of[r2][i2], self.point_of[r2][j2]);
+            let same = |x: &Opening, p: usize, q: usize| (x.a == p && x.b == q) || (x.a == q && x.b == p);
+            let door_t = openings
+                .iter()
+                .filter(|o| same(o, a, b))
+                .find(|o| o.twin.is_some_and(|t| same(&openings[t], c, d)))
+                .and_then(|o| o.thick);
+            let t = if th.is_empty() { door_t } else { parse_num(&th).filter(|v| *v > 0.0) };
+            let Some(t) = t else {
+                return Err(if th.is_empty() {
+                    tr!(
+                        format!("muro tra {s1} e {s2}: scrivi lo spessore, misurato in una porta"),
+                        format!("wall between {s1} and {s2}: type the thickness, measured at a door"),
+                        format!("muro entre {s1} y {s2}: escriba el espesor, medido en una puerta"),
+                        format!("mur entre {s1} et {s2} : saisissez l'épaisseur, mesurée dans une porte"),
+                        format!("{s1} ile {s2} arasındaki duvar: bir kapıda ölçülen kalınlığı girin"),
+                        format!("parede entre {s1} e {s2}: escreva a espessura, medida numa porta"),
+                        format!("ściana między {s1} a {s2}: wpisz grubość zmierzoną w drzwiach"),
+                    )
+                } else {
+                    tr!(
+                        format!("muro tra {s1} e {s2}: lo spessore \"{th}\" non è una misura valida"),
+                        format!("wall between {s1} and {s2}: the thickness \"{th}\" is not a valid measure"),
+                        format!("muro entre {s1} y {s2}: el espesor \"{th}\" no es una medida válida"),
+                        format!("mur entre {s1} et {s2} : l'épaisseur \"{th}\" n'est pas une mesure valable"),
+                        format!("{s1} ile {s2} arasındaki duvar: \"{th}\" kalınlığı geçerli bir ölçü değil"),
+                        format!("parede entre {s1} e {s2}: a espessura \"{th}\" não é uma medida válida"),
+                        format!("ściana między {s1} a {s2}: grubość \"{th}\" nie jest prawidłowym pomiarem"),
+                    )
+                });
+            };
+            let n1 = format!("{}–{}", self.names[a], self.names[b]);
+            for p in [c, d] {
+                if p == a || p == b {
+                    continue;
+                }
+                out.push(Measure {
+                    meas: Meas::Perp { p, a, b, d: t },
+                    name: format!("sp. {n1} / {}", self.names[p]),
+                    kind: Kind::Wall,
+                });
+            }
+        }
+        Ok(())
     }
 
     /// Outer walls: each room side kept at the wall's thickness from the
@@ -902,6 +1071,54 @@ mod tests {
     }
 
     #[test]
+    fn solid_walls_from_the_hatch() {
+        let rooms = vec![
+            vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]],
+            vec![[4.3, 0.0], [7.0, 0.0], [7.0, 3.0], [4.3, 3.0]],
+        ];
+        // No hatch: nothing proposed.
+        assert!(Survey::new(rooms.clone()).suggest_inner_walls(1.2).is_empty());
+        let wall = vec![vec![[4.0, -0.3], [4.3, -0.3], [4.3, 3.3], [4.0, 3.3]]];
+        let s = Survey::new(rooms).with_hatches(vec![wall]);
+        let rows = s.suggest_inner_walls(1.2);
+        assert_eq!(rows, vec![vec!["1B–1C".to_string(), "2D–2A".to_string(), String::new()]]);
+        // An empty thickness takes the shared door's.
+        let (sides, _) = s.initial(3, &fmt);
+        let mut saved = Saved {
+            sides,
+            others: vec![],
+            h: 0.2,
+            tol: 0.02,
+            dims: true,
+            table: true,
+            csv: false,
+            csv_path: String::new(),
+            constraints: vec![],
+            openings: vec![],
+            unit: 0,
+            fill: true,
+            replace: false,
+            outer: String::new(),
+            outer_t: String::new(),
+            outer_walls: vec![],
+            inner_walls: rows.clone(),
+        };
+        let err = s.parse(&saved, &num).unwrap_err();
+        assert!(err.contains("1B–1C"), "{err}");
+        saved.openings = vec![
+            vec!["P1".into(), "1B-1C".into(), "porta".into(), "1".into(), "0,9".into(), "0,3".into()],
+            vec!["P1".into(), "2D-2A".into(), "porta".into(), "1,1".into(), "0,9".into(), String::new()],
+        ];
+        let p = s.parse(&saved, &num).unwrap();
+        let walls: Vec<&Measure> = p.measures.iter().filter(|m| m.kind == Kind::Wall).collect();
+        assert_eq!(walls.len(), 2);
+        assert!(walls.iter().all(|m| (m.meas.value() - 0.3).abs() < 1e-12));
+        saved.inner_walls[0][2] = "0,32".into();
+        let p = s.parse(&saved, &num).unwrap();
+        assert!(p.measures.iter().filter(|m| m.kind == Kind::Wall).all(|m| (m.meas.value() - 0.32).abs() < 1e-12));
+    }
+
+    #[test]
     fn rooms_held_at_the_outer_wall_thickness() {
         // Outline surveyed exactly: 10 × 8. Two rooms drawn by eye inside it,
         // the real ones 0,30 from the outer face, 0,10 apart.
@@ -937,6 +1154,7 @@ mod tests {
             outer: "1".into(),
             outer_t: "0,30".into(),
             outer_walls: walls,
+                inner_walls: vec![],
         };
         let p = s.parse(&saved, &num).unwrap();
         assert_eq!(p.measures.iter().filter(|m| m.kind == Kind::Outer).count(), 12);
@@ -999,7 +1217,7 @@ mod tests {
         others[0][3] = "5,0".into();
         others.push(vec!["1B-1C".into(), "2A".into(), "".into(), "0,30".into()]);
         others.push(vec!["1C".into(), "2a".into(), "".into(), "3,02".into()]);
-        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false, outer: String::new(), outer_t: String::new(), outer_walls: vec![] };
+        let saved = Saved { sides, others, h: 0.2, tol: 0.02, dims: true, table: true, csv: false, csv_path: String::new(), constraints: vec![], openings: vec![], unit: 0, fill: true, replace: false, outer: String::new(), outer_t: String::new(), outer_walls: vec![], inner_walls: vec![] };
         let m = s.parse(&saved, &num).unwrap().measures;
         assert_eq!(m.len(), 8 + 3);
         assert_eq!(m[8].kind, Kind::Diagonal);
@@ -1031,6 +1249,7 @@ mod tests {
             outer: String::new(),
             outer_t: String::new(),
             outer_walls: vec![],
+                inner_walls: vec![],
         };
         let e = s.parse(&saved, &num).unwrap_err();
         assert!(e.contains("1") && e.contains("\"A\""), "{e}");
@@ -1079,6 +1298,7 @@ mod tests {
             outer: String::new(),
             outer_t: String::new(),
             outer_walls: vec![],
+                inner_walls: vec![],
         };
         let p = s.parse(&saved, &num).unwrap();
         let kinds: Vec<Kind> = p.measures.iter().map(|m| m.kind).collect();
@@ -1118,6 +1338,7 @@ mod tests {
             outer: String::new(),
             outer_t: String::new(),
             outer_walls: vec![],
+                inner_walls: vec![],
         };
         assert!(s.parse(&saved, &num).unwrap_err().contains("P1"));
     }
