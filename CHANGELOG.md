@@ -12,6 +12,19 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.8.2] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- **Lettere dei vertici invisibili**: il limite del 15% del lato più corto teneva
+  conto anche di lati minuscoli (un doppio clic, un vertice ripetuto, una piccola
+  risega disegnata per sbaglio) e rendeva le lettere microscopiche. Ora i lati più
+  corti del 5% del lato più lungo del vano non contano, e le lettere non scendono
+  mai sotto 1/400 del lato più lungo dei vani scelti.
+
 ## [0.8.1] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

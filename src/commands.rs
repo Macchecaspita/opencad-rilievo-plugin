@@ -300,8 +300,14 @@ pub fn sizes_for(rooms: &[Vec<P2>]) -> (f64, f64) {
 pub const LETTER_CAP: f64 = 0.15;
 
 /// Largest corner-letter height for these rooms: 15 % of the shortest side
-/// of the smallest room (by area). Infinite when there is nothing to measure.
+/// of the smallest room (by area). Sides shorter than 5 % of their room's
+/// longest side are left out (a double click, a tiny jog in the outline):
+/// they would make the letters too small to see. Never below 1/400 of the
+/// longest side of all, so the letters stay visible. Infinite when there is
+/// nothing to measure.
 pub fn letter_cap(rooms: &[Vec<P2>]) -> f64 {
+    let sides = |p: &Vec<P2>| (0..p.len()).map(|i| solve::dist(p[i], p[(i + 1) % p.len()])).collect::<Vec<f64>>();
+    let overall = rooms.iter().flat_map(sides).fold(0.0f64, f64::max);
     rooms
         .iter()
         .filter(|p| p.len() >= 3)
@@ -309,12 +315,11 @@ pub fn letter_cap(rooms: &[Vec<P2>]) -> f64 {
         .filter(|(a, _)| *a > 0.0)
         .min_by(|a, b| a.0.total_cmp(&b.0))
         .and_then(|(_, p)| {
-            (0..p.len())
-                .map(|i| solve::dist(p[i], p[(i + 1) % p.len()]))
-                .filter(|d| *d > 0.0)
-                .min_by(f64::total_cmp)
+            let s = sides(p);
+            let longest = s.iter().copied().fold(0.0f64, f64::max);
+            s.into_iter().filter(|d| *d >= longest * 0.05).min_by(f64::total_cmp)
         })
-        .map_or(f64::INFINITY, |d| d * LETTER_CAP)
+        .map_or(f64::INFINITY, |d| (d * LETTER_CAP).max(overall / 400.0))
 }
 
 /// Decimals to show for measures checked to `tol`: one more than the
@@ -2072,6 +2077,9 @@ mod tests {
         assert!((letter_cap(&rooms) - 0.18).abs() < 1e-9);
         assert!((letter_cap(&rooms[..1]) - 1.2).abs() < 1e-9);
         assert!(letter_cap(&[]).is_infinite());
+        // A double click (a side of a millimetre) does not shrink the letters.
+        let clicked: Vec<P2> = vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [4.0, 3.001], [0.0, 3.0]];
+        assert!((letter_cap(&[clicked]) - 0.45).abs() < 1e-9);
     }
 
     #[test]
