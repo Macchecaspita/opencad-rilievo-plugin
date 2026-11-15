@@ -12,6 +12,20 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.9.9] - 2026-11-15
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- **Misure e diagonali si chiudeva senza dire nulla dopo la scelta del perimetro**
+  (e anche con *Continua senza perimetro fisso*): la selezione dei vani veniva
+  avviata come un nuovo comando, e Open CAD Studio la chiudeva subito. Ora domanda
+  sul perimetro, clic sul perimetro e selezione dei vani sono passi dello stesso
+  comando. Il perimetro scelto resta evidenziato in arancione e non può essere
+  preso come vano, nemmeno con una finestra di selezione.
+
 ## [0.9.8] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

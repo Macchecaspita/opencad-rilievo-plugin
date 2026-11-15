@@ -421,15 +421,11 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         "RV_LANG" => lang(host, &rest),
         "RV_GUIDE" => host.start_interactive(Box::new(tools::GuideDialog::new())),
         "RV_MANUALE" => open_manual(host),
-        // First the fixed perimeter of the building (optional, in a window
-        // of its own), then the rooms.
+        // First the fixed perimeter of the building (optional, asked in a
+        // window), then the rooms: all in the same picking command.
         "RV_VANO" => {
-            *PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()) = None;
-            if rooms(host).is_empty() {
-                start_pick(host, "RV_VANOOPEN", "RV_VANO");
-            } else {
-                host.start_interactive(Box::new(tools::PerimeterAskDialog::new(String::new())));
-            }
+            set_pre_outer(None);
+            start_pick_asking(host, "RV_VANOOPEN", "RV_VANO", true);
         }
         "RV_VANOPICK" => {
             let except = PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()).as_deref().and_then(parse_handle);
@@ -799,6 +795,23 @@ fn lang(host: &mut dyn HostApi, rest: &str) {
 /// Pick the rooms, or take the closed polylines already selected.
 fn start_pick(host: &mut dyn HostApi, verb: &'static str, title: &'static str) {
     start_pick_except(host, verb, title, None);
+}
+
+/// The fixed perimeter chosen while picking the rooms (handle, hex).
+pub fn set_pre_outer(h: Option<String>) {
+    *PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()) = h;
+}
+
+/// Like [`start_pick`]; with `ask_outer` the picking command first asks for
+/// the fixed perimeter (unless rooms are already selected).
+fn start_pick_asking(host: &mut dyn HostApi, verb: &'static str, title: &'static str, ask_outer: bool) {
+    let all = rooms(host);
+    let pre: Vec<Handle> = host.selection().iter().copied().filter(|h| all.iter().any(|r| r.handle == *h)).collect();
+    if !ask_outer || all.is_empty() || !pre.is_empty() {
+        start_pick_except(host, verb, title, None);
+        return;
+    }
+    host.start_interactive(Box::new(tools::PickRoomTool::new(all, verb, title).asking_outer()));
 }
 
 /// Like [`start_pick`], leaving out one polyline (the fixed perimeter).

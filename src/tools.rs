@@ -18,6 +18,8 @@ use crate::solve::{self, P2};
 use crate::survey::{self, Saved, Survey};
 
 const GREEN: [f32; 4] = [0.45, 0.85, 0.45, 1.0];
+/// The fixed perimeter, while choosing the rooms.
+const ORANGE: [f32; 4] = [0.95, 0.55, 0.2, 1.0];
 
 /// Arguments of a command handed to the host as a bare verb (see
 /// [`deferred`]).
@@ -64,7 +66,30 @@ fn ring3(pts: &[P2], z: f64) -> Vec<[f64; 3]> {
 /// / crossing box dragged over many rooms at once. The CAD highlights what
 /// is selected, and the chosen rooms are also outlined in green, so they
 /// stand out from the ones not chosen yet. Enter confirms.
+/// The point of segment a–b nearest p.
+fn seg_foot(p: P2, a: P2, b: P2) -> P2 {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let l2 = dx * dx + dy * dy;
+    if l2 <= 0.0 {
+        return a;
+    }
+    let t = (((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2).clamp(0.0, 1.0);
+    [a[0] + t * dx, a[1] + t * dy]
+}
+
+/// Steps of [`PickRoomTool`]: the optional fixed perimeter first (asked in a
+/// window, then clicked on the drawing), then the rooms.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum PickPhase {
+    Ask,
+    Outer,
+    Rooms,
+}
+
 pub struct PickRoomTool {
+    phase: PickPhase,
+    /// The fixed perimeter chosen (index in `rooms`): never taken as a room.
+    outer: Option<usize>,
     rooms: Vec<Room>,
     /// Chosen rooms, in the order that gives their numbers.
     chosen: Vec<usize>,
@@ -76,7 +101,50 @@ pub struct PickRoomTool {
 
 impl PickRoomTool {
     pub fn new(rooms: Vec<Room>, verb: &'static str, title: &'static str) -> Self {
-        PickRoomTool { rooms, chosen: Vec::new(), verb, title, msg: None }
+        PickRoomTool { phase: PickPhase::Rooms, outer: None, rooms, chosen: Vec::new(), verb, title, msg: None }
+    }
+
+    /// Ask first for the fixed perimeter of the building (optional).
+    pub fn asking_outer(mut self) -> Self {
+        self.phase = PickPhase::Ask;
+        self
+    }
+
+    /// The closed polyline whose outline passes nearest a click.
+    fn outline_at(&self, pt: [f64; 3]) -> Option<usize> {
+        let p = [pt[0], pt[1]];
+        self.rooms
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                let n = r.pts.len();
+                let d = (0..n).map(|k| solve::dist(p, seg_foot(p, r.pts[k], r.pts[(k + 1) % n]))).fold(f64::MAX, f64::min);
+                (i, d)
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(i, _)| i)
+    }
+
+    fn choose_outer(&mut self, idx: Option<usize>) -> CommandStep {
+        match idx {
+            Some(i) => {
+                self.outer = Some(i);
+                self.chosen.retain(|&c| c != i);
+                commands::set_pre_outer(Some(format!("{:X}", self.rooms[i].handle.value())));
+                self.phase = PickPhase::Rooms;
+                self.msg = Some(tr!(
+                    format!("perimetro fisso scelto ({} vertici, in arancione)", self.rooms[i].pts.len()),
+                    format!("fixed perimeter chosen ({} corners, in orange)", self.rooms[i].pts.len()),
+                    format!("perímetro fijo elegido ({} vértices, en naranja)", self.rooms[i].pts.len()),
+                    format!("périmètre fixe choisi ({} sommets, en orange)", self.rooms[i].pts.len()),
+                    format!("sabit çevre seçildi ({} köşe, turuncu)", self.rooms[i].pts.len()),
+                    format!("perímetro fixo escolhido ({} vértices, a laranja)", self.rooms[i].pts.len()),
+                    format!("wybrano stały obrys ({} wierzchołków, na pomarańczowo)", self.rooms[i].pts.len()),
+                ));
+            }
+            None => self.msg = Some(tr!("lì non c'è una polilinea chiusa", "no closed polyline there", "ahí no hay ninguna polilínea cerrada", "pas de polyligne fermée à cet endroit", "orada kapalı çoklu çizgi yok", "não há nenhuma polilinha fechada aí", "nie ma tu zamkniętej polilinii").into()),
+        }
+        CommandStep::NeedPoint
     }
 
     /// The smallest room containing a point.
@@ -91,6 +159,7 @@ impl PickRoomTool {
 
     fn toggle(&mut self, idx: Option<usize>) -> CommandStep {
         match idx {
+            Some(i) if Some(i) == self.outer => {}
             Some(i) => {
                 if let Some(k) = self.chosen.iter().position(|&c| c == i) {
                     self.chosen.remove(k);
@@ -117,7 +186,7 @@ impl PickRoomTool {
     /// follow — those taken together by a box from the top down, left to
     /// right, like reading a page.
     fn sync(&mut self, handles: &[Handle]) {
-        let selected: Vec<usize> = (0..self.rooms.len()).filter(|&i| handles.contains(&self.rooms[i].handle)).collect();
+        let selected: Vec<usize> = (0..self.rooms.len()).filter(|&i| Some(i) != self.outer && handles.contains(&self.rooms[i].handle)).collect();
         self.chosen.retain(|i| selected.contains(i));
         let mut new: Vec<usize> = selected.into_iter().filter(|i| !self.chosen.contains(i)).collect();
         let band = new
@@ -146,6 +215,11 @@ impl PickRoomTool {
 
 impl InteractiveCommand for PickRoomTool {
     fn prompt(&self) -> String {
+        match self.phase {
+            PickPhase::Ask => return perimeter_prompt_answer(),
+            PickPhase::Outer => return with_msg(&self.msg, perimeter_click_prompt()),
+            PickPhase::Rooms => {}
+        }
         let p = if self.chosen.is_empty() {
             tr!(
                 format!(
@@ -223,29 +297,73 @@ impl InteractiveCommand for PickRoomTool {
         with_msg(&self.msg, p)
     }
     fn is_selection_gathering(&self) -> bool {
-        true
+        self.phase == PickPhase::Rooms
     }
     fn accepts_drag_selection(&self) -> bool {
-        true
+        self.phase == PickPhase::Rooms
+    }
+    fn needs_object_pick(&self) -> bool {
+        self.phase == PickPhase::Outer
+    }
+    fn modal_dialog(&self) -> Option<DialogDef> {
+        (self.phase == PickPhase::Ask).then(perimeter_ask_def)
+    }
+    fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
+        let DialogResponse::Submitted(m) = response else {
+            return CommandStep::Cancel;
+        };
+        self.phase = if get_choice(&m, "do", 0) == 1 { PickPhase::Outer } else { PickPhase::Rooms };
+        CommandStep::NeedPoint
     }
     fn on_selection_complete(&mut self, handles: Vec<Handle>) -> CommandStep {
+        if self.phase == PickPhase::Outer {
+            let i = self.rooms.iter().position(|r| handles.contains(&r.handle));
+            return self.choose_outer(i);
+        }
         self.sync(&handles);
         CommandStep::NeedPoint
     }
     // Hosts that send plain clicks instead of selections: a click inside a
     // room, or on its polyline, toggles it.
     fn on_point(&mut self, pt: [f64; 3]) -> CommandStep {
-        let i = self.room_at(pt);
-        self.toggle(i)
+        match self.phase {
+            PickPhase::Ask => CommandStep::NeedPoint,
+            PickPhase::Outer => {
+                let i = self.outline_at(pt);
+                self.choose_outer(i)
+            }
+            PickPhase::Rooms => {
+                let i = self.room_at(pt);
+                self.toggle(i)
+            }
+        }
     }
     fn on_object_pick(&mut self, handle: Handle, pt: [f64; 3]) -> CommandStep {
+        if self.phase == PickPhase::Outer {
+            let i = self.rooms.iter().position(|r| r.handle == handle).or_else(|| self.outline_at(pt));
+            return self.choose_outer(i);
+        }
         let i = self.rooms.iter().position(|r| r.handle == handle).or_else(|| self.room_at(pt));
         self.toggle(i)
     }
     fn on_cursor_move(&mut self, _pt: [f64; 3]) -> Vec<PreviewWire> {
-        self.chosen.iter().map(|&i| PreviewWire::with_color(ring3(&self.rooms[i].pts, self.rooms[i].z), GREEN)).collect()
+        let mut w: Vec<PreviewWire> = self.chosen.iter().map(|&i| PreviewWire::with_color(ring3(&self.rooms[i].pts, self.rooms[i].z), GREEN)).collect();
+        if let Some(o) = self.outer {
+            w.push(PreviewWire::with_color(ring3(&self.rooms[o].pts, self.rooms[o].z), ORANGE));
+        }
+        w
     }
     fn on_enter(&mut self) -> CommandStep {
+        match self.phase {
+            PickPhase::Ask => return CommandStep::NeedPoint,
+            // No perimeter: go on to the rooms.
+            PickPhase::Outer => {
+                self.phase = PickPhase::Rooms;
+                self.msg = None;
+                return CommandStep::NeedPoint;
+            }
+            PickPhase::Rooms => {}
+        }
         if self.chosen.is_empty() {
             return CommandStep::Cancel;
         }
@@ -677,6 +795,67 @@ impl InteractiveCommand for PickOuterTool {
     }
 }
 
+/// The window asking for the fixed perimeter of the building (optional).
+pub fn perimeter_ask_def() -> DialogDef {
+            DialogDef::new(tr!("Perimetro fisso dell'edificio", "Fixed perimeter of the building", "Perímetro fijo del edificio", "Périmètre fixe du bâtiment", "Binanın sabit çevresi", "Perímetro fixo do edifício", "Stały obrys budynku"))
+                .with_control(info(
+                    tr!(
+                        "Facoltativo. Se il perimetro esterno dell'edificio è stato rilevato con la stazione totale ed è \
+                         disegnato come polilinea chiusa, puoi usarlo come riferimento fisso: non verrà mai spostato e i vani \
+                         si posizioneranno al suo interno, alla distanza dello spessore dei muri esterni. Si può aggiungere \
+                         anche dopo, dalla finestra delle misure.",
+                        "Optional. If the outer perimeter of the building was surveyed with a total station and is drawn as \
+                         a closed polyline, you can use it as a fixed reference: it will never move and the rooms will place \
+                         themselves inside it, at the thickness of the outer walls. It can also be added later, from the \
+                         measures window.",
+                        "Opcional. Si el perímetro exterior del edificio se ha levantado con la estación total y está dibujado como polilínea cerrada, puede usarlo como referencia fija: nunca se moverá y las estancias se colocarán dentro de él, a la distancia del espesor de los muros exteriores. También se puede añadir después, desde la ventana de medidas.",
+                        "Facultatif. Si le périmètre extérieur du bâtiment a été relevé à la station totale et dessiné comme une polyligne fermée, vous pouvez l'utiliser comme référence fixe : il ne bougera jamais et les pièces se placeront à l'intérieur, à l'épaisseur des murs extérieurs. On peut aussi l'ajouter plus tard, depuis la fenêtre des mesures.",
+                        "İsteğe bağlı. Binanın dış çevresi total station ile ölçüldüyse ve kapalı bir çoklu çizgi olarak çizildiyse, onu sabit referans olarak kullanabilirsiniz: asla yerinden oynamaz ve odalar dış duvar kalınlığı kadar içeride, onun içine yerleşir. Daha sonra ölçü penceresinden de eklenebilir.",
+                        "Opcional. Se o perímetro exterior do edifício foi levantado com a estação total e está desenhado como polilinha fechada, pode usá-lo como referência fixa: nunca será movido e os compartimentos colocam-se dentro dele, à distância da espessura das paredes exteriores. Também se pode acrescentar depois, a partir da janela das medidas.",
+                        "Opcjonalnie. Jeśli obrys zewnętrzny budynku zmierzono tachimetrem i narysowano jako zamkniętą polilinię, możesz użyć go jako stałego odniesienia: nigdy nie zostanie przesunięty, a pomieszczenia ustawią się w jego wnętrzu, w odległości grubości ścian zewnętrznych. Można go też dodać później w oknie pomiarów.",
+                    )
+                    .to_string(),
+                ))
+                .with_control(DialogControl::Choice {
+                    id: "do".into(),
+                    label: tr!("Cosa vuoi fare?", "What next?", "¿Qué quiere hacer?", "Que voulez-vous faire ?", "Ne yapmak istiyorsunuz?", "O que quer fazer?", "Co chcesz zrobić?").into(),
+                    options: vec![
+                        tr!("Continua senza perimetro fisso", "Go on without a fixed perimeter", "Seguir sin perímetro fijo", "Continuer sans périmètre fixe", "Sabit çevre olmadan devam et", "Continuar sem perímetro fixo", "Kontynuuj bez stałego obrysu").into(),
+                        tr!("Scegli il perimetro: clic sulla sua polilinea nel disegno", "Choose the perimeter: click its polyline in the drawing", "Elegir el perímetro: clic en su polilínea en el dibujo", "Choisir le périmètre : clic sur sa polyligne dans le dessin", "Çevreyi seç: çizimde çoklu çizgisine tıkla", "Escolher o perímetro: clique na sua polilinha no desenho", "Wybierz obrys: kliknij jego polilinię na rysunku").into(),
+                    ],
+                    default_index: 0,
+                })
+                .submit_label(tr!("Continua ▸", "Continue ▸", "Continuar ▸", "Continuer ▸", "Devam ▸", "Continuar ▸", "Dalej ▸"))
+                .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
+                .width(560.0)
+}
+
+fn perimeter_prompt_answer() -> String {
+    tr!(
+        "RV_VANO: rispondi nella finestra",
+        "RV_VANO: answer in the window",
+        "RV_VANO: responda en la ventana",
+        "RV_VANO : répondez dans la fenêtre",
+        "RV_VANO: pencerede yanıtlayın",
+        "RV_VANO: responda na janela",
+        "RV_VANO: odpowiedz w oknie",
+    )
+    .into()
+}
+
+fn perimeter_click_prompt() -> String {
+    tr!(
+        "Perimetro fisso dell'edificio (facoltativo): clicca la polilinea chiusa rilevata con la stazione totale, oppure premi Invio per continuare senza",
+        "Fixed perimeter of the building (optional): click the closed polyline surveyed with the total station, or press Enter to go on without it",
+        "Perímetro fijo del edificio (opcional): haga clic en la polilínea cerrada levantada con la estación total, o pulse Intro para seguir sin él",
+        "Périmètre fixe du bâtiment (facultatif) : cliquez sur la polyligne fermée relevée à la station totale, ou appuyez sur Entrée pour continuer sans",
+        "Binanın sabit çevresi (isteğe bağlı): total station ile ölçülen kapalı çoklu çizgiye tıklayın veya onsuz devam etmek için Enter'a basın",
+        "Perímetro fixo do edifício (opcional): clique na polilinha fechada levantada com a estação total, ou prima Enter para continuar sem ele",
+        "Stały obrys budynku (opcjonalnie): kliknij zamkniętą polilinię zmierzoną tachimetrem albo naciśnij Enter, aby kontynuować bez niego",
+    )
+    .into()
+}
+
 /// Asked in a window right after choosing the rooms: is there a fixed
 /// perimeter of the building, surveyed with a total station? (Optional.)
 pub struct PerimeterAskDialog {
@@ -713,39 +892,7 @@ impl InteractiveCommand for PerimeterAskDialog {
         if self.done {
             return None;
         }
-        Some(
-            DialogDef::new(tr!("Perimetro fisso dell'edificio", "Fixed perimeter of the building", "Perímetro fijo del edificio", "Périmètre fixe du bâtiment", "Binanın sabit çevresi", "Perímetro fixo do edifício", "Stały obrys budynku"))
-                .with_control(info(
-                    tr!(
-                        "Facoltativo. Se il perimetro esterno dell'edificio è stato rilevato con la stazione totale ed è \
-                         disegnato come polilinea chiusa, puoi usarlo come riferimento fisso: non verrà mai spostato e i vani \
-                         si posizioneranno al suo interno, alla distanza dello spessore dei muri esterni. Si può aggiungere \
-                         anche dopo, dalla finestra delle misure.",
-                        "Optional. If the outer perimeter of the building was surveyed with a total station and is drawn as \
-                         a closed polyline, you can use it as a fixed reference: it will never move and the rooms will place \
-                         themselves inside it, at the thickness of the outer walls. It can also be added later, from the \
-                         measures window.",
-                        "Opcional. Si el perímetro exterior del edificio se ha levantado con la estación total y está dibujado como polilínea cerrada, puede usarlo como referencia fija: nunca se moverá y las estancias se colocarán dentro de él, a la distancia del espesor de los muros exteriores. También se puede añadir después, desde la ventana de medidas.",
-                        "Facultatif. Si le périmètre extérieur du bâtiment a été relevé à la station totale et dessiné comme une polyligne fermée, vous pouvez l'utiliser comme référence fixe : il ne bougera jamais et les pièces se placeront à l'intérieur, à l'épaisseur des murs extérieurs. On peut aussi l'ajouter plus tard, depuis la fenêtre des mesures.",
-                        "İsteğe bağlı. Binanın dış çevresi total station ile ölçüldüyse ve kapalı bir çoklu çizgi olarak çizildiyse, onu sabit referans olarak kullanabilirsiniz: asla yerinden oynamaz ve odalar dış duvar kalınlığı kadar içeride, onun içine yerleşir. Daha sonra ölçü penceresinden de eklenebilir.",
-                        "Opcional. Se o perímetro exterior do edifício foi levantado com a estação total e está desenhado como polilinha fechada, pode usá-lo como referência fixa: nunca será movido e os compartimentos colocam-se dentro dele, à distância da espessura das paredes exteriores. Também se pode acrescentar depois, a partir da janela das medidas.",
-                        "Opcjonalnie. Jeśli obrys zewnętrzny budynku zmierzono tachimetrem i narysowano jako zamkniętą polilinię, możesz użyć go jako stałego odniesienia: nigdy nie zostanie przesunięty, a pomieszczenia ustawią się w jego wnętrzu, w odległości grubości ścian zewnętrznych. Można go też dodać później w oknie pomiarów.",
-                    )
-                    .to_string(),
-                ))
-                .with_control(DialogControl::Choice {
-                    id: "do".into(),
-                    label: tr!("Cosa vuoi fare?", "What next?", "¿Qué quiere hacer?", "Que voulez-vous faire ?", "Ne yapmak istiyorsunuz?", "O que quer fazer?", "Co chcesz zrobić?").into(),
-                    options: vec![
-                        tr!("Continua senza perimetro fisso", "Go on without a fixed perimeter", "Seguir sin perímetro fijo", "Continuer sans périmètre fixe", "Sabit çevre olmadan devam et", "Continuar sem perímetro fixo", "Kontynuuj bez stałego obrysu").into(),
-                        tr!("Scegli il perimetro: clic sulla sua polilinea nel disegno", "Choose the perimeter: click its polyline in the drawing", "Elegir el perímetro: clic en su polilínea en el dibujo", "Choisir le périmètre : clic sur sa polyligne dans le dessin", "Çevreyi seç: çizimde çoklu çizgisine tıkla", "Escolher o perímetro: clique na sua polilinha no desenho", "Wybierz obrys: kliknij jego polilinię na rysunku").into(),
-                    ],
-                    default_index: 0,
-                })
-                .submit_label(tr!("Continua ▸", "Continue ▸", "Continuar ▸", "Continuer ▸", "Devam ▸", "Continuar ▸", "Dalej ▸"))
-                .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
-                .width(560.0),
-        )
+        Some(perimeter_ask_def())
     }
     fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
         self.done = true;
