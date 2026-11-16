@@ -46,6 +46,9 @@ jobs:
 
   release:
     needs: build
+    # Publish even when one platform could not be built (a macOS runner that
+    # never came, say): the others are attached, the missing one is named.
+    if: ${{ always() && needs.build.result != 'skipped' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +86,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir dist
-          cp artifacts/*/* dist/
+          cp artifacts/*/* dist/ 2>/dev/null || true
+          if [ ! -f dist/opencad.rilievovani-windows-x86_64.dll ]; then
+            echo "::error::the Windows library was not built: nothing published"
+            exit 1
+          fi
+          for a in opencad.rilievovani-linux-x86_64.so opencad.rilievovani-macos-aarch64.dylib; do
+            [ -f "dist/$a" ] || echo "::warning::$a was not built and is missing from this release"
+          done
           cp plugin.toml dist/
           # Versions 0.x are marked "in fase di test" in the title.
           title="Room Survey ${GITHUB_REF_NAME}"
