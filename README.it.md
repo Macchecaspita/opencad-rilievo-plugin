@@ -36,8 +36,9 @@ calcolo si salva come **libretto delle misure** (CSV per Excel o Calc).
 Al posto di qualche diagonale si possono dare **vincoli** (spigolo retto o con un
 angolo noto, lato orizzontale o verticale). Si possono inserire **porte e
 finestre** (lato, distanza dallo spigolo, larghezza): una **porta comune** scritta
-nei due vani con lo spessore del muro basta a collegarli. Ogni vano riporta la sua
-**superficie in m²**.
+nei due vani con lo spessore del muro basta a collegarli. Dentro
+ogni vano è scritto solo il suo numero; le **superfici in m²** sono nella finestra
+del risultato e nel libretto delle misure.
 
 Con Calcola le polilinee dei vani prendono la forma calcolata (Ctrl+Z annulla).
 Sul layer

@@ -12,6 +12,25 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.12.2] - 2026-11-16
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Spessori dei muri esterni più piccoli**: il valore scritto sul layer
+  RILIEVO_PERIMETRO sta dentro il muro, allineato al lato, ed è alto al massimo
+  il 60 % dello spessore. Prima era grande quanto il perimetro e copriva quote e
+  lettere.
+- **Dentro ogni vano solo il numero** anche dopo Calcola. Le superfici in m² sono
+  nella finestra «Risultato del calcolo» (riga «Superfici») e nel libretto delle
+  misure.
+- **Quote sempre con i decimali**: 4,90 e 6,00 invece di 4,9 e 6.
+- La finestra del risultato dice «polilinee dei vani aggiornate nel disegno»
+  invece di «→ layer RILIEVO_CORRETTO», perché Calcola aggiorna direttamente i
+  vani.
+
 ## [0.12.1] - 2026-11-16
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

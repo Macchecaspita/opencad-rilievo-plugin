@@ -307,6 +307,18 @@ fn thickness_spot(pts: &[P2], k: usize, t: f64) -> P2 {
     [(c[0] + d[0]) / 2.0, (c[1] + d[1]) / 2.0]
 }
 
+/// The direction of a→b, turned so that text along it reads left to right.
+fn readable_angle(a: P2, b: P2) -> f64 {
+    let mut ang = (b[1] - a[1]).atan2(b[0] - a[0]);
+    use std::f64::consts::{FRAC_PI_2, PI};
+    if ang > FRAC_PI_2 + 1e-9 {
+        ang -= PI;
+    } else if ang <= -FRAC_PI_2 + 1e-9 {
+        ang += PI;
+    }
+    ang
+}
+
 /// Write each side's wall thickness along the perimeter (layer
 /// RILIEVO_PERIMETRO), replacing what was there: it stays with the drawing
 /// and is read back when the perimeter is chosen again.
@@ -317,15 +329,24 @@ fn write_thickness_labels(host: &mut dyn HostApi, pts: &[P2], z: f64, thick: &[O
     for h in old {
         host.remove_entity(h);
     }
-    let h = sizes_for(&[pts.to_vec()]).0;
+    let n = pts.len();
+    let longest = (0..n).map(|k| solve::dist(pts[k], pts[(k + 1) % n])).fold(0.0f64, f64::max);
+    let h_max = sizes_for(&[pts.to_vec()]).0;
     for (k, t) in thick.iter().enumerate() {
         if let Some(t) = t {
             // The offset of the side itself, as a real line of the drawing.
             let (c, d) = offset_side(pts, k, *t);
             host.add_entity(pline(&[c, d], z, false, LAYER_PERIM));
-            // The thickness; a minus sign marks a wall towards the outside.
+            // The thickness, inside the wall and along it: never taller than
+            // 60 % of the wall, so it covers neither the rooms nor their
+            // letters. A minus sign marks a wall towards the outside.
+            let h = (0.6 * t.abs()).min(h_max).max(longest / 400.0);
             let text = format!("{}{}", if *t < 0.0 { "-" } else { "" }, fmt_num(t.abs(), 2));
-            host.add_entity(mtext(&text, thickness_spot(pts, k, *t), z, h, AttachmentPoint::MiddleCenter, LAYER_PERIM));
+            let mut e = mtext(&text, thickness_spot(pts, k, *t), z, h, AttachmentPoint::MiddleCenter, LAYER_PERIM);
+            if let EntityType::MText(m) = &mut e {
+                m.rotation = readable_angle(pts[k], pts[(k + 1) % n]);
+            }
+            host.add_entity(e);
         }
     }
     host.end_undo_group();
@@ -1695,7 +1716,9 @@ fn apply_inner(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
 
     let adjusted: Vec<Vec<P2>> = (0..rooms.len()).map(|r| survey.room_points(r, &sol.pts)).collect();
     let mut ents: Vec<EntityType> = adjusted.iter().map(|pts| pline(pts, z, true, LAYER_ROOM)).collect();
-    ents.extend(label_entities(&adjusted, &survey, th, z, LAYER_NOTES, th * 1.2, Some(saved.unit)));
+    // Only the room's number inside it: the areas are in the result window
+    // and in the measures book.
+    ents.extend(label_entities(&adjusted, &survey, th, z, LAYER_NOTES, th * 1.2, None));
     ensure_layer(host, LAYER_OPENINGS, 4);
     let (op_ents, op_warn) = openings_entities(&survey, &openings, &sol.pts, th, dec, z);
     ents.extend(op_ents);
@@ -1727,25 +1750,46 @@ fn apply_inner(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
 
     // Report on the command line.
     let nr = rooms.len();
-    let mut lines = vec![if nr == 1 {
+    let dest = if saved.replace {
         tr!(
-            format!("RV_VANO: vano di {} vertici ricalcolato con {} misure → layer {LAYER_ROOM}.", rooms[0].pts.len(), measures.len()),
-            format!("RV_VANO: room of {} corners recomputed from {} measures → layer {LAYER_ROOM}.", rooms[0].pts.len(), measures.len()),
-            format!("RV_VANO: estancia de {} esquinas recalculada con {} medidas → capa {LAYER_ROOM}.", rooms[0].pts.len(), measures.len()),
-            format!("RV_VANO : pièce de {} angles recalculée à partir de {} mesures → calque {LAYER_ROOM}.", rooms[0].pts.len(), measures.len()),
-            format!("RV_VANO: {} köşeli oda {} ölçüyle yeniden hesaplandı → {LAYER_ROOM} katmanı.", rooms[0].pts.len(), measures.len()),
-            format!("RV_VANO: compartimento de {} cantos recalculado a partir de {} medidas → camada {LAYER_ROOM}.", rooms[0].pts.len(), measures.len()),
-            format!("RV_VANO: pomieszczenie o {} narożnikach przeliczone z {} pomiarów → warstwa {LAYER_ROOM}.", rooms[0].pts.len(), measures.len()),
+            "polilinee dei vani aggiornate nel disegno".to_string(),
+            "room polylines updated in the drawing".to_string(),
+            "polilíneas de las estancias actualizadas en el dibujo".to_string(),
+            "polylignes des pièces mises à jour dans le dessin".to_string(),
+            "oda çoklu çizgileri çizimde güncellendi".to_string(),
+            "polilinhas dos compartimentos atualizadas no desenho".to_string(),
+            "polilinie pomieszczeń zaktualizowane na rysunku".to_string(),
         )
     } else {
         tr!(
-            format!("RV_VANO: {nr} vani ricalcolati con {} misure ({} gruppi indipendenti) → layer {LAYER_ROOM}.", measures.len(), sol.groups),
-            format!("RV_VANO: {nr} rooms recomputed from {} measures ({} independent groups) → layer {LAYER_ROOM}.", measures.len(), sol.groups),
-            format!("RV_VANO: {nr} estancias recalculadas con {} medidas ({} grupos independientes) → capa {LAYER_ROOM}.", measures.len(), sol.groups),
-            format!("RV_VANO : {nr} pièces recalculées à partir de {} mesures ({} groupes indépendants) → calque {LAYER_ROOM}.", measures.len(), sol.groups),
-            format!("RV_VANO: {nr} oda {} ölçüyle yeniden hesaplandı ({} bağımsız grup) → {LAYER_ROOM} katmanı.", measures.len(), sol.groups),
-            format!("RV_VANO: {nr} compartimentos recalculados a partir de {} medidas ({} grupos independentes) → camada {LAYER_ROOM}.", measures.len(), sol.groups),
-            format!("RV_VANO: {nr} pomieszczeń przeliczono z {} pomiarów ({} niezależnych grup) → warstwa {LAYER_ROOM}.", measures.len(), sol.groups),
+            format!("layer {LAYER_ROOM}"),
+            format!("layer {LAYER_ROOM}"),
+            format!("capa {LAYER_ROOM}"),
+            format!("calque {LAYER_ROOM}"),
+            format!("{LAYER_ROOM} katmanı"),
+            format!("camada {LAYER_ROOM}"),
+            format!("warstwa {LAYER_ROOM}"),
+        )
+    };
+    let mut lines = vec![if nr == 1 {
+        tr!(
+            format!("RV_VANO: vano di {} vertici ricalcolato con {} misure → {dest}.", rooms[0].pts.len(), measures.len()),
+            format!("RV_VANO: room of {} corners recomputed from {} measures → {dest}.", rooms[0].pts.len(), measures.len()),
+            format!("RV_VANO: estancia de {} esquinas recalculada con {} medidas → {dest}.", rooms[0].pts.len(), measures.len()),
+            format!("RV_VANO : pièce de {} angles recalculée à partir de {} mesures → {dest}.", rooms[0].pts.len(), measures.len()),
+            format!("RV_VANO: {} köşeli oda {} ölçüyle yeniden hesaplandı → {dest}.", rooms[0].pts.len(), measures.len()),
+            format!("RV_VANO: compartimento de {} cantos recalculado a partir de {} medidas → {dest}.", rooms[0].pts.len(), measures.len()),
+            format!("RV_VANO: pomieszczenie o {} narożnikach przeliczone z {} pomiarów → {dest}.", rooms[0].pts.len(), measures.len()),
+        )
+    } else {
+        tr!(
+            format!("RV_VANO: {nr} vani ricalcolati con {} misure ({} gruppi indipendenti) → {dest}.", measures.len(), sol.groups),
+            format!("RV_VANO: {nr} rooms recomputed from {} measures ({} independent groups) → {dest}.", measures.len(), sol.groups),
+            format!("RV_VANO: {nr} estancias recalculadas con {} medidas ({} grupos independientes) → {dest}.", measures.len(), sol.groups),
+            format!("RV_VANO : {nr} pièces recalculées à partir de {} mesures ({} groupes indépendants) → {dest}.", measures.len(), sol.groups),
+            format!("RV_VANO: {nr} oda {} ölçüyle yeniden hesaplandı ({} bağımsız grup) → {dest}.", measures.len(), sol.groups),
+            format!("RV_VANO: {nr} compartimentos recalculados a partir de {} medidas ({} grupos independentes) → {dest}.", measures.len(), sol.groups),
+            format!("RV_VANO: {nr} pomieszczeń przeliczono z {} pomiarów ({} niezależnych grup) → {dest}.", measures.len(), sol.groups),
         )
     }];
     if nr > 1 && sol.groups > 1 {
@@ -1779,6 +1823,15 @@ fn apply_inner(host: &mut dyn HostApi, hs: &[Handle], saved: Saved) {
             "  Nenhuma medida de controlo: a forma é exata mas um erro de medida não se nota. Meça mais uma diagonal.".to_string(),
             "  Brak pomiaru kontrolnego: kształt jest dokładny, ale błąd pomiaru nie zostanie zauważony. Zmierz jeszcze jedną przekątną.".to_string(),
         )),
+    }
+    {
+        let f = survey::unit_factor(saved.unit);
+        let areas: Vec<String> = adjusted
+            .iter()
+            .enumerate()
+            .map(|(r, pts)| format!("{} {} = {} m²", tr!("vano", "room", "estancia", "pièce", "oda", "compartimento", "pomieszczenie"), r + 1, fmt_num(solve::signed_area(pts).abs() * f * f, 2)))
+            .collect();
+        lines.push(format!("  {}: {}", tr!("Superfici", "Areas", "Superficies", "Surfaces", "Alanlar", "Áreas", "Powierzchnie"), areas.join(" · ")));
     }
     if sol.redundancy > 0 {
         for (k, m) in measures.iter().enumerate() {
@@ -2254,7 +2307,7 @@ fn ensure_dim_style(host: &mut dyn HostApi, h: f64, dec: usize) -> bool {
     let sep = if crate::i18n::decimal_comma() { 44 } else { 46 };
     let props = format!(
         "{{\"dimtxt\":{h},\"dimasz\":{a},\"dimexo\":{eo},\"dimexe\":{ee},\"dimgap\":{g},\"dimdec\":{d},\
-         \"dimtad\":1,\"dimtih\":false,\"dimtoh\":false,\"dimscale\":1.0,\"dimlfac\":1.0,\"dimdsep\":{sep}}}",
+         \"dimtad\":1,\"dimtih\":false,\"dimtoh\":false,\"dimscale\":1.0,\"dimlfac\":1.0,\"dimdsep\":{sep},\"dimzin\":0}}",
         a = h * 0.8,
         eo = h * 0.4,
         ee = h * 0.6,

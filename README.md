@@ -33,8 +33,9 @@ dialog has its own help ("How to measure").
 
 Known angles and horizontal / vertical sides can replace diagonals
 (**constraints**); **doors and windows** are placed on the sides, and a **shared
-door** written in both rooms with the wall thickness links them by itself. Each
-room shows its **area in m²**.
+door** written in both rooms with the wall thickness links them by itself. Inside
+each room only its number is written; the **areas in m²** are in the result
+window and in the measures book.
 
 Compute moves the room polylines to the computed shape (Ctrl+Z undoes it). Layer
 **RILIEVO_QUOTE** gets
