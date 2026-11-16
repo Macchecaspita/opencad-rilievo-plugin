@@ -12,6 +12,12 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.12.0] - 2026-11-16
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
 ### Modificato
 - **Spessori muri esterni, lato per lato con linea offset e verso**: si clicca un
   lato del perimetro alla volta e la finestra chiede ogni volta lo **spessore** e il
