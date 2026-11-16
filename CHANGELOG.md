@@ -12,6 +12,18 @@ del rilascio.
 
 ## [Non rilasciato]
 
+### Modificato
+- **Spessori muri esterni, lato per lato con linea offset e verso**: si clicca un
+  lato del perimetro alla volta e la finestra chiede ogni volta lo **spessore** e il
+  **verso** (menu «Verso il centro del perimetro» — predefinito — oppure «Verso
+  l'esterno»). Alla fine (Invio) per ogni lato con spessore viene disegnata sul
+  layer RILIEVO_PERIMETRO la **linea parallela al lato**, alla distanza indicata,
+  oltre al valore scritto. L'anteprima mostra in verde i lati verso il centro e in
+  azzurro quelli verso l'esterno.
+- Un lato con verso «esterno» ha la linea disegnata, ma **non entra nel calcolo dei
+  vani** (che usa solo spessori verso l'interno). Lo spessore verso l'esterno è
+  scritto con il segno meno e viene riletto con il resto.
+
 ## [0.11.0] - 2026-11-16
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

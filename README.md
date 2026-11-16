@@ -15,7 +15,7 @@ laser meter:
 2. *(optional)* **1. Outer perimeter**: choose the building outline surveyed with
    a total station, which will stay still;
 3. *(optional)* **2. Outer wall thicknesses**: click the perimeter side by side and
-   type the wall thickness towards the inside for each;
+   type the wall thickness and direction (towards the centre or the outside) for each: the line parallel to the side is drawn;
 4. **3. Rooms: numbers, letters and measures**: select the rooms and press Enter;
    each room gets its number and the corners their letters (A, B, C … — printable
    as a field sketch) and **a single window** opens with all the rooms, from room 1

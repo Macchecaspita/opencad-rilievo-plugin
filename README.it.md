@@ -16,7 +16,7 @@ aggiunge la scheda **Rilievo** per il rilievo architettonico a misure dirette
 2. *(facoltativo)* **1. Perimetro esterno**: scegli il perimetro dell'edificio
    rilevato con la stazione totale, che resterà fermo;
 3. *(facoltativo)* **2. Spessori muri esterni**: clicchi il perimetro lato per
-   lato e per ognuno scrivi lo spessore del muro verso l'interno;
+   lato e per ognuno scrivi lo spessore e il verso (verso il centro o verso l'esterno) del muro: viene disegnata la linea parallela al lato;
 4. **3. Vani: numeri, lettere e misure**: selezioni i vani e premi Invio; ogni
    vano riceve il suo numero e gli spigoli le lettere (A, B, C … — utili anche
    stampate come eidotipo) e si apre **una sola finestra** con tutti i vani, dal
@@ -54,7 +54,7 @@ le altre lingue). `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO` forza una lingua.
 | Comando | Pulsante | Cosa fa |
 |---|---|---|
 | `RV_PERIMETRO` | **1. Perimetro esterno** | facoltativo: clicca la polilinea del perimetro rilevato, Invio; resta ferma nel calcolo |
-| `RV_SPESSORI` | **2. Spessori muri esterni** | clicca il perimetro lato per lato e scrivi lo spessore del muro verso l'interno (layer RILIEVO_PERIMETRO) |
+| `RV_SPESSORI` | **2. Spessori muri esterni** | clicca il perimetro lato per lato e scrivi spessore e verso del muro: nasce la linea parallela al lato (layer RILIEVO_PERIMETRO); verso l'esterno solo disegno, fuori dal calcolo dei vani |
 | `RV_VANO` | **3. Vani: numeri, lettere e misure** | seleziona i vani, Invio: numeri e lettere sul disegno e una sola finestra con tutti i vani, porte e finestre, poi Calcola, che aggiorna il disegno |
 | `RV_ETICHETTE` | | scrive solo le lettere sui vertici, per l'eidotipo |
 | `RV_APPLICA` | | porta le polilinee originali nella forma dell'ultimo calcolo |

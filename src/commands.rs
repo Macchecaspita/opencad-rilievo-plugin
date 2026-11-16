@@ -288,15 +288,23 @@ fn no_polyline_text() -> String {
     .to_string()
 }
 
-/// Where the thickness of side `k` is written: its middle, inside the wall.
-fn thickness_spot(pts: &[P2], k: usize, t: f64) -> P2 {
+/// Side `k` of the closed outline `pts`, moved by `t` along its normal: `t > 0`
+/// towards the centre of the outline (inside), `t < 0` towards the outside.
+/// The same length as the side: a plain parallel copy.
+pub fn offset_side(pts: &[P2], k: usize, t: f64) -> (P2, P2) {
     let n = pts.len();
     let (a, b) = (pts[k], pts[(k + 1) % n]);
     let l = solve::dist(a, b).max(1e-12);
     let s = if solve::signed_area(pts) > 0.0 { 1.0 } else { -1.0 };
     let nrm = [-(b[1] - a[1]) / l * s, (b[0] - a[0]) / l * s];
-    let m = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
-    [m[0] + nrm[0] * t / 2.0, m[1] + nrm[1] * t / 2.0]
+    ([a[0] + nrm[0] * t, a[1] + nrm[1] * t], [b[0] + nrm[0] * t, b[1] + nrm[1] * t])
+}
+
+/// Where the thickness of side `k` is written: its middle, halfway across the
+/// wall (a negative `t`, towards the outside, puts it outside).
+fn thickness_spot(pts: &[P2], k: usize, t: f64) -> P2 {
+    let (c, d) = offset_side(pts, k, t / 2.0);
+    [(c[0] + d[0]) / 2.0, (c[1] + d[1]) / 2.0]
 }
 
 /// Write each side's wall thickness along the perimeter (layer
@@ -312,7 +320,12 @@ fn write_thickness_labels(host: &mut dyn HostApi, pts: &[P2], z: f64, thick: &[O
     let h = sizes_for(&[pts.to_vec()]).0;
     for (k, t) in thick.iter().enumerate() {
         if let Some(t) = t {
-            host.add_entity(mtext(&fmt_num(*t, 2), thickness_spot(pts, k, *t), z, h, AttachmentPoint::MiddleCenter, LAYER_PERIM));
+            // The offset of the side itself, as a real line of the drawing.
+            let (c, d) = offset_side(pts, k, *t);
+            host.add_entity(pline(&[c, d], z, false, LAYER_PERIM));
+            // The thickness; a minus sign marks a wall towards the outside.
+            let text = format!("{}{}", if *t < 0.0 { "-" } else { "" }, fmt_num(t.abs(), 2));
+            host.add_entity(mtext(&text, thickness_spot(pts, k, *t), z, h, AttachmentPoint::MiddleCenter, LAYER_PERIM));
         }
     }
     host.end_undo_group();
@@ -328,7 +341,7 @@ fn read_thickness_labels(host: &dyn HostApi, pts: &[P2]) -> Vec<Option<f64>> {
             continue;
         }
         let EntityType::MText(m) = e else { continue };
-        let Some(t) = parse_num(m.value.trim()).filter(|v| *v > 0.0) else { continue };
+        let Some(t) = parse_num(m.value.trim()).filter(|v| *v != 0.0) else { continue };
         let p = [m.insertion_point.x, m.insertion_point.y];
         let best = (0..n)
             .map(|k| (k, solve::dist(p, thickness_spot(pts, k, t))))
@@ -605,7 +618,7 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             }
         },
         "RV_SPESSORISET" => {
-            let list: Vec<Option<f64>> = arg.as_deref().unwrap_or("").split(';').map(|t| t.trim().parse::<f64>().ok().filter(|v| *v > 0.0)).collect();
+            let list: Vec<Option<f64>> = arg.as_deref().unwrap_or("").split(';').map(|t| t.trim().parse::<f64>().ok().filter(|v| v.is_finite() && *v != 0.0)).collect();
             if let Some((o, _)) = perimeter() {
                 if let Some(room) = parse_handle(&o).and_then(|h| fetch_room(host, h)) {
                     let mut thick = list;
@@ -2541,5 +2554,19 @@ mod tests {
         assert!(csv.starts_with('\u{feff}'));
         assert!(csv.contains("A–C"));
         assert!(csv.lines().any(|l| l.starts_with("1") && l.contains("12")), "area row: {csv}");
+    }
+
+    #[test]
+    fn offset_side_goes_towards_the_centre_for_both_orientations() {
+        let ccw: Vec<P2> = vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]];
+        let (a, b) = offset_side(&ccw, 0, 1.0);
+        assert!((a[1] - 1.0).abs() < 1e-9 && (b[1] - 1.0).abs() < 1e-9, "{a:?} {b:?}");
+        assert!((a[0] - 0.0).abs() < 1e-9 && (b[0] - 10.0).abs() < 1e-9);
+        let (a, _) = offset_side(&ccw, 0, -1.0);
+        assert!((a[1] + 1.0).abs() < 1e-9, "outwards: {a:?}");
+        let cw: Vec<P2> = ccw.iter().rev().copied().collect();
+        // Side 0 of the reversed outline runs (0,10) → (10,10): the centre is below.
+        let (a, b) = offset_side(&cw, 0, 2.0);
+        assert!((a[1] - 8.0).abs() < 1e-9 && (b[1] - 8.0).abs() < 1e-9, "{a:?} {b:?}");
     }
 }

@@ -20,6 +20,8 @@ use crate::survey::{self, Saved, Survey};
 const GREEN: [f32; 4] = [0.45, 0.85, 0.45, 1.0];
 /// The fixed perimeter, while choosing the rooms.
 const ORANGE: [f32; 4] = [0.95, 0.55, 0.2, 1.0];
+/// A wall measured towards the outside of the perimeter.
+const CYAN: [f32; 4] = [0.4, 0.75, 0.95, 1.0];
 
 /// Arguments of a command handed to the host as a bare verb (see
 /// [`deferred`]).
@@ -1105,7 +1107,7 @@ impl ThicknessTool {
     pub fn new(pts: Vec<P2>, z: f64, thick: Vec<Option<f64>>, default_t: f64) -> Self {
         let mut thick = thick;
         thick.resize(pts.len(), None);
-        let last = thick.iter().flatten().copied().last().unwrap_or(default_t);
+        let last = thick.iter().flatten().map(|v| v.abs()).last().unwrap_or(default_t);
         ThicknessTool { pts, z, thick, asking: None, last, msg: None }
     }
 
@@ -1119,15 +1121,10 @@ impl ThicknessTool {
         }).unwrap_or(0)
     }
 
-    /// The inward offset of side `k` at thickness `t`.
+    /// The offset of side `k` at thickness `t`: towards the centre of the
+    /// perimeter for `t > 0`, towards the outside for `t < 0`.
     fn inner_line(&self, k: usize, t: f64) -> (P2, P2) {
-        let n = self.pts.len();
-        let (a, b) = (self.pts[k], self.pts[(k + 1) % n]);
-        let l = solve::dist(a, b).max(1e-12);
-        let ccw = solve::signed_area(&self.pts) > 0.0;
-        let s = if ccw { 1.0 } else { -1.0 };
-        let nrm = [-(b[1] - a[1]) / l * s, (b[0] - a[0]) / l * s];
-        ([a[0] + nrm[0] * t, a[1] + nrm[1] * t], [b[0] + nrm[0] * t, b[1] + nrm[1] * t])
+        commands::offset_side(&self.pts, k, t)
     }
 
     fn side_name(&self, k: usize) -> String {
@@ -1142,13 +1139,13 @@ impl InteractiveCommand for ThicknessTool {
         with_msg(
             &self.msg,
             tr!(
-                format!("Spessori muri esterni: clicca un lato del perimetro per scriverne lo spessore ({done} di {n} lati fatti, in verde). Invio per finire"),
-                format!("Outer wall thicknesses: click a side of the perimeter to type its thickness ({done} of {n} sides done, in green). Enter to finish"),
-                format!("Espesores de muros exteriores: haga clic en un lado del perímetro para escribir su espesor ({done} de {n} lados hechos, en verde). Intro para terminar"),
-                format!("Épaisseurs des murs extérieurs : cliquez sur un côté du périmètre pour saisir son épaisseur ({done} sur {n} côtés faits, en vert). Entrée pour terminer"),
-                format!("Dış duvar kalınlıkları: kalınlığını yazmak için çevrenin bir kenarına tıklayın ({n} kenardan {done} tanesi tamam, yeşil). Bitirmek için Enter"),
-                format!("Espessuras das paredes exteriores: clique num lado do perímetro para escrever a sua espessura ({done} de {n} lados feitos, a verde). Enter para terminar"),
-                format!("Grubości ścian zewnętrznych: kliknij bok obrysu, aby wpisać jego grubość ({done} z {n} boków gotowe, na zielono). Enter, aby zakończyć"),
+                format!("Spessori muri esterni: clicca un lato del perimetro, poi scrivi spessore e verso: ne nasce la linea parallela ({done} di {n} lati fatti: verde = verso il centro, azzurro = verso l'esterno). Invio per finire"),
+                format!("Outer wall thicknesses: click a side of the perimeter, then give thickness and direction: its parallel line is drawn ({done} of {n} sides done: green = towards the centre, light blue = towards the outside). Enter to finish"),
+                format!("Espesores de muros exteriores: haga clic en un lado del perímetro y escriba espesor y sentido: se dibuja su línea paralela ({done} de {n} lados hechos: verde = hacia el centro, celeste = hacia el exterior). Intro para terminar"),
+                format!("Épaisseurs des murs extérieurs : cliquez sur un côté du périmètre, puis saisissez épaisseur et sens : sa ligne parallèle est tracée ({done} sur {n} côtés faits : vert = vers le centre, bleu clair = vers l'extérieur). Entrée pour terminer"),
+                format!("Dış duvar kalınlıkları: çevrenin bir kenarına tıklayın, sonra kalınlık ve yönü yazın: paralel çizgisi çizilir ({n} kenardan {done} tanesi tamam: yeşil = merkeze doğru, açık mavi = dışa doğru). Bitirmek için Enter"),
+                format!("Espessuras das paredes exteriores: clique num lado do perímetro e indique espessura e sentido: é desenhada a sua linha paralela ({done} de {n} lados feitos: verde = para o centro, azul-claro = para o exterior). Enter para terminar"),
+                format!("Grubości ścian zewnętrznych: kliknij bok obrysu, potem podaj grubość i kierunek: rysowana jest jego linia równoległa ({done} z {n} boków gotowe: zielony = do środka, jasnoniebieski = na zewnątrz). Enter, aby zakończyć"),
             ),
         )
     }
@@ -1172,9 +1169,10 @@ impl InteractiveCommand for ThicknessTool {
             let seg = vec![[a[0], a[1], self.z], [b[0], b[1], self.z]];
             match self.thick[k] {
                 Some(t) => {
-                    w.push(PreviewWire::with_color(seg, GREEN));
+                    let col = if t < 0.0 { CYAN } else { GREEN };
+                    w.push(PreviewWire::with_color(seg, col));
                     let (c, d) = self.inner_line(k, t);
-                    w.push(PreviewWire::with_color(vec![[c[0], c[1], self.z], [d[0], d[1], self.z]], GREEN));
+                    w.push(PreviewWire::with_color(vec![[c[0], c[1], self.z], [d[0], d[1], self.z]], col));
                 }
                 None => w.push(PreviewWire::with_color(seg, ORANGE)),
             }
@@ -1197,21 +1195,48 @@ impl InteractiveCommand for ThicknessTool {
                 format!("Grubość ściany — bok {name}"),
             ))
             .with_control(info(tr!(
-                format!("Lato {name} del perimetro, lungo {len}. Scrivi lo spessore del muro verso l'interno (misurato nelle finestre o nelle porte). 0 = nessuno spessore per questo lato."),
-                format!("Side {name} of the perimeter, {len} long. Type the thickness of the wall towards the inside (measured at the windows or doors). 0 = no thickness for this side."),
-                format!("Lado {name} del perímetro, de {len}. Escriba el espesor del muro hacia el interior (medido en las ventanas o puertas). 0 = sin espesor para este lado."),
-                format!("Côté {name} du périmètre, long de {len}. Saisissez l'épaisseur du mur vers l'intérieur (mesurée aux fenêtres ou aux portes). 0 = pas d'épaisseur pour ce côté."),
-                format!("Çevrenin {name} kenarı, uzunluk {len}. İçe doğru duvar kalınlığını yazın (pencerelerde veya kapılarda ölçülen). 0 = bu kenar için kalınlık yok."),
-                format!("Lado {name} do perímetro, com {len}. Escreva a espessura da parede para o interior (medida nas janelas ou portas). 0 = sem espessura para este lado."),
-                format!("Bok {name} obrysu, długość {len}. Wpisz grubość ściany do wewnątrz (zmierzoną w oknach lub drzwiach). 0 = brak grubości dla tego boku."),
+                format!("Lato {name} del perimetro, lungo {len}. Scrivi lo spessore del muro (misurato nelle finestre o nelle porte) e scegli il verso: sul disegno nasce la linea parallela al lato, a quella distanza. Con il verso verso l'esterno la linea viene disegnata ma il lato non entra nel calcolo dei vani. 0 = nessuno spessore per questo lato."),
+                format!("Side {name} of the perimeter, {len} long. Type the wall thickness (measured at the windows or doors) and choose the direction: the line parallel to the side is drawn at that distance. With the direction towards the outside the line is drawn but the side does not count in the rooms' calculation. 0 = no thickness for this side."),
+                format!("Lado {name} del perímetro, de {len}. Escriba el espesor del muro (medido en las ventanas o puertas) y elija el sentido: en el dibujo se crea la línea paralela al lado, a esa distancia. Con el sentido hacia el exterior la línea se dibuja pero el lado no entra en el cálculo de las estancias. 0 = sin espesor para este lado."),
+                format!("Côté {name} du périmètre, long de {len}. Saisissez l'épaisseur du mur (mesurée aux fenêtres ou aux portes) et choisissez le sens : la ligne parallèle au côté est tracée à cette distance. Avec le sens vers l'extérieur la ligne est tracée mais le côté n'entre pas dans le calcul des pièces. 0 = pas d'épaisseur pour ce côté."),
+                format!("Çevrenin {name} kenarı, uzunluk {len}. Duvar kalınlığını yazın (pencerelerde veya kapılarda ölçülen) ve yönü seçin: kenara paralel çizgi o uzaklıkta çizilir. Dışa doğru yönde çizgi çizilir ancak kenar odaların hesabına girmez. 0 = bu kenar için kalınlık yok."),
+                format!("Lado {name} do perímetro, com {len}. Escreva a espessura da parede (medida nas janelas ou portas) e escolha o sentido: no desenho nasce a linha paralela ao lado, a essa distância. Com o sentido para o exterior a linha é desenhada mas o lado não entra no cálculo dos compartimentos. 0 = sem espessura para este lado."),
+                format!("Bok {name} obrysu, długość {len}. Wpisz grubość ściany (zmierzoną w oknach lub drzwiach) i wybierz kierunek: na rysunku powstaje linia równoległa do boku, w tej odległości. Przy kierunku na zewnątrz linia jest rysowana, ale bok nie wchodzi do obliczeń pomieszczeń. 0 = brak grubości dla tego boku."),
             )))
             .with_control(DialogControl::Number {
                 id: "t".into(),
                 label: tr!("Spessore", "Thickness", "Espesor", "Épaisseur", "Kalınlık", "Espessura", "Grubość").into(),
-                default: self.thick[k].unwrap_or(self.last),
+                default: self.thick[k].map(f64::abs).unwrap_or(self.last),
                 min: Some(0.0),
                 max: None,
                 step: None,
+            })
+            .with_control(DialogControl::Choice {
+                id: "dir".into(),
+                label: tr!("Verso", "Direction", "Sentido", "Sens", "Yön", "Sentido", "Kierunek").into(),
+                options: vec![
+                    tr!(
+                        "Verso il centro del perimetro (interno)",
+                        "Towards the centre of the perimeter (inside)",
+                        "Hacia el centro del perímetro (interior)",
+                        "Vers le centre du périmètre (intérieur)",
+                        "Çevrenin merkezine doğru (içeri)",
+                        "Para o centro do perímetro (interior)",
+                        "Do środka obrysu (do wewnątrz)",
+                    )
+                    .into(),
+                    tr!(
+                        "Verso l'esterno (solo disegno, non entra nel calcolo)",
+                        "Towards the outside (drawing only, not in the calculation)",
+                        "Hacia el exterior (solo dibujo, no entra en el cálculo)",
+                        "Vers l'extérieur (dessin seul, hors calcul)",
+                        "Dışa doğru (yalnızca çizim, hesaba girmez)",
+                        "Para o exterior (só desenho, não entra no cálculo)",
+                        "Na zewnątrz (tylko rysunek, poza obliczeniami)",
+                    )
+                    .into(),
+                ],
+                default_index: if self.thick[k].is_some_and(|v| v < 0.0) { 1 } else { 0 },
             })
             .with_control(checkbox(
                 "all",
@@ -1242,11 +1267,14 @@ impl InteractiveCommand for ThicknessTool {
                 _ => self.last,
             };
             if t > 0.0 && t.is_finite() {
-                self.thick[k] = Some(t);
+                // Positive: towards the centre (used by the rooms); negative:
+                // towards the outside (drawn only).
+                let signed = if get_choice(&m, "dir", 0) == 1 { -t } else { t };
+                self.thick[k] = Some(signed);
                 self.last = t;
                 if get_bool(&m, "all", false) {
                     for x in self.thick.iter_mut().filter(|x| x.is_none()) {
-                        *x = Some(t);
+                        *x = Some(signed);
                     }
                 }
             } else {
@@ -3016,18 +3044,18 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
             tr!("2. Spessori dei muri esterni", "2. Outer wall thicknesses", "2. Espesores de los muros exteriores", "2. Épaisseurs des murs extérieurs", "2. Dış duvar kalınlıkları", "2. Espessuras das paredes exteriores", "2. Grubości ścian zewnętrznych"),
             tr!(
                 "Premi \"2. Spessori muri esterni\" e clicca i lati del perimetro uno alla volta: per ognuno una finestra \
-                 chiede lo spessore del muro verso l'interno (con la casella \"anche per tutti i lati\" vale per quelli ancora vuoti). I lati con lo \
+                 chiede spessore e verso del muro (verso il centro o verso l'esterno) e disegna la linea parallela (con la casella \"anche per tutti i lati\" vale per quelli ancora vuoti). I lati con lo \
                  spessore diventano verdi, gli altri restano arancioni; Invio per finire. Gli spessori restano scritti \
                  sul disegno (layer RILIEVO_PERIMETRO) e i lati dei vani lungo il perimetro restano a quella distanza.",
                 "Press \"2. Outer wall thicknesses\" and click the perimeter sides one at a time: for each a window asks \
-                 the wall thickness towards the inside (the \"also for every side\" box fills the ones still empty). Sides with a \
+                 the wall thickness and direction (towards the centre or the outside) and draws the parallel line (the \"also for every side\" box fills the ones still empty). Sides with a \
                  thickness turn green, the others stay orange; Enter to finish. The thicknesses stay written on the \
                  drawing (layer RILIEVO_PERIMETRO) and the room sides along the perimeter stay at that distance.",
-                "Pulse \"2. Espesores de muros exteriores\" y haga clic en los lados del perímetro uno a uno: para cada uno una ventana pide el espesor del muro hacia el interior (la casilla \"también para todos los lados\" rellena los que siguen vacíos). Los lados con espesor se vuelven verdes, los demás quedan naranjas; Intro para terminar. Los espesores quedan escritos en el dibujo (capa RILIEVO_PERIMETRO) y los lados de las estancias a lo largo del perímetro quedan a esa distancia.",
-                "Appuyez sur \"2. Épaisseurs des murs extérieurs\" et cliquez les côtés du périmètre un par un : pour chacun une fenêtre demande l'épaisseur du mur vers l'intérieur (la case \"aussi pour tous les côtés\" remplit ceux encore vides). Les côtés avec épaisseur deviennent verts, les autres restent orange ; Entrée pour finir. Les épaisseurs restent écrites sur le dessin (calque RILIEVO_PERIMETRO) et les côtés des pièces le long du périmètre restent à cette distance.",
-                "\"2. Dış duvar kalınlıkları\" düğmesine basın ve çevrenin kenarlarına tek tek tıklayın: her biri için bir pencere içe doğru duvar kalınlığını sorar (\"tüm kenarlar için de\" kutusu henüz boş olanları doldurur). Kalınlığı olan kenarlar yeşil olur, diğerleri turuncu kalır; bitirmek için Enter. Kalınlıklar çizimde yazılı kalır (RILIEVO_PERIMETRO katmanı) ve çevre boyunca oda kenarları bu uzaklıkta kalır.",
-                "Prima \"2. Espessuras das paredes exteriores\" e clique nos lados do perímetro um de cada vez: para cada um uma janela pede a espessura da parede para o interior (a caixa \"também para todos os lados\" preenche os que ainda estão vazios). Os lados com espessura ficam verdes, os outros ficam laranja; Enter para terminar. As espessuras ficam escritas no desenho (camada RILIEVO_PERIMETRO) e os lados dos compartimentos ao longo do perímetro ficam a essa distância.",
-                "Naciśnij \"2. Grubości ścian zewnętrznych\" i klikaj boki obrysu po kolei: dla każdego okno pyta o grubość ściany do wewnątrz (pole \"także dla wszystkich boków\" wypełnia te jeszcze puste). Boki z grubością stają się zielone, pozostałe zostają pomarańczowe; Enter, aby zakończyć. Grubości zostają zapisane na rysunku (warstwa RILIEVO_PERIMETRO), a boki pomieszczeń wzdłuż obrysu zachowują tę odległość.",
+                "Pulse \"2. Espesores de muros exteriores\" y haga clic en los lados del perímetro uno a uno: para cada uno una ventana pide espesor y sentido del muro (hacia el centro o el exterior) y dibuja la línea paralela (la casilla \"también para todos los lados\" rellena los que siguen vacíos). Los lados con espesor se vuelven verdes, los demás quedan naranjas; Intro para terminar. Los espesores quedan escritos en el dibujo (capa RILIEVO_PERIMETRO) y los lados de las estancias a lo largo del perímetro quedan a esa distancia.",
+                "Appuyez sur \"2. Épaisseurs des murs extérieurs\" et cliquez les côtés du périmètre un par un : pour chacun une fenêtre demande l'épaisseur et le sens du mur (vers le centre ou l'extérieur) et trace la ligne parallèle (la case \"aussi pour tous les côtés\" remplit ceux encore vides). Les côtés avec épaisseur deviennent verts, les autres restent orange ; Entrée pour finir. Les épaisseurs restent écrites sur le dessin (calque RILIEVO_PERIMETRO) et les côtés des pièces le long du périmètre restent à cette distance.",
+                "\"2. Dış duvar kalınlıkları\" düğmesine basın ve çevrenin kenarlarına tek tek tıklayın: her biri için bir pencere duvar kalınlığını ve yönünü (merkeze veya dışa doğru) sorar ve paralel çizgisini çizer (\"tüm kenarlar için de\" kutusu henüz boş olanları doldurur). Kalınlığı olan kenarlar yeşil olur, diğerleri turuncu kalır; bitirmek için Enter. Kalınlıklar çizimde yazılı kalır (RILIEVO_PERIMETRO katmanı) ve çevre boyunca oda kenarları bu uzaklıkta kalır.",
+                "Prima \"2. Espessuras das paredes exteriores\" e clique nos lados do perímetro um de cada vez: para cada um uma janela pede espessura e sentido da parede (para o centro ou para o exterior) e desenha a linha paralela (a caixa \"também para todos os lados\" preenche os que ainda estão vazios). Os lados com espessura ficam verdes, os outros ficam laranja; Enter para terminar. As espessuras ficam escritas no desenho (camada RILIEVO_PERIMETRO) e os lados dos compartimentos ao longo do perímetro ficam a essa distância.",
+                "Naciśnij \"2. Grubości ścian zewnętrznych\" i klikaj boki obrysu po kolei: dla każdego okno pyta o grubość i kierunek ściany (do środka lub na zewnątrz) i rysuje linię równoległą (pole \"także dla wszystkich boków\" wypełnia te jeszcze puste). Boki z grubością stają się zielone, pozostałe zostają pomarańczowe; Enter, aby zakończyć. Grubości zostają zapisane na rysunku (warstwa RILIEVO_PERIMETRO), a boki pomieszczeń wzdłuż obrysu zachowują tę odległość.",
             ),
         ),
         (
