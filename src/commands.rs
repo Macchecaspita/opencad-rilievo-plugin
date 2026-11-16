@@ -617,6 +617,11 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                 )));
             }
         },
+        "RV_SPESSORILATO" => {
+            if let Some(tool) = tools::take_thickness_resume() {
+                host.start_interactive(Box::new(tool));
+            }
+        }
         "RV_SPESSORISET" => {
             let list: Vec<Option<f64>> = arg.as_deref().unwrap_or("").split(';').map(|t| t.trim().parse::<f64>().ok().filter(|v| v.is_finite() && *v != 0.0)).collect();
             if let Some((o, _)) = perimeter() {

@@ -1093,6 +1093,11 @@ impl InteractiveCommand for PerimeterTool {
 
 /// Button 2: click the sides of the fixed perimeter one by one and give each
 /// the thickness of its wall, measured towards the inside.
+///
+/// The host asks a tool for its window only when the tool starts or after an
+/// answer, never after a click: a click therefore hands the tool, with the
+/// side to ask, to `RV_SPESSORILATO`, which starts it again with its window.
+#[derive(Clone)]
 pub struct ThicknessTool {
     pts: Vec<P2>,
     z: f64,
@@ -1103,7 +1108,19 @@ pub struct ThicknessTool {
     msg: Option<String>,
 }
 
+static THICK_RESUME: Mutex<Option<ThicknessTool>> = Mutex::new(None);
+
+/// The thickness tool a click handed over, with the side to ask, once.
+pub fn take_thickness_resume() -> Option<ThicknessTool> {
+    THICK_RESUME.lock().unwrap_or_else(|e| e.into_inner()).take()
+}
+
 impl ThicknessTool {
+    /// The side whose window is open, if any.
+    pub fn asking(&self) -> Option<usize> {
+        self.asking
+    }
+
     pub fn new(pts: Vec<P2>, z: f64, thick: Vec<Option<f64>>, default_t: f64) -> Self {
         let mut thick = thick;
         thick.resize(pts.len(), None);
@@ -1150,10 +1167,14 @@ impl InteractiveCommand for ThicknessTool {
         )
     }
     fn on_point(&mut self, pt: [f64; 3]) -> CommandStep {
-        if self.asking.is_none() {
-            self.asking = Some(self.side_at(pt));
+        if self.asking.is_some() {
+            return CommandStep::NeedPoint;
         }
-        CommandStep::NeedPoint
+        let mut next = self.clone();
+        next.asking = Some(self.side_at(pt));
+        next.msg = None;
+        *THICK_RESUME.lock().unwrap_or_else(|e| e.into_inner()) = Some(next);
+        deferred("RV_SPESSORILATO", String::new())
     }
     fn needs_object_pick(&self) -> bool {
         self.asking.is_none()

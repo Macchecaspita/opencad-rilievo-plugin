@@ -12,6 +12,19 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.12.1] - 2026-11-16
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Corretto
+- **Spessori muri esterni**: cliccando un lato del perimetro non si apriva la
+  finestra dello spessore. Open CAD Studio apre la finestra di un comando solo
+  quando il comando parte o dopo una risposta, mai dopo un clic sul disegno: ora
+  il clic fa ripartire il comando con la finestra del lato scelto. Dopo OK si
+  continua a cliccare gli altri lati come prima.
+
 ## [0.12.0] - 2026-11-16
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
