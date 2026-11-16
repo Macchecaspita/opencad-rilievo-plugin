@@ -11,7 +11,7 @@ S = {
             "or for the results. Always check the results with extra measurements.",
 
     "d_room": "Room {r}",
-    "d_sketch": "sketch: numbered rooms, corners with letters (written by Corner letters)",
+    "d_sketch": "sketch: numbered rooms, lettered corners (written by button 3. Rooms)",
     "d_check": "B–D check",
     "d_out1": "C–E: runs outside,",
     "d_out2": "cannot be measured",
@@ -44,11 +44,7 @@ S = {
            "the walls. The sizes do not matter: what matters is that every real corner is a vertex of the polyline, "
            "in the right order. Recesses, niches, protruding pillars and chamfers are vertices too (room 3 of the "
            "example). The corridor is a room like the others.",
-    "p2b": "With <b>Corner letters</b> select the rooms — one at a time in the order you want for the numbers, or all "
-           "together with a window (numbered top to bottom, left to right) — and press Enter: the corners get the "
-           "letters A, B, C … and every room its number and area; corner B of room 2 is called 2B. A small window "
-           "asks for the height of the letters: make them smaller where corners are close together. Print the plan: "
-           "it is your sketch.",
+    "p2b": "Press <b>3. Rooms: numbers, letters and measures</b> and select the rooms — one at a time in the order you want for the numbers, or all together with a window (numbered top to bottom, left to right) — and press Enter: each room shows its number in bold and the corners show the letters A, B, C …; corner B of room 2 is called 2B. The measures window opens too: for now close it with <b>Close</b> and answer to <b>keep</b> the letters. Print the plan: it is your sketch.",
     "t2": [["Tip", "Why"],
            ["Number the rooms in an order you also follow on site", "You write faster and pick the wrong room less often."],
            ["Polyline on the inner face", "Measures are taken from inside the rooms; outer walls come later from the thicknesses."],
@@ -84,9 +80,7 @@ S = {
            "The door is the handiest way.",
     "cap4": "A door between room 1 and room 2: distance from the corner and width measured on each side, wall "
             "thickness measured in the jamb.",
-    "p4b": "From the window's list choose <b>Add a door or window</b> and <b>click on the drawing</b>, on the wall "
-           "between the two rooms, near the door. The plugin finds the two sides by itself (it highlights them in "
-           "green) and asks for:",
+    "p4b": "In the measures window, below the rooms, press <b>＋ Add a door or window</b> and <b>click on the drawing</b>, on the wall between the two rooms, near the door. The plugin finds both sides by itself (it highlights them in green) and asks:",
     "t4": [["Box", "Example"],
            ["Distance from corner 1B to the jamb (measured in room 1)", "1.00"],
            ["Width", "0.90"],
@@ -96,7 +90,7 @@ S = {
            "clicked and you can pick the other one. That is all: the two rooms are tied (jambs facing each other, "
            "parallel wall, known thickness). One extra measure through the door (for example from 1B to 2D) acts "
            "as a check.",
-    "p4d": "Without a door (or as a check) choose <b>Other measures between rooms</b> from the list:",
+    "p4d": "Without a door (or as a check) use the <b>Other measures between rooms</b> section at the bottom of the window:",
     "links": [
         "<b>wall thickness</b>: From = a side (1B-1C), To = the corner of the other room behind that wall (2A), "
         "Measured = the thickness taken square in the door;",
@@ -110,10 +104,10 @@ S = {
 
     "h_fix": "Fixed perimeter surveyed with a total station",
     "p_fix": "If the outer perimeter of the building was surveyed with a total station (or is exact anyway), the plugin uses it as a fixed reference: it is never moved, and the rooms place themselves inside it.",
-    "fix": ["draw the perimeter as a <b>closed polyline</b>, in true coordinates, and the rooms by eye inside it;", "when <b>Sides and diagonals</b> starts, a window asks for the <b>fixed perimeter</b> (optional), before the rooms are chosen: choose to click it on the drawing, or go on without it. It can also be added later, from the list in the measures window;", "on the <b>Outer walls</b> page type the thickness of the outer walls (measured at the windows) and check the room sides proposed along the perimeter: each stays parallel to the perimeter, at that distance;", "a corner room with two sides on the perimeter needs no diagonals for its position; a room with only one side on the perimeter must still be tied to the others (for example with a door)."],
+    "fix": ["draw the perimeter as a <b>closed polyline</b>, in true coordinates, and the rooms by eye inside it;", "press <b>1. Outer perimeter</b>, click the polyline and press Enter (Enter without a click = no perimeter);", "press <b>2. Outer wall thicknesses</b> and click the perimeter sides one at a time: for each, type the wall thickness towards the inside (measured in the windows). Sides with a thickness turn green; the thicknesses stay written on the drawing, on layer RILIEVO_PERIMETRO. Press Enter to finish;", "in the calculation the room sides along the perimeter stay parallel to it, at that distance: a corner room with two sides on the perimeter needs no diagonals for its position; a room with only one side on the perimeter must still be linked to the others (for example by a door)."],
     "h_hatch": "Solid walls between rooms: the hatch",
     "p_hatch": "A solid wall cannot be crossed to measure, but its thickness is measured at the doors. If you put a <b>hatch</b> in the walls between the rooms in the drawing, the plugin finds them by itself:",
-    "hatch": ["it finds the two sides of different rooms facing each other with the hatch between them and proposes them on the <b>Solid walls between rooms</b> page;", "type the <b>thickness measured at a door</b>; if the same wall already has a shared door with its thickness, the box can stay empty;", "in the calculation the two sides stay parallel at that distance, with their residual in the table."],
+    "hatch": ["it finds the two sides of different rooms facing each other with the hatch between them and proposes them in the <b>Solid walls between rooms</b> section of the measures window;", "type the <b>thickness measured at a door</b>; if the same wall already has a shared door with its thickness, the box can stay empty;", "in the calculation the two sides stay parallel at that distance, with their residual in the table."],
     "p_hatch2": "A solid wall fixes the distance and the turn between two rooms, but not the shift along the wall: you still need a door in the same wall, a second non-parallel wall towards the same room, or the fixed perimeter.",
 
     "h5": "5. Doors, windows and outer walls",
@@ -129,19 +123,7 @@ S = {
              "an outside measure (the length of a façade) taken from outdoors.",
 
     "h6": "6. At the desk: computing and checking",
-    "calc": [
-        "<b>Sides and diagonals</b>: click all the rooms (same order as the sketch) and press Enter. The list of rooms "
-        "opens with their state: open one room at a time and type sides and diagonals, add the doors with a click on "
-        "the drawing; when everything is complete the list offers <b>Compute</b>.",
-        "If the measures are not enough or do not agree, the window opens again with the reason and with the measures "
-        "already typed.",
-        "The result goes on layer <b>RILIEVO_CORRETTO</b>, with the area of every room; dimensions, diagonals and table "
-        "on <b>RILIEVO_QUOTE</b>; doors and windows on <b>RILIEVO_APERTURE</b>. The drawing by eye stays for comparison. "
-        "<b>Apply to drawing</b> then moves the original polylines to the computed shape.",
-        "Read the table of residuals: a red residual marks the measure to check again. With only one extra measure "
-        "the error is spread over several measures: taking another one helps to find it.",
-        "<b>Measures book</b> saves everything in a CSV for Excel or Calc (measures, residuals, coordinates, areas).",
-    ],
+    "calc": ["Press <b>3. Rooms: numbers, letters and measures</b>, select all the rooms (same order as the sketch) and press Enter. <b>A single window</b> opens with all the rooms one below the other, from room 1 to the last, each with its title and its state: scroll it with the bar on the right and type sides and diagonals. Below the rooms come doors and windows, solid walls, other measures between rooms and options.", "Press <b>▶ Compute</b>: the room polylines are moved to the computed shape and <b>the drawing updates by itself</b> (Ctrl+Z undoes it). If the measures are not enough or do not fit, the window reopens with the reason and the measures already typed.", "Dimensions, diagonals and table go on <b>RILIEVO_QUOTE</b>; doors and windows on <b>RILIEVO_APERTURE</b>. A <b>Calculation result</b> window sums up areas, redundant measures and σ₀.", "Read the residuals table: a red residual marks the measure to check again. With only one redundant measure the error spreads over several measures: taking another one helps to find it.", "<b>Measures book</b> saves everything as a CSV for Excel or Calc (measures, residuals, coordinates, areas)."],
     "h_vals": "Typical values",
     "t6": [["Quantity", "Typical value", "If it is higher"],
            ["residual of a side or a diagonal", "within 1 cm", "measure again; check swapped digits and the right corner"],
@@ -161,7 +143,7 @@ S = {
     "ex_cap": "The starting drawing: fixed perimeter E1–E7, numbered rooms with the corner letters, walls filled with the hatch, doors P1–P6 and windows (in blue).",
     "ex_ties": [["Room", "Sides on the perimeter", "Solid walls (hatch)", "Doors"], ["1", "C–D, D–A", "A–B with 4; B–C with 2", "P5"], ["2", "C–D", "D–A with 1; A–B with 5; B–C with 3", "P2"], ["3", "B–C, C–D, D–E", "A–B with 6; E–A with 2", "P6"], ["4", "A–B, D–A", "C–D with 1; B–C with 5", "P1, P5"], ["5", "A–B", "D–A with 4; C–D with 2; B–C with 6 and 7", "P1, P2, P3, P4"], ["6", "B–C, C–D", "D–A with 5; A–B with 7; C–D with 3", "P3, P6"], ["7", "A–B, B–C", "C–D with 6; D–A with 5", "P4"]],
     "ex_ties_note": "Six rooms out of seven touch the perimeter with two non-parallel sides: the perimeter alone puts them in place. Room 2 has only one side on the perimeter, but the solid wall towards room 1 (not parallel) locks it. Solid walls and doors thus also act as checks.",
-    "ex_steps": [["The perimeter from the total station", "Survey the outer corners of the building E1…E7 with the total station and join them into a closed polyline, in true coordinates. It is the only exact element of the drawing: the plugin will never move it."], ["The rooms by eye", "Inside the perimeter draw each room as a closed polyline on the inner face of the walls. Only the number and order of the corners matter: room 3 has five corners because the outer wall is chamfered, rooms 1 and 4 follow the slanted façade."], ["The hatch in the solid walls", "With the hatch command (HATCH) fill the space between the perimeter and the rooms, that is all the walls. The hatch tells the plugin which rooms are separated by a solid wall: it need not be precise, it only has to lie between the two sides."], ["The letters", "Start <b>Corner letters</b>, click the rooms in the order 1…7 of the figure and press Enter. The letters appear at once; in the small window you can change their height. Print the drawing: it is the sketch to take on site."], ["On site: the rooms", "In every room measure the sides at the same height and at least one diagonal. Rooms with two sides on the perimeter do not need diagonals for their shape, but an extra diagonal is the only way to notice a misread figure. For room 1, for example:"], ["On site: thicknesses and doors", "Measure the thickness of the outer walls at the windows (here 0.40) and that of the inner walls at the doors (here 0.30). For every door note, on both sides, the distance from the corner to the jamb and the width:"], ["Sides and diagonals: perimeter and rooms", "Start <b>Sides and diagonals</b>. The first window asks for the fixed perimeter: choose <b>Choose the perimeter</b> and click the polyline E1…E7. Then click the rooms in the same order 1…7 and press Enter."], ["Outer walls and solid walls", "The measures window opens on the <b>Outer walls</b> page: type 0.40 as thickness and check the proposed sides (second column of the table). Then open <b>Solid walls between rooms, from the hatch</b>: the rows are already proposed; type 0.30 where there is no shared door, where there is one it is taken from the door."], ["Sides, diagonals and doors", "Open one room at a time from the list and type sides and diagonals. Then choose <b>Add a door or window</b> and click on the wall of each door P1…P6: the plugin finds the two sides and asks for distances, width and thickness. Windows are added the same way, on the outer wall."], ["Calculation and check", "When the list shows all the rooms complete and tied, press <b>Compute</b>. The <b>Result of the calculation</b> window sums up extra measures and σ₀; in the table the red residuals mark the measures to check again. If all is well, <b>Apply to drawing</b> moves the room polylines to the computed shape and <b>Measures book</b> saves everything in a CSV."]],
+    "ex_steps": [["The perimeter from the total station", "Survey the outer corners of the building E1…E7 with the total station and join them into a closed polyline, in true coordinates. It is the only exact element of the drawing: the plugin will never move it."], ["The rooms by eye", "Inside the perimeter draw each room as a closed polyline on the inner face of the walls. Only the number and order of the corners matter: room 3 has five corners because the outer wall is chamfered, rooms 1 and 4 follow the slanted façade."], ["The hatch in the solid walls", "With the hatch command (HATCH) fill the space between the perimeter and the rooms, that is all the walls. The hatch tells the plugin which rooms are separated by a solid wall: it need not be precise, it only has to lie between the two sides."], ["The letters", "Press <b>3. Rooms: numbers, letters and measures</b>, click the rooms in the order 1…7 of the figure and press Enter. Numbers and letters appear at once and the measures window opens: close it and choose to keep the letters. Print the drawing: it is the sketch to take on site."], ["On site: the rooms", "In every room measure the sides at the same height and at least one diagonal. Rooms with two sides on the perimeter do not need diagonals for their shape, but an extra diagonal is the only way to notice a misread figure. For room 1, for example:"], ["On site: thicknesses and doors", "Measure the thickness of the outer walls at the windows (here 0.40) and that of the inner walls at the doors (here 0.30). For every door note, on both sides, the distance from the corner to the jamb and the width:"], ["Buttons 1 and 2: perimeter and thicknesses", "At the desk press <b>1. Outer perimeter</b>, click the polyline E1…E7 and press Enter. Then press <b>2. Outer wall thicknesses</b>, click the first side, type 0.40 and tick the box to use it on every side: they all turn green. Enter to finish."], ["Button 3: the rooms and the measures window", "Press <b>3. Rooms: numbers, letters and measures</b>, click the rooms in the same order 1…7 and press Enter. The window opens with rooms 1 to 7, one below the other; further down the <b>Solid walls between rooms (from the hatch)</b> section with the rows already proposed: type 0.30 where there is no shared door, where there is one it is taken from the door."], ["Sides, diagonals and doors", "Scroll the window and type the sides and diagonals of each room. Then press <b>＋ Add a door or window</b> and click the wall of each door P1…P6: the plugin finds both sides and asks distances, width and thickness, then goes back to the window. Windows are added the same way, on the outer wall."], ["Compute", "When every room shows ✔ and the rooms are linked, press <b>▶ Compute</b>: the room polylines take the computed shape and the drawing updates by itself. The <b>Calculation result</b> window sums up redundant measures and σ₀; in the table the red residuals mark the measures to check again. <b>Measures book</b> saves everything as a CSV."]],
     "ex_room_step": 5,
     "ex_door_step": 6,
     "ex_room1": [["Measure (room 1)", "Value", "Note"], ["1A–1B", "4.10", "side"], ["1B–1C", "8.30", "side"], ["1C–1D", "4.58", "side on the perimeter"], ["1D–1A", "8.31", "side on the perimeter (slanted)"], ["1A–1C", "9.26", "check diagonal"], ["1B–1D", "9.48", "second diagonal (optional)"]],

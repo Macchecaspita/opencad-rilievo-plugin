@@ -12,6 +12,32 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.11.0] - 2026-11-16
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Nuova sequenza a tre pulsanti**, nell'ordine in cui si lavora:
+  1. **Perimetro esterno** (facoltativo): si clicca la polilinea del perimetro
+     rilevato e si preme Invio; Invio senza clic = nessun perimetro.
+  2. **Spessori muri esterni**: si clicca il perimetro lato per lato e per ognuno
+     si scrive lo spessore del muro verso l'interno. I lati con lo spessore
+     diventano verdi; gli spessori restano scritti sul disegno (layer
+     RILIEVO_PERIMETRO) e vengono riletti la volta successiva.
+  3. **Vani: numeri, lettere e misure**: si selezionano i vani e si preme Invio;
+     ogni vano riceve il suo numero (solo il numero) e gli spigoli le lettere, e
+     si apre subito la finestra delle misure.
+- **Una sola finestra delle misure**, divisa vano per vano dal vano 1
+  all'ultimo, con un titolo per ogni vano e il suo stato; si scorre con la barra
+  a destra. Sotto i vani: porte e finestre (pulsante «＋ Aggiungi porta o
+  finestra»), muri pieni, altre misure tra vani e opzioni.
+- **Calcola aggiorna il disegno da solo**: le polilinee dei vani prendono la
+  forma calcolata (Ctrl+Z annulla), senza passare da «Applica al disegno».
+- Tutto funziona anche senza perimetro esterno.
+- Guida e manuali PDF (7 lingue) aggiornati alla nuova sequenza.
+
 ## [0.10.0] - 2026-11-15
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

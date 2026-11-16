@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use ocs_plugin_api::dialog::{DialogControl, DialogDef, DialogResponse, DialogValue};
+use ocs_plugin_api::dialog::{DialogActionResponse, DialogControl, DialogDef, DialogEvent, DialogResponse, DialogValue, TextStyle};
 use ocs_plugin_api::host::codec::Handle;
 use ocs_plugin_api::host::{CommandStep, InteractiveCommand, PreviewWire};
 
@@ -431,17 +431,17 @@ fn csv_picker(default: &str) -> DialogControl {
 fn how_to_measure(multi: bool) -> Vec<String> {
     let mut v = vec![
         tr!(
-            "COME SI USA — scegli una voce dall'elenco e premi Continua. Apri un vano alla volta, scrivi le sue \
-             misure e premi OK: torni qui e l'elenco passa da solo al vano successivo. Quando tutto è a posto \
-             l'elenco propone Calcola. Quello che scrivi resta memorizzato anche se chiudi la finestra.",
-            "HOW IT WORKS — pick an entry from the list and press Continue. Open one room at a time, type its \
-             measures and press OK: you come back here and the list moves on to the next room. When all is set the \
-             list proposes Compute. What you type is kept even if you close the window.",
-            "CÓMO FUNCIONA — elija una opción de la lista y pulse Continuar. Abra una estancia cada vez, escriba sus medidas y pulse OK: vuelve aquí y la lista pasa sola a la estancia siguiente. Cuando todo está listo la lista propone Calcular. Lo que escribe se conserva aunque cierre la ventana.",
-            "MODE D'EMPLOI — choisissez une entrée dans la liste et appuyez sur Continuer. Ouvrez une pièce à la fois, saisissez ses mesures et appuyez sur OK : vous revenez ici et la liste passe d'elle-même à la pièce suivante. Quand tout est prêt, la liste propose Calculer. Ce que vous saisissez est conservé même si vous fermez la fenêtre.",
-            "NASIL ÇALIŞIR — listeden bir seçenek seçip Devam'a basın. Her seferinde bir oda açın, ölçülerini girin ve Tamam'a basın: buraya dönersiniz ve liste kendiliğinden sonraki odaya geçer. Her şey hazır olduğunda liste Hesapla'yı önerir. Girdikleriniz pencereyi kapatsanız da saklanır.",
-            "COMO FUNCIONA — escolha uma opção da lista e prima Continuar. Abra um compartimento de cada vez, escreva as suas medidas e prima OK: volta aqui e a lista passa sozinha ao compartimento seguinte. Quando tudo está pronto a lista propõe Calcular. O que escreve fica guardado mesmo que feche a janela.",
-            "JAK TO DZIAŁA — wybierz pozycję z listy i naciśnij Dalej. Otwieraj po jednym pomieszczeniu, wpisz jego pomiary i naciśnij OK: wracasz tutaj, a lista sama przechodzi do następnego pomieszczenia. Gdy wszystko jest gotowe, lista proponuje Oblicz. To, co wpiszesz, zostaje zachowane, nawet jeśli zamkniesz okno.",
+            "COME SI USA — la finestra contiene tutti i vani, uno sotto l'altro dal vano 1 all'ultimo: scorri con la \
+             barra a destra e scrivi lati e diagonali di ciascuno. Poi premi Calcola: il disegno si aggiorna da solo. \
+             Quello che scrivi resta memorizzato anche se chiudi la finestra.",
+            "HOW IT WORKS — the window holds all the rooms, one below the other from room 1 to the last: scroll with \
+             the bar on the right and type the sides and diagonals of each. Then press Compute: the drawing updates by \
+             itself. What you type is kept even if you close the window.",
+            "CÓMO FUNCIONA — la ventana contiene todas las estancias, una debajo de otra, de la 1 a la última: desplácese con la barra de la derecha y escriba lados y diagonales de cada una. Después pulse Calcular: el dibujo se actualiza solo. Lo que escribe se conserva aunque cierre la ventana.",
+            "MODE D'EMPLOI — la fenêtre contient toutes les pièces, l'une sous l'autre de la pièce 1 à la dernière : faites défiler avec la barre de droite et saisissez côtés et diagonales de chacune. Puis appuyez sur Calculer : le dessin se met à jour tout seul. Ce que vous saisissez est conservé même si vous fermez la fenêtre.",
+            "NASIL ÇALIŞIR — pencere tüm odaları 1. odadan sonuncusuna kadar alt alta içerir: sağdaki çubukla kaydırın ve her birinin kenarlarını ve köşegenlerini girin. Sonra Hesapla'ya basın: çizim kendiliğinden güncellenir. Yazdıklarınız pencereyi kapatsanız da saklanır.",
+            "COMO FUNCIONA — a janela contém todos os compartimentos, um debaixo do outro, do 1 ao último: desloque com a barra à direita e escreva lados e diagonais de cada um. Depois prima Calcular: o desenho atualiza-se sozinho. O que escreve fica guardado mesmo que feche a janela.",
+            "JAK TO DZIAŁA — okno zawiera wszystkie pomieszczenia, jedno pod drugim od 1 do ostatniego: przewijaj paskiem po prawej i wpisz boki i przekątne każdego. Potem naciśnij Oblicz: rysunek aktualizuje się sam. To, co wpiszesz, zostaje zapamiętane nawet po zamknięciu okna.",
         )
         .to_string(),
         tr!(
@@ -472,10 +472,10 @@ fn how_to_measure(multi: bool) -> Vec<String> {
         )
         .to_string(),
         tr!(
-            "PORTE E FINESTRE — scegli \"Aggiungi porta o finestra\" e clicca sul disegno, sul muro, nel punto dove \
+            "PORTE E FINESTRE — premi \"＋ Aggiungi porta o finestra\" e clicca sul disegno, sul muro, nel punto dove \
              si trova. Poi scrivi la distanza dallo spigolo allo stipite, la larghezza e lo spessore del muro \
              misurato nella porta.",
-            "DOORS AND WINDOWS — choose \"Add a door or window\" and click on the drawing, on the wall, where it is. \
+            "DOORS AND WINDOWS — press \"＋ Add a door or window\" and click on the drawing, on the wall, where it is. \
              Then type the distance from the corner to the jamb, the width and the wall thickness measured in the door.",
             "PUERTAS Y VENTANAS — elija \"Añadir puerta o ventana\" y haga clic en el dibujo, sobre el muro, donde se encuentra. Después escriba la distancia de la esquina a la jamba, la anchura y el espesor del muro medido en la puerta.",
             "PORTES ET FENÊTRES — choisissez \"Ajouter une porte ou une fenêtre\" et cliquez sur le dessin, sur le mur, à l'endroit où elle se trouve. Saisissez ensuite la distance de l'angle au tableau, la largeur et l'épaisseur du mur mesurée dans la porte.",
@@ -917,11 +917,17 @@ impl InteractiveCommand for PerimeterAskDialog {
 pub struct ReportDialog {
     lines: Vec<String>,
     done: bool,
+    title: Option<String>,
 }
 
 impl ReportDialog {
     pub fn new(lines: Vec<String>) -> Self {
-        ReportDialog { lines, done: false }
+        ReportDialog { lines, done: false, title: None }
+    }
+
+    /// A short message in a window, with its own title.
+    pub fn titled(title: String, lines: Vec<String>) -> Self {
+        ReportDialog { lines, done: false, title: Some(title) }
     }
 }
 
@@ -939,7 +945,7 @@ impl InteractiveCommand for ReportDialog {
         if self.done {
             return None;
         }
-        let mut def = DialogDef::new(tr!("Risultato del calcolo", "Result of the calculation", "Resultado del cálculo", "Résultat du calcul", "Hesap sonucu", "Resultado do cálculo", "Wynik obliczenia"));
+        let mut def = DialogDef::new(self.title.clone().unwrap_or_else(|| tr!("Risultato del calcolo", "Result of the calculation", "Resultado del cálculo", "Résultat du calcul", "Hesap sonucu", "Resultado do cálculo", "Wynik obliczenia").to_string()));
         for l in &self.lines {
             let t = l.replacen("RV_VANO: ", "", 1).replacen("RV_VANO : ", "", 1);
             def = def.with_control(info(t.trim().to_string()));
@@ -1013,7 +1019,293 @@ impl InteractiveCommand for OuterChosenDialog {
     }
 }
 
+// ── Fixed perimeter and its wall thicknesses ────────────────────────────────
+
+/// Button 1: click the closed polyline of the building's outer perimeter
+/// (surveyed with a total station). Enter: no perimeter.
+pub struct PerimeterTool {
+    rooms: Vec<Room>,
+    msg: Option<String>,
+}
+
+impl PerimeterTool {
+    pub fn new(rooms: Vec<Room>) -> Self {
+        PerimeterTool { rooms, msg: None }
+    }
+
+    fn pick(&mut self, i: Option<usize>) -> CommandStep {
+        match i {
+            Some(i) => deferred("RV_PERIMETROSET", format!("{:X}", self.rooms[i].handle.value())),
+            None => {
+                self.msg = Some(tr!("lì non c'è una polilinea chiusa", "no closed polyline there", "ahí no hay ninguna polilínea cerrada", "pas de polyligne fermée à cet endroit", "orada kapalı çoklu çizgi yok", "não há nenhuma polilinha fechada aí", "nie ma tu zamkniętej polilinii").into());
+                CommandStep::NeedPoint
+            }
+        }
+    }
+
+    fn nearest(&self, pt: [f64; 3]) -> Option<usize> {
+        let p = [pt[0], pt[1]];
+        self.rooms
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                let n = r.pts.len();
+                (i, (0..n).map(|k| solve::dist(p, seg_foot(p, r.pts[k], r.pts[(k + 1) % n]))).fold(f64::MAX, f64::min))
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(i, _)| i)
+    }
+}
+
+impl InteractiveCommand for PerimeterTool {
+    fn prompt(&self) -> String {
+        with_msg(
+            &self.msg,
+            tr!(
+                "Perimetro esterno: clicca la polilinea chiusa del perimetro dell'edificio, rilevata con la stazione totale (resterà ferma). Invio per non usare un perimetro fisso",
+                "Outer perimeter: click the closed polyline of the building's perimeter, surveyed with the total station (it will not move). Enter for no fixed perimeter",
+                "Perímetro exterior: haga clic en la polilínea cerrada del perímetro del edificio, levantada con la estación total (no se moverá). Intro para no usar perímetro fijo",
+                "Périmètre extérieur : cliquez sur la polyligne fermée du périmètre du bâtiment, relevée à la station totale (elle ne bougera pas). Entrée pour ne pas utiliser de périmètre fixe",
+                "Dış çevre: binanın total station ile ölçülen kapalı çevre çoklu çizgisine tıklayın (yerinden oynamaz). Sabit çevre kullanmamak için Enter",
+                "Perímetro exterior: clique na polilinha fechada do perímetro do edifício, levantada com a estação total (não se moverá). Enter para não usar perímetro fixo",
+                "Obrys zewnętrzny: kliknij zamkniętą polilinię obrysu budynku zmierzoną tachimetrem (nie zostanie przesunięta). Enter, aby nie używać stałego obrysu",
+            )
+            .to_string(),
+        )
+    }
+    fn on_point(&mut self, pt: [f64; 3]) -> CommandStep {
+        let i = self.nearest(pt);
+        self.pick(i)
+    }
+    fn needs_object_pick(&self) -> bool {
+        true
+    }
+    fn on_object_pick(&mut self, handle: Handle, pt: [f64; 3]) -> CommandStep {
+        let i = self.rooms.iter().position(|r| r.handle == handle).or_else(|| self.nearest(pt));
+        self.pick(i)
+    }
+    fn on_enter(&mut self) -> CommandStep {
+        deferred("RV_PERIMETROSET", String::new())
+    }
+}
+
+/// Button 2: click the sides of the fixed perimeter one by one and give each
+/// the thickness of its wall, measured towards the inside.
+pub struct ThicknessTool {
+    pts: Vec<P2>,
+    z: f64,
+    thick: Vec<Option<f64>>,
+    /// The side being asked, in its window.
+    asking: Option<usize>,
+    last: f64,
+    msg: Option<String>,
+}
+
+impl ThicknessTool {
+    pub fn new(pts: Vec<P2>, z: f64, thick: Vec<Option<f64>>, default_t: f64) -> Self {
+        let mut thick = thick;
+        thick.resize(pts.len(), None);
+        let last = thick.iter().flatten().copied().last().unwrap_or(default_t);
+        ThicknessTool { pts, z, thick, asking: None, last, msg: None }
+    }
+
+    fn side_at(&self, pt: [f64; 3]) -> usize {
+        let p = [pt[0], pt[1]];
+        let n = self.pts.len();
+        (0..n).min_by(|&a, &b| {
+            let da = solve::dist(p, seg_foot(p, self.pts[a], self.pts[(a + 1) % n]));
+            let db = solve::dist(p, seg_foot(p, self.pts[b], self.pts[(b + 1) % n]));
+            da.total_cmp(&db)
+        }).unwrap_or(0)
+    }
+
+    /// The inward offset of side `k` at thickness `t`.
+    fn inner_line(&self, k: usize, t: f64) -> (P2, P2) {
+        let n = self.pts.len();
+        let (a, b) = (self.pts[k], self.pts[(k + 1) % n]);
+        let l = solve::dist(a, b).max(1e-12);
+        let ccw = solve::signed_area(&self.pts) > 0.0;
+        let s = if ccw { 1.0 } else { -1.0 };
+        let nrm = [-(b[1] - a[1]) / l * s, (b[0] - a[0]) / l * s];
+        ([a[0] + nrm[0] * t, a[1] + nrm[1] * t], [b[0] + nrm[0] * t, b[1] + nrm[1] * t])
+    }
+
+    fn side_name(&self, k: usize) -> String {
+        format!("E{}–E{}", k + 1, (k + 1) % self.pts.len() + 1)
+    }
+}
+
+impl InteractiveCommand for ThicknessTool {
+    fn prompt(&self) -> String {
+        let done = self.thick.iter().filter(|t| t.is_some()).count();
+        let n = self.pts.len();
+        with_msg(
+            &self.msg,
+            tr!(
+                format!("Spessori muri esterni: clicca un lato del perimetro per scriverne lo spessore ({done} di {n} lati fatti, in verde). Invio per finire"),
+                format!("Outer wall thicknesses: click a side of the perimeter to type its thickness ({done} of {n} sides done, in green). Enter to finish"),
+                format!("Espesores de muros exteriores: haga clic en un lado del perímetro para escribir su espesor ({done} de {n} lados hechos, en verde). Intro para terminar"),
+                format!("Épaisseurs des murs extérieurs : cliquez sur un côté du périmètre pour saisir son épaisseur ({done} sur {n} côtés faits, en vert). Entrée pour terminer"),
+                format!("Dış duvar kalınlıkları: kalınlığını yazmak için çevrenin bir kenarına tıklayın ({n} kenardan {done} tanesi tamam, yeşil). Bitirmek için Enter"),
+                format!("Espessuras das paredes exteriores: clique num lado do perímetro para escrever a sua espessura ({done} de {n} lados feitos, a verde). Enter para terminar"),
+                format!("Grubości ścian zewnętrznych: kliknij bok obrysu, aby wpisać jego grubość ({done} z {n} boków gotowe, na zielono). Enter, aby zakończyć"),
+            ),
+        )
+    }
+    fn on_point(&mut self, pt: [f64; 3]) -> CommandStep {
+        if self.asking.is_none() {
+            self.asking = Some(self.side_at(pt));
+        }
+        CommandStep::NeedPoint
+    }
+    fn needs_object_pick(&self) -> bool {
+        self.asking.is_none()
+    }
+    fn on_object_pick(&mut self, _handle: Handle, pt: [f64; 3]) -> CommandStep {
+        self.on_point(pt)
+    }
+    fn on_cursor_move(&mut self, _pt: [f64; 3]) -> Vec<PreviewWire> {
+        let n = self.pts.len();
+        let mut w = Vec::new();
+        for k in 0..n {
+            let (a, b) = (self.pts[k], self.pts[(k + 1) % n]);
+            let seg = vec![[a[0], a[1], self.z], [b[0], b[1], self.z]];
+            match self.thick[k] {
+                Some(t) => {
+                    w.push(PreviewWire::with_color(seg, GREEN));
+                    let (c, d) = self.inner_line(k, t);
+                    w.push(PreviewWire::with_color(vec![[c[0], c[1], self.z], [d[0], d[1], self.z]], GREEN));
+                }
+                None => w.push(PreviewWire::with_color(seg, ORANGE)),
+            }
+        }
+        w
+    }
+    fn modal_dialog(&self) -> Option<DialogDef> {
+        let k = self.asking?;
+        let n = self.pts.len();
+        let len = commands::fmt_num(solve::dist(self.pts[k], self.pts[(k + 1) % n]), 2);
+        let name = self.side_name(k);
+        Some(
+            DialogDef::new(tr!(
+                format!("Spessore del muro — lato {name}"),
+                format!("Wall thickness — side {name}"),
+                format!("Espesor del muro — lado {name}"),
+                format!("Épaisseur du mur — côté {name}"),
+                format!("Duvar kalınlığı — {name} kenarı"),
+                format!("Espessura da parede — lado {name}"),
+                format!("Grubość ściany — bok {name}"),
+            ))
+            .with_control(info(tr!(
+                format!("Lato {name} del perimetro, lungo {len}. Scrivi lo spessore del muro verso l'interno (misurato nelle finestre o nelle porte). 0 = nessuno spessore per questo lato."),
+                format!("Side {name} of the perimeter, {len} long. Type the thickness of the wall towards the inside (measured at the windows or doors). 0 = no thickness for this side."),
+                format!("Lado {name} del perímetro, de {len}. Escriba el espesor del muro hacia el interior (medido en las ventanas o puertas). 0 = sin espesor para este lado."),
+                format!("Côté {name} du périmètre, long de {len}. Saisissez l'épaisseur du mur vers l'intérieur (mesurée aux fenêtres ou aux portes). 0 = pas d'épaisseur pour ce côté."),
+                format!("Çevrenin {name} kenarı, uzunluk {len}. İçe doğru duvar kalınlığını yazın (pencerelerde veya kapılarda ölçülen). 0 = bu kenar için kalınlık yok."),
+                format!("Lado {name} do perímetro, com {len}. Escreva a espessura da parede para o interior (medida nas janelas ou portas). 0 = sem espessura para este lado."),
+                format!("Bok {name} obrysu, długość {len}. Wpisz grubość ściany do wewnątrz (zmierzoną w oknach lub drzwiach). 0 = brak grubości dla tego boku."),
+            )))
+            .with_control(DialogControl::Number {
+                id: "t".into(),
+                label: tr!("Spessore", "Thickness", "Espesor", "Épaisseur", "Kalınlık", "Espessura", "Grubość").into(),
+                default: self.thick[k].unwrap_or(self.last),
+                min: Some(0.0),
+                max: None,
+                step: None,
+            })
+            .with_control(checkbox(
+                "all",
+                tr!(
+                    "Usa questo spessore anche per tutti i lati ancora senza spessore",
+                    "Use this thickness also for every side without one yet",
+                    "Usar este espesor también para todos los lados aún sin espesor",
+                    "Utiliser cette épaisseur aussi pour tous les côtés encore sans épaisseur",
+                    "Bu kalınlığı henüz kalınlığı olmayan tüm kenarlar için de kullan",
+                    "Usar esta espessura também para todos os lados ainda sem espessura",
+                    "Użyj tej grubości także dla wszystkich boków jeszcze bez grubości",
+                ),
+                false,
+            ))
+            .submit_label("OK")
+            .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
+            .width(520.0),
+        )
+    }
+    fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
+        let Some(k) = self.asking.take() else {
+            return CommandStep::NeedPoint;
+        };
+        if let DialogResponse::Submitted(m) = response {
+            let t = match m.get("t") {
+                Some(DialogValue::Number(v)) => *v,
+                Some(DialogValue::Text(t)) => commands::parse_num(t).unwrap_or(self.last),
+                _ => self.last,
+            };
+            if t > 0.0 && t.is_finite() {
+                self.thick[k] = Some(t);
+                self.last = t;
+                if get_bool(&m, "all", false) {
+                    for x in self.thick.iter_mut().filter(|x| x.is_none()) {
+                        *x = Some(t);
+                    }
+                }
+            } else {
+                self.thick[k] = None;
+            }
+        }
+        CommandStep::NeedPoint
+    }
+    fn on_enter(&mut self) -> CommandStep {
+        if self.asking.is_some() {
+            return CommandStep::NeedPoint;
+        }
+        let list: Vec<String> = self.thick.iter().map(|t| t.map(|v| v.to_string()).unwrap_or_default()).collect();
+        deferred("RV_SPESSORISET", list.join(";"))
+    }
+}
+
 // ── Measures dialog ─────────────────────────────────────────────────────────
+
+/// A page's controls appended to `def`, every id prefixed: several pages in
+/// one window. The page's own title becomes nothing (the caller heads it).
+fn embed(mut def: DialogDef, page: DialogDef, prefix: &str) -> DialogDef {
+    for row in page.rows {
+        for c in row.controls {
+            def = def.with_control(prefix_ids(c, prefix));
+        }
+    }
+    def
+}
+
+fn prefix_ids(c: DialogControl, p: &str) -> DialogControl {
+    let pre = |id: String| format!("{p}{id}");
+    match c {
+        DialogControl::Text { id, label, default } => DialogControl::Text { id: pre(id), label, default },
+        DialogControl::Number { id, label, default, min, max, step } => DialogControl::Number { id: pre(id), label, default, min, max, step },
+        DialogControl::Checkbox { id, label, default } => DialogControl::Checkbox { id: pre(id), label, default },
+        DialogControl::Choice { id, label, options, default_index } => DialogControl::Choice { id: pre(id), label, options, default_index },
+        DialogControl::FilePicker { id, label, default_path, filter_name, extensions, save } => DialogControl::FilePicker { id: pre(id), label, default_path, filter_name, extensions, save },
+        DialogControl::Fields { id, title, controls, collapsed } => DialogControl::Fields { id: pre(id), title, controls: controls.into_iter().map(|c| prefix_ids(c, p)).collect(), collapsed },
+        DialogControl::Row { controls, align_h, align_v } => DialogControl::Row { controls: controls.into_iter().map(|c| prefix_ids(c, p)).collect(), align_h, align_v },
+        DialogControl::Column { controls, align_h, align_v } => DialogControl::Column { controls: controls.into_iter().map(|c| prefix_ids(c, p)).collect(), align_h, align_v },
+        other => other,
+    }
+}
+
+/// The values whose id starts with `prefix`, without it (looking inside
+/// grouped fields too).
+fn sub_map(m: &HashMap<String, DialogValue>, prefix: &str) -> HashMap<String, DialogValue> {
+    let mut out = HashMap::new();
+    for (k, v) in m {
+        if let DialogValue::Fields(inner) = v {
+            out.extend(sub_map(inner, prefix));
+        }
+        if let Some(rest) = k.strip_prefix(prefix) {
+            out.insert(rest.to_string(), v.clone());
+        }
+    }
+    out
+}
 
 fn tf(id: String, label: String, default: String) -> DialogControl {
     DialogControl::Text { id, label, default }
@@ -1067,6 +1359,9 @@ pub enum Start {
 
 #[derive(Clone, Debug, PartialEq)]
 enum Page {
+    /// Everything in one window: the rooms one under the other, from room 1
+    /// to the last, then doors, walls, links and options; Compute at the end.
+    All,
     Hub,
     Room(usize),
     Links,
@@ -1110,12 +1405,15 @@ pub struct MeasureDialog {
     page: Page,
     /// What was typed on the door page, kept when it has to be shown again.
     draft: HashMap<String, DialogValue>,
+    /// "Add a door or window" was pressed: after the values are read, go to
+    /// the drawing to click the wall.
+    add_door: bool,
 }
 
 impl MeasureDialog {
     /// `saved`: what the user typed last time for these rooms.
     pub fn new(handles: Vec<Handle>, survey: &Survey, saved: &Saved, msg: Option<String>) -> Self {
-        MeasureDialog { handles, survey: survey.clone(), msg, saved: saved.clone(), page: Page::Hub, draft: HashMap::new() }
+        MeasureDialog { handles, survey: survey.clone(), msg, saved: saved.clone(), page: Page::All, draft: HashMap::new(), add_door: false }
     }
 
     /// Open on the door page for a wall clicked on the drawing.
@@ -1370,6 +1668,150 @@ impl MeasureDialog {
             }
         });
         (acts, labels, default)
+    }
+
+    /// One heading in the measures window.
+    fn heading(text: String) -> DialogControl {
+        DialogControl::StyledText { text, style: TextStyle::Heading, align_h: None }
+    }
+
+    /// The whole survey in one window, to scroll from room 1 down.
+    fn all_page(&self) -> DialogDef {
+        let n_rooms = self.survey.rooms.len();
+        let mut def = DialogDef::new(if self.multi() {
+            tr!(format!("Misure di {n_rooms} vani"), format!("Measures of {n_rooms} rooms"), format!("Medidas de {n_rooms} estancias"), format!("Mesures de {n_rooms} pièces"), format!("{n_rooms} odanın ölçüleri"), format!("Medidas de {n_rooms} compartimentos"), format!("Pomiary {n_rooms} pomieszczeń"))
+        } else {
+            tr!("Misure del vano".to_string(), "Measures of the room".to_string(), "Medidas de la estancia".to_string(), "Mesures de la pièce".to_string(), "Oda ölçüleri".to_string(), "Medidas do compartimento".to_string(), "Pomiary pomieszczenia".to_string())
+        });
+        if let Some(m) = &self.msg {
+            def = def.with_control(DialogControl::StyledText {
+                text: tr!(format!("⚠ Da correggere: {m}."), format!("⚠ To fix: {m}."), format!("⚠ Por corregir: {m}."), format!("⚠ À corriger : {m}."), format!("⚠ Düzeltilecek: {m}."), format!("⚠ A corrigir: {m}."), format!("⚠ Do poprawienia: {m}.")),
+                style: TextStyle::Danger,
+                align_h: None,
+            });
+        }
+        def = def.with_control(info(
+            tr!(
+                "Scrivi le misure vano per vano, dal vano 1 all'ultimo: scorri la finestra con la barra a destra. Poi premi \
+                 Calcola: le polilinee dei vani vengono portate nella forma calcolata e il disegno si aggiorna da solo. \
+                 Le caselle vuote non contano; le misure restano anche se chiudi la finestra.",
+                "Type the measures room by room, from room 1 to the last: scroll the window with the bar on the right. Then \
+                 press Compute: the room polylines are moved to the computed shape and the drawing updates by itself. Empty \
+                 boxes do not count; the measures stay even if you close the window.",
+                "Escriba las medidas estancia por estancia, de la estancia 1 a la última: desplace la ventana con la barra de la derecha. Después pulse Calcular: las polilíneas de las estancias toman la forma calculada y el dibujo se actualiza solo. Las casillas vacías no cuentan; las medidas se conservan aunque cierre la ventana.",
+                "Saisissez les mesures pièce par pièce, de la pièce 1 à la dernière : faites défiler la fenêtre avec la barre à droite. Puis appuyez sur Calculer : les polylignes des pièces prennent la forme calculée et le dessin se met à jour tout seul. Les cases vides ne comptent pas ; les mesures restent même si vous fermez la fenêtre.",
+                "Ölçüleri oda oda, 1. odadan sonuncusuna kadar yazın: pencereyi sağdaki çubukla kaydırın. Sonra Hesapla'ya basın: odaların çoklu çizgileri hesaplanan şekle getirilir ve çizim kendiliğinden güncellenir. Boş kutular sayılmaz; ölçüler pencereyi kapatsanız da saklanır.",
+                "Escreva as medidas compartimento a compartimento, do compartimento 1 ao último: desloque a janela com a barra à direita. Depois prima Calcular: as polilinhas dos compartimentos tomam a forma calculada e o desenho atualiza-se sozinho. As caixas vazias não contam; as medidas ficam guardadas mesmo que feche a janela.",
+                "Wpisuj pomiary pomieszczenie po pomieszczeniu, od 1 do ostatniego: przewijaj okno paskiem po prawej. Potem naciśnij Oblicz: polilinie pomieszczeń przyjmują obliczony kształt, a rysunek aktualizuje się sam. Puste pola się nie liczą; pomiary zostają, nawet jeśli zamkniesz okno.",
+            )
+            .to_string(),
+        ))
+        .with_control(help_section("help", tr!("Come si misura (aiuto) ▸", "How to measure (help) ▸", "Cómo medir (ayuda) ▸", "Comment mesurer (aide) ▸", "Nasıl ölçülür (yardım) ▸", "Como medir (ajuda) ▸", "Jak mierzyć (pomoc) ▸"), how_to_measure(self.multi())));
+        if self.survey.outer >= 3 {
+            let n = self.saved.outer_walls.iter().filter(|r| !cell(r, 0).trim().is_empty()).count();
+            let m = self.survey.outer;
+            def = def.with_control(info(tr!(
+                format!("Perimetro esterno fisso ({m} lati, non viene modificato): {n} lati dei vani lungo i muri esterni, con lo spessore dato a ogni lato del perimetro."),
+                format!("Fixed outer perimeter ({m} sides, never changed): {n} room sides along the outer walls, with the thickness given to each side of the perimeter."),
+                format!("Perímetro exterior fijo ({m} lados, no se modifica): {n} lados de estancias junto a los muros exteriores, con el espesor dado a cada lado del perímetro."),
+                format!("Périmètre extérieur fixe ({m} côtés, jamais modifié) : {n} côtés de pièces le long des murs extérieurs, avec l'épaisseur donnée à chaque côté du périmètre."),
+                format!("Sabit dış çevre ({m} kenar, değiştirilmez): dış duvarlar boyunca {n} oda kenarı, çevrenin her kenarına verilen kalınlıkla."),
+                format!("Perímetro exterior fixo ({m} lados, não é alterado): {n} lados de compartimentos junto às paredes exteriores, com a espessura dada a cada lado do perímetro."),
+                format!("Stały obrys zewnętrzny ({m} boków, nie jest zmieniany): {n} boków pomieszczeń wzdłuż ścian zewnętrznych, z grubością nadaną każdemu bokowi obrysu."),
+            )));
+        }
+        if self.multi() {
+            def = def.with_control(info(match self.unlinked() {
+                Ok(u) if u.is_empty() => tr!("Collegamenti: ✔ tutti i vani sono collegati tra loro.".to_string(), "Links: ✔ all rooms are linked.".to_string(), "Enlaces: ✔ todas las estancias están enlazadas.".to_string(), "Liaisons : ✔ toutes les pièces sont liées.".to_string(), "Bağlantılar: ✔ tüm odalar bağlı.".to_string(), "Ligações: ✔ todos os compartimentos estão ligados.".to_string(), "Powiązania: ✔ wszystkie pomieszczenia są powiązane.".to_string()),
+                Ok(u) => {
+                    let list = u.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ");
+                    tr!(
+                        format!("Collegamenti: ✘ vani non ancora collegati al vano 1: {list}. Aggiungi una porta, un muro pieno o il perimetro fisso."),
+                        format!("Links: ✘ rooms not yet linked to room 1: {list}. Add a door, a solid wall or the fixed perimeter."),
+                        format!("Enlaces: ✘ estancias aún no enlazadas con la estancia 1: {list}. Añada una puerta, un muro macizo o el perímetro fijo."),
+                        format!("Liaisons : ✘ pièces pas encore liées à la pièce 1 : {list}. Ajoutez une porte, un mur plein ou le périmètre fixe."),
+                        format!("Bağlantılar: ✘ 1. odaya henüz bağlı olmayan odalar: {list}. Bir kapı, dolu bir duvar ya da sabit çevre ekleyin."),
+                        format!("Ligações: ✘ compartimentos ainda não ligados ao compartimento 1: {list}. Acrescente uma porta, uma parede cheia ou o perímetro fixo."),
+                        format!("Powiązania: ✘ pomieszczenia jeszcze niepowiązane z pomieszczeniem 1: {list}. Dodaj drzwi, pełną ścianę albo stały obrys."),
+                    )
+                }
+                Err(e) => format!("⚠ {e}"),
+            }));
+        }
+        // The rooms, one under the other.
+        for r in 0..n_rooms {
+            let n = self.survey.rooms[r].len();
+            let name = self.room_name(r);
+            let name = name[..1].to_uppercase() + &name[1..];
+            let (ok, status) = self.room_status(r);
+            def = def.with_control(Self::heading(tr!(
+                format!("{name} — {n} spigoli"),
+                format!("{name} — {n} corners"),
+                format!("{name} — {n} esquinas"),
+                format!("{name} — {n} angles"),
+                format!("{name} — {n} köşe"),
+                format!("{name} — {n} cantos"),
+                format!("{name} — {n} narożników"),
+            )));
+            def = def.with_control(DialogControl::StyledText { text: status, style: if ok { TextStyle::Success } else { TextStyle::Warning }, align_h: None });
+            def = embed(def, self.room_page(r), &format!("r{r}."));
+        }
+        // Doors and windows.
+        def = def.with_control(Self::heading(tr!("Porte e finestre", "Doors and windows", "Puertas y ventanas", "Portes et fenêtres", "Kapılar ve pencereler", "Portas e janelas", "Drzwi i okna").to_string()));
+        def = def.with_control(DialogControl::Button {
+            id: "add_door".into(),
+            label: tr!(
+                "＋ Aggiungi porta o finestra (clic sul muro nel disegno)",
+                "＋ Add a door or window (click the wall in the drawing)",
+                "＋ Añadir puerta o ventana (clic en el muro en el dibujo)",
+                "＋ Ajouter une porte ou une fenêtre (clic sur le mur dans le dessin)",
+                "＋ Kapı veya pencere ekle (çizimde duvara tıkla)",
+                "＋ Acrescentar porta ou janela (clique na parede no desenho)",
+                "＋ Dodaj drzwi lub okno (kliknij ścianę na rysunku)",
+            )
+            .into(),
+            action: None,
+            align_h: None,
+            width: None,
+        });
+        if self.saved.openings.iter().any(|r| filled(r, &[0, 1])) {
+            def = embed(def, self.openings_page(), "op.");
+        }
+        if self.multi() {
+            def = def.with_control(Self::heading(tr!("Muri pieni tra vani (dal retino)", "Solid walls between rooms (from the hatch)", "Muros macizos entre estancias (del sombreado)", "Murs pleins entre pièces (d'après la hachure)", "Odalar arası dolu duvarlar (taramadan)", "Paredes cheias entre compartimentos (da trama)", "Pełne ściany między pomieszczeniami (z kreskowania)").to_string()));
+            def = embed(def, self.inner_page(), "iw.");
+            def = def.with_control(Self::heading(tr!("Altre misure tra vani", "Other measures between rooms", "Otras medidas entre estancias", "Autres mesures entre pièces", "Odalar arası diğer ölçüler", "Outras medidas entre compartimentos", "Inne pomiary między pomieszczeniami").to_string()));
+            def = embed(def, self.links_page(), "lk.");
+        }
+        def = def.with_control(Self::heading(tr!("Opzioni", "Options", "Opciones", "Options", "Seçenekler", "Opções", "Opcje").to_string()));
+        def = embed(def, self.options_page(), "opt.");
+        def.submit_label(tr!("▶ Calcola", "▶ Compute", "▶ Calcular", "▶ Calculer", "▶ Hesapla", "▶ Calcular", "▶ Oblicz"))
+            .cancel_label(tr!("Chiudi", "Close", "Cerrar", "Fermer", "Kapat", "Fechar", "Zamknij"))
+            .width(780.0)
+    }
+
+    /// Read the whole window back.
+    fn read_all(&mut self, m: &HashMap<String, DialogValue>) {
+        for r in 0..self.survey.rooms.len() {
+            let sm = sub_map(m, &format!("r{r}."));
+            if !sm.is_empty() {
+                self.read_room(r, &sm);
+            }
+        }
+        for (p, f) in [("op.", 0), ("iw.", 1), ("lk.", 2), ("opt.", 3)] {
+            let sm = sub_map(m, p);
+            if sm.is_empty() {
+                continue;
+            }
+            match f {
+                0 => self.read_openings(&sm),
+                1 => self.read_inner(&sm),
+                2 => self.read_links(&sm),
+                _ => self.read_options(&sm),
+            }
+        }
+        // The drawing is always brought to the result.
+        self.saved.replace = true;
     }
 
     fn hub(&self) -> DialogDef {
@@ -1670,19 +2112,6 @@ impl MeasureDialog {
                     "Jeśli brakuje pomiarów (meble, przeszkody), uzupełnij kształt kątami z rysunku",
                 ),
                 saved.fill,
-            ))
-            .with_control(checkbox(
-                "replace",
-                tr!(
-                    "Modifica subito le polilinee originali (senza copia su RILIEVO_CORRETTO); altrimenti usa poi Applica al disegno",
-                    "Change the original polylines straight away (no copy on RILIEVO_CORRETTO); otherwise use Apply to drawing later",
-                    "Modificar enseguida las polilíneas originales (sin copia en RILIEVO_CORRETTO); si no, use después Aplicar al dibujo",
-                    "Modifier tout de suite les polylignes d'origine (sans copie sur RILIEVO_CORRETTO) ; sinon utilisez ensuite Appliquer au dessin",
-                    "Özgün çoklu çizgileri hemen değiştir (RILIEVO_CORRETTO üzerinde kopya olmadan); aksi halde sonra Çizime uygula kullanın",
-                    "Alterar logo as polilinhas originais (sem cópia em RILIEVO_CORRETTO); caso contrário use depois Aplicar ao desenho",
-                    "Od razu zmień oryginalne polilinie (bez kopii na RILIEVO_CORRETTO); w przeciwnym razie użyj później Zastosuj na rysunku",
-                ),
-                saved.replace,
             ))
             .with_control(DialogControl::row(vec![
                 checkbox("dims", tr!("Quote", "Dimensions", "Cotas", "Cotes", "Ölçülendirmeler", "Cotas", "Wymiary"), saved.dims),
@@ -2225,8 +2654,17 @@ impl InteractiveCommand for MeasureDialog {
     fn on_enter(&mut self) -> CommandStep {
         CommandStep::Cancel
     }
+    fn on_dialog_action(&mut self, event: DialogEvent) -> DialogActionResponse {
+        if self.page == Page::All && event.control_id == "add_door" {
+            // Read what is typed, then go and click the wall.
+            self.add_door = true;
+            return DialogActionResponse::Submit;
+        }
+        DialogActionResponse::None
+    }
     fn modal_dialog(&self) -> Option<DialogDef> {
         match &self.page {
+            Page::All => Some(self.all_page()),
             Page::Hub => Some(self.hub()),
             Page::Room(r) => Some(self.room_page(*r)),
             Page::Links => Some(self.links_page()),
@@ -2243,6 +2681,24 @@ impl InteractiveCommand for MeasureDialog {
         let page = self.page.clone();
         match (page, response) {
             (Page::Done, _) => CommandStep::Cancel,
+            (Page::All, DialogResponse::Submitted(m)) => {
+                self.read_all(&m);
+                self.msg = None;
+                self.keep();
+                self.page = Page::Done;
+                if std::mem::take(&mut self.add_door) {
+                    return deferred("RV_PORTAPICK", self.key());
+                }
+                commands::set_pending(self.handles.clone(), self.saved.clone());
+                CommandStep::Dispatch("RV_VANOAPPLY".into())
+            }
+            (Page::All, _) => {
+                // Closed without calculating: offer to clear the drawing of
+                // the corner letters and room numbers.
+                self.keep();
+                self.page = Page::AskClean;
+                CommandStep::NeedPoint
+            }
             (Page::Hub, DialogResponse::Submitted(m)) => {
                 let (acts, _, default) = self.actions();
                 let act = acts.get(get_choice(&m, "do", default)).copied().unwrap_or(Action::Compute);
@@ -2292,7 +2748,7 @@ impl InteractiveCommand for MeasureDialog {
                         self.msg = None;
                         self.draft.clear();
                         self.keep();
-                        self.page = Page::Hub;
+                        self.page = Page::All;
                     }
                     Err(e) => {
                         self.msg = Some(e);
@@ -2319,7 +2775,7 @@ impl InteractiveCommand for MeasureDialog {
                 // "Back": the host sends no values with it; nothing changes.
                 self.msg = None;
                 self.draft.clear();
-                self.page = Page::Hub;
+                self.page = Page::All;
                 CommandStep::NeedPoint
             }
         }
@@ -2525,125 +2981,115 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
             ),
         ),
         (
-            tr!("1. Disegna i vani", "1. Draw the rooms", "1. Dibuje las estancias", "1. Dessinez les pièces", "1. Odaları çizin", "1. Desenhe os compartimentos", "1. Narysuj pomieszczenia"),
+            tr!("Prima di iniziare", "Before you start", "Antes de empezar", "Avant de commencer", "Başlamadan önce", "Antes de começar", "Zanim zaczniesz"),
             tr!(
                 "Disegna ogni vano come polilinea chiusa, a occhio, con i comandi del CAD (PLINEA … Chiudi). Contano solo \
-                 il numero e l'ordine dei vertici: forma e dimensioni le sistema il plugin.",
+                 il numero e l'ordine dei vertici: forma e dimensioni le sistema il plugin. Poi usa i pulsanti 1, 2 e 3 \
+                 nell'ordine; 1 e 2 sono facoltativi.",
                 "Draw each room as a closed polyline, by eye, with the CAD's commands (PLINE … Close). Only the number and \
-                 order of the corners matter: the plugin fixes shape and size.",
-                "Dibuje cada estancia como polilínea cerrada, a ojo, con los comandos del CAD (PLINE … Cerrar). Solo importan el número y el orden de las esquinas: el plugin corrige forma y tamaño.",
-                "Dessinez chaque pièce comme une polyligne fermée, à main levée, avec les commandes du CAO (PLINE … Clore). Seuls le nombre et l'ordre des angles comptent : le plugin corrige forme et dimensions.",
-                "Her odayı CAD komutlarıyla (PLINE … Kapat) göz kararı kapalı bir çoklu çizgi olarak çizin. Yalnızca köşelerin sayısı ve sırası önemlidir: eklenti şekli ve boyutu düzeltir.",
-                "Desenhe cada compartimento como polilinha fechada, à mão, com os comandos do CAD (PLINE … Fechar). Só importam o número e a ordem dos cantos: o plugin corrige a forma e as dimensões.",
-                "Narysuj każde pomieszczenie jako zamkniętą polilinię, na oko, poleceniami CAD (PLINE … Zamknij). Liczą się tylko liczba i kolejność narożników: wtyczka poprawia kształt i wymiary.",
+                 order of the corners matter: the plugin fixes shape and size. Then use buttons 1, 2 and 3 in order; 1 and \
+                 2 are optional.",
+                "Dibuje cada estancia como polilínea cerrada, a ojo, con los comandos del CAD (PLINE … Cerrar). Solo importan el número y el orden de las esquinas: el plugin corrige forma y tamaño. Después use los botones 1, 2 y 3 en orden; 1 y 2 son opcionales.",
+                "Dessinez chaque pièce comme une polyligne fermée, à main levée, avec les commandes du CAO (PLINE … Clore). Seuls le nombre et l'ordre des angles comptent : le plugin corrige forme et dimensions. Utilisez ensuite les boutons 1, 2 et 3 dans l'ordre ; 1 et 2 sont facultatifs.",
+                "Her odayı CAD komutlarıyla (PLINE … Kapat) göz kararı kapalı bir çoklu çizgi olarak çizin. Yalnızca köşelerin sayısı ve sırası önemlidir: eklenti şekli ve boyutu düzeltir. Sonra 1, 2 ve 3 düğmelerini sırayla kullanın; 1 ve 2 isteğe bağlıdır.",
+                "Desenhe cada compartimento como polilinha fechada, à mão, com os comandos do CAD (PLINE … Fechar). Só importam o número e a ordem dos cantos: o plugin corrige a forma e as dimensões. Depois use os botões 1, 2 e 3 por ordem; 1 e 2 são opcionais.",
+                "Narysuj każde pomieszczenie jako zamkniętą polilinię, na oko, poleceniami CAD (PLINE … Zamknij). Liczą się tylko liczba i kolejność narożników: wtyczka poprawia kształt i wymiary. Następnie użyj przycisków 1, 2 i 3 po kolei; 1 i 2 są opcjonalne.",
             ),
         ),
         (
-            tr!("2. Lettere vertici", "2. Corner letters", "2. Letras de esquinas", "2. Lettres des angles", "2. Köşe harfleri", "2. Letras dos cantos", "2. Litery narożników"),
+            tr!("1. Perimetro esterno (facoltativo)", "1. Outer perimeter (optional)", "1. Perímetro exterior (opcional)", "1. Périmètre extérieur (facultatif)", "1. Dış çevre (isteğe bağlı)", "1. Perímetro exterior (opcional)", "1. Obrys zewnętrzny (opcjonalnie)"),
             tr!(
-                "Seleziona i vani (un clic sulla linea, o una finestra per prenderne tanti; Invio): sugli angoli compaiono A, B, C … o, con più vani, 1A, \
-                 1B … 2A … Una piccola finestra chiede l'altezza delle lettere: rimpiccioliscile dove gli spigoli sono fitti. \
-                 Stampa la pianta e usala in cantiere per segnare le misure.",
-                "Select the rooms (click a line, or drag a window for many; Enter): A, B, C … or, with several rooms, 1A, 1B … 2A … \
-                 appear at the corners. A small window asks the letter height: make it smaller where corners crowd together. \
-                 Print the plan and use it on site to note the measures.",
-                "Seleccione las estancias (clic en una línea, o una ventana para muchas; Intro): en las esquinas aparecen A, B, C … o, con varias estancias, 1A, 1B … 2A … Una ventanita pide la altura de las letras: hágalas más pequeñas donde las esquinas están juntas. Imprima el plano y úselo en obra para anotar las medidas.",
-                "Sélectionnez les pièces (clic sur une ligne, ou une fenêtre pour plusieurs ; Entrée) : A, B, C … ou, avec plusieurs pièces, 1A, 1B … 2A … apparaissent aux angles. Une petite fenêtre demande la hauteur des lettres : réduisez-la là où les angles sont serrés. Imprimez le plan et servez-vous-en sur le chantier pour noter les mesures.",
-                "Odaları seçin (bir çizgiye tıklayın veya birçoğu için pencere; Enter): köşelerde A, B, C … veya birden çok odada 1A, 1B … 2A … belirir. Küçük bir pencere harf yüksekliğini sorar: köşelerin sık olduğu yerde küçültün. Planı yazdırın ve sahada ölçüleri not etmek için kullanın.",
-                "Selecione os compartimentos (clique numa linha, ou uma janela para muitos; Enter): nos cantos aparecem A, B, C … ou, com vários compartimentos, 1A, 1B … 2A … Uma janelinha pede a altura das letras: reduza-a onde os cantos estão próximos. Imprima a planta e use-a na obra para anotar as medidas.",
-                "Zaznacz pomieszczenia (kliknij linię albo okno dla wielu; Enter): w narożnikach pojawiają się A, B, C … lub przy wielu pomieszczeniach 1A, 1B … 2A … Małe okno pyta o wysokość liter: zmniejsz ją tam, gdzie narożniki są blisko. Wydrukuj rzut i użyj go na budowie do zapisania pomiarów.",
+                "Se il perimetro dell'edificio è stato rilevato con la stazione totale, disegnalo come polilinea chiusa e \
+                 premi \"1. Perimetro esterno\": cliccalo e premi Invio. Resta fermo nel calcolo e i vani si posizionano \
+                 da soli dentro l'edificio, con meno diagonali. Invio senza clic = nessun perimetro.",
+                "If the building outline was surveyed with a total station, draw it as a closed polyline and press \
+                 \"1. Outer perimeter\": click it and press Enter. It stays still in the calculation and the rooms place \
+                 themselves inside the building, with fewer diagonals. Enter without a click = no perimeter.",
+                "Si el perímetro del edificio se ha levantado con la estación total, dibújelo como polilínea cerrada y pulse \"1. Perímetro exterior\": haga clic en él y pulse Intro. Queda fijo en el cálculo y las estancias se colocan solas dentro del edificio, con menos diagonales. Intro sin clic = sin perímetro.",
+                "Si le périmètre du bâtiment a été relevé à la station totale, dessinez-le comme une polyligne fermée et appuyez sur \"1. Périmètre extérieur\" : cliquez dessus et appuyez sur Entrée. Il reste fixe dans le calcul et les pièces se placent seules à l'intérieur du bâtiment, avec moins de diagonales. Entrée sans clic = pas de périmètre.",
+                "Binanın çevresi total station ile ölçüldüyse, onu kapalı bir çoklu çizgi olarak çizin ve \"1. Dış çevre\" düğmesine basın: ona tıklayın ve Enter'a basın. Hesapta sabit kalır ve odalar binanın içine kendiliğinden, daha az köşegenle yerleşir. Tıklamadan Enter = çevre yok.",
+                "Se o perímetro do edifício foi levantado com a estação total, desenhe-o como polilinha fechada e prima \"1. Perímetro exterior\": clique nele e prima Enter. Fica fixo no cálculo e os compartimentos colocam-se sozinhos dentro do edifício, com menos diagonais. Enter sem clique = sem perímetro.",
+                "Jeśli obrys budynku zmierzono tachimetrem, narysuj go jako zamkniętą polilinię i naciśnij \"1. Obrys zewnętrzny\": kliknij go i naciśnij Enter. W obliczeniu pozostaje nieruchomy, a pomieszczenia same układają się wewnątrz budynku, z mniejszą liczbą przekątnych. Enter bez kliknięcia = brak obrysu.",
             ),
         ),
         (
-            tr!("3. Misure e diagonali", "3. Sides and diagonals", "3. Lados y diagonales", "3. Côtés et diagonales", "3. Kenarlar ve köşegenler", "3. Lados e diagonais", "3. Boki i przekątne"),
+            tr!("2. Spessori dei muri esterni", "2. Outer wall thicknesses", "2. Espesores de los muros exteriores", "2. Épaisseurs des murs extérieurs", "2. Dış duvar kalınlıkları", "2. Espessuras das paredes exteriores", "2. Grubości ścian zewnętrznych"),
             tr!(
-                "Scegli gli stessi vani: si apre un elenco dei vani con il loro stato. Apri un vano alla volta e scrivi lati e \
-                 diagonali (un vano di n spigoli vuole tutti i lati e almeno n−3 diagonali o vincoli); a ogni OK l'elenco \
-                 passa al vano successivo e alla fine propone Calcola. Le misure restano memorizzate anche chiudendo la finestra.",
-                "Choose the same rooms: a list of the rooms with their state opens. Open one room at a time and type sides and \
-                 diagonals (a room of n corners needs all sides and at least n−3 diagonals or constraints); at every OK the \
-                 list moves to the next room and at the end proposes Compute. The measures are kept even if you close the window.",
-                "Elija las mismas estancias: se abre una lista de las estancias con su estado. Abra una estancia cada vez y escriba lados y diagonales (una estancia de n esquinas necesita todos los lados y al menos n−3 diagonales o restricciones); con cada OK la lista pasa a la estancia siguiente y al final propone Calcular. Las medidas se conservan aunque cierre la ventana.",
-                "Choisissez les mêmes pièces : une liste des pièces avec leur état s'ouvre. Ouvrez une pièce à la fois et saisissez côtés et diagonales (une pièce de n angles demande tous les côtés et au moins n−3 diagonales ou contraintes) ; à chaque OK la liste passe à la pièce suivante et à la fin propose Calculer. Les mesures sont conservées même si vous fermez la fenêtre.",
-                "Aynı odaları seçin: odaların durumlarıyla bir listesi açılır. Her seferinde bir oda açın ve kenarları ve köşegenleri girin (n köşeli bir oda tüm kenarları ve en az n−3 köşegen veya kısıt gerektirir); her Tamam'da liste sonraki odaya geçer ve sonunda Hesapla'yı önerir. Ölçüler pencereyi kapatsanız da saklanır.",
-                "Escolha os mesmos compartimentos: abre-se uma lista dos compartimentos com o seu estado. Abra um compartimento de cada vez e escreva lados e diagonais (um compartimento de n cantos precisa de todos os lados e de pelo menos n−3 diagonais ou restrições); a cada OK a lista passa ao compartimento seguinte e no fim propõe Calcular. As medidas ficam guardadas mesmo que feche a janela.",
-                "Wybierz te same pomieszczenia: otwiera się lista pomieszczeń z ich stanem. Otwieraj po jednym pomieszczeniu i wpisuj boki i przekątne (pomieszczenie o n narożnikach wymaga wszystkich boków i co najmniej n−3 przekątnych lub warunków); po każdym OK lista przechodzi do następnego pomieszczenia, a na końcu proponuje Oblicz. Pomiary są zachowywane, nawet jeśli zamkniesz okno.",
+                "Premi \"2. Spessori muri esterni\" e clicca i lati del perimetro uno alla volta: per ognuno una finestra \
+                 chiede lo spessore del muro verso l'interno (con la casella \"anche per tutti i lati\" vale per quelli ancora vuoti). I lati con lo \
+                 spessore diventano verdi, gli altri restano arancioni; Invio per finire. Gli spessori restano scritti \
+                 sul disegno (layer RILIEVO_PERIMETRO) e i lati dei vani lungo il perimetro restano a quella distanza.",
+                "Press \"2. Outer wall thicknesses\" and click the perimeter sides one at a time: for each a window asks \
+                 the wall thickness towards the inside (the \"also for every side\" box fills the ones still empty). Sides with a \
+                 thickness turn green, the others stay orange; Enter to finish. The thicknesses stay written on the \
+                 drawing (layer RILIEVO_PERIMETRO) and the room sides along the perimeter stay at that distance.",
+                "Pulse \"2. Espesores de muros exteriores\" y haga clic en los lados del perímetro uno a uno: para cada uno una ventana pide el espesor del muro hacia el interior (la casilla \"también para todos los lados\" rellena los que siguen vacíos). Los lados con espesor se vuelven verdes, los demás quedan naranjas; Intro para terminar. Los espesores quedan escritos en el dibujo (capa RILIEVO_PERIMETRO) y los lados de las estancias a lo largo del perímetro quedan a esa distancia.",
+                "Appuyez sur \"2. Épaisseurs des murs extérieurs\" et cliquez les côtés du périmètre un par un : pour chacun une fenêtre demande l'épaisseur du mur vers l'intérieur (la case \"aussi pour tous les côtés\" remplit ceux encore vides). Les côtés avec épaisseur deviennent verts, les autres restent orange ; Entrée pour finir. Les épaisseurs restent écrites sur le dessin (calque RILIEVO_PERIMETRO) et les côtés des pièces le long du périmètre restent à cette distance.",
+                "\"2. Dış duvar kalınlıkları\" düğmesine basın ve çevrenin kenarlarına tek tek tıklayın: her biri için bir pencere içe doğru duvar kalınlığını sorar (\"tüm kenarlar için de\" kutusu henüz boş olanları doldurur). Kalınlığı olan kenarlar yeşil olur, diğerleri turuncu kalır; bitirmek için Enter. Kalınlıklar çizimde yazılı kalır (RILIEVO_PERIMETRO katmanı) ve çevre boyunca oda kenarları bu uzaklıkta kalır.",
+                "Prima \"2. Espessuras das paredes exteriores\" e clique nos lados do perímetro um de cada vez: para cada um uma janela pede a espessura da parede para o interior (a caixa \"também para todos os lados\" preenche os que ainda estão vazios). Os lados com espessura ficam verdes, os outros ficam laranja; Enter para terminar. As espessuras ficam escritas no desenho (camada RILIEVO_PERIMETRO) e os lados dos compartimentos ao longo do perímetro ficam a essa distância.",
+                "Naciśnij \"2. Grubości ścian zewnętrznych\" i klikaj boki obrysu po kolei: dla każdego okno pyta o grubość ściany do wewnątrz (pole \"także dla wszystkich boków\" wypełnia te jeszcze puste). Boki z grubością stają się zielone, pozostałe zostają pomarańczowe; Enter, aby zakończyć. Grubości zostają zapisane na rysunku (warstwa RILIEVO_PERIMETRO), a boki pomieszczeń wzdłuż obrysu zachowują tę odległość.",
+            ),
+        ),
+        (
+            tr!("3. Vani: numeri, lettere e misure", "3. Rooms: numbers, letters and measures", "3. Estancias: números, letras y medidas", "3. Pièces : numéros, lettres et mesures", "3. Odalar: numaralar, harfler ve ölçüler", "3. Compartimentos: números, letras e medidas", "3. Pomieszczenia: numery, litery i pomiary"),
+            tr!(
+                "Premi \"3. Vani\" e seleziona i vani (un clic sulla linea, o una finestra per prenderne tanti), poi Invio: \
+                 al centro di ogni vano compare il suo numero, sugli angoli A, B, C … Si apre subito la finestra delle \
+                 misure, divisa vano per vano dal vano 1 all'ultimo; scorrila con la barra a destra e scrivi lati e \
+                 diagonali (un vano di n spigoli vuole tutti i lati e almeno n−3 diagonali o vincoli). Funziona anche \
+                 senza perimetro esterno.",
+                "Press \"3. Rooms\" and select the rooms (click a line, or drag a window for many), then Enter: each room's \
+                 number appears in its middle, A, B, C … at the corners. The measures window opens at once, split room by \
+                 room from room 1 to the last; scroll it with the bar on the right and type sides and diagonals (a room of \
+                 n corners needs all sides and at least n−3 diagonals or constraints). It also works without an outer \
+                 perimeter.",
+                "Pulse \"3. Estancias\" y seleccione las estancias (clic en una línea, o una ventana para muchas), luego Intro: en el centro de cada estancia aparece su número, en las esquinas A, B, C … Se abre enseguida la ventana de medidas, dividida estancia por estancia de la 1 a la última; desplácela con la barra de la derecha y escriba lados y diagonales (una estancia de n esquinas necesita todos los lados y al menos n−3 diagonales o restricciones). Funciona también sin perímetro exterior.",
+                "Appuyez sur \"3. Pièces\" et sélectionnez les pièces (clic sur une ligne, ou une fenêtre pour plusieurs), puis Entrée : le numéro de chaque pièce apparaît en son centre, A, B, C … aux angles. La fenêtre des mesures s'ouvre aussitôt, divisée pièce par pièce de la 1 à la dernière ; faites-la défiler avec la barre de droite et saisissez côtés et diagonales (une pièce de n angles demande tous les côtés et au moins n−3 diagonales ou contraintes). Cela fonctionne aussi sans périmètre extérieur.",
+                "\"3. Odalar\" düğmesine basın ve odaları seçin (bir çizgiye tıklayın veya birçoğu için pencere), sonra Enter: her odanın ortasında numarası, köşelerde A, B, C … belirir. Ölçü penceresi hemen açılır, 1. odadan sonuncusuna kadar oda oda bölünmüştür; sağdaki çubukla kaydırın ve kenarları ve köşegenleri girin (n köşeli bir oda tüm kenarları ve en az n−3 köşegen veya kısıt ister). Dış çevre olmadan da çalışır.",
+                "Prima \"3. Compartimentos\" e selecione os compartimentos (clique numa linha, ou uma janela para muitos), depois Enter: no centro de cada compartimento aparece o seu número, nos cantos A, B, C … Abre-se logo a janela das medidas, dividida compartimento a compartimento do 1 ao último; desloque-a com a barra à direita e escreva lados e diagonais (um compartimento de n cantos precisa de todos os lados e de pelo menos n−3 diagonais ou restrições). Funciona também sem perímetro exterior.",
+                "Naciśnij \"3. Pomieszczenia\" i zaznacz pomieszczenia (kliknij linię albo okno dla wielu), potem Enter: w środku każdego pomieszczenia pojawia się jego numer, w narożnikach A, B, C … Od razu otwiera się okno pomiarów, podzielone pomieszczenie po pomieszczeniu od 1 do ostatniego; przewijaj je paskiem po prawej i wpisz boki i przekątne (pomieszczenie o n narożnikach wymaga wszystkich boków i co najmniej n−3 przekątnych lub warunków). Działa także bez obrysu zewnętrznego.",
             ),
         ),
         (
             tr!("Porte, finestre e muri tra i vani", "Doors, windows and walls between rooms", "Puertas, ventanas y muros entre estancias", "Portes, fenêtres et murs entre pièces", "Kapılar, pencereler ve odalar arası duvarlar", "Portas, janelas e paredes entre compartimentos", "Drzwi, okna i ściany między pomieszczeniami"),
             tr!(
-                "Dall'elenco scegli \"Aggiungi porta o finestra\" e clicca sul disegno, sul muro, dove si trova. Tra due vani il \
-                 plugin riconosce i due lati: scrivi la distanza dallo spigolo allo stipite nei due vani, la larghezza e lo \
-                 spessore del muro misurato nella porta. Basta questo a collegare i due vani. Un angolo noto o un lato \
-                 orizzontale / verticale può prendere il posto di una diagonale.",
-                "From the list choose \"Add a door or window\" and click on the drawing, on the wall, where it is. Between two \
-                 rooms the plugin finds both sides: type the distance from the corner to the jamb in both rooms, the width \
-                 and the wall thickness measured in the door. That alone links the two rooms. A known angle or a horizontal / \
-                 vertical side can take the place of a diagonal.",
-                "En la lista elija \"Añadir puerta o ventana\" y haga clic en el dibujo, sobre el muro, donde se encuentra. Entre dos estancias el plugin encuentra los dos lados: escriba la distancia de la esquina a la jamba en las dos estancias, la anchura y el espesor del muro medido en la puerta. Basta con eso para enlazar las dos estancias. Un ángulo conocido o un lado horizontal / vertical puede sustituir a una diagonal.",
-                "Dans la liste, choisissez \"Ajouter une porte ou une fenêtre\" et cliquez sur le dessin, sur le mur, à l'endroit où elle se trouve. Entre deux pièces, le plugin trouve les deux côtés : saisissez la distance de l'angle au tableau dans les deux pièces, la largeur et l'épaisseur du mur mesurée dans la porte. Cela suffit à lier les deux pièces. Un angle connu ou un côté horizontal / vertical peut remplacer une diagonale.",
-                "Listede \"Kapı veya pencere ekle\" seçin ve çizimde, duvarın üzerinde, bulunduğu yere tıklayın. İki oda arasında eklenti iki kenarı bulur: iki odada köşeden kasaya uzaklığı, genişliği ve kapıda ölçülen duvar kalınlığını girin. Bu, iki odayı bağlamaya yeter. Bilinen bir açı veya yatay / dikey bir kenar bir köşegenin yerini tutabilir.",
-                "Na lista escolha \"Acrescentar porta ou janela\" e clique no desenho, sobre a parede, onde ela se encontra. Entre dois compartimentos o plugin encontra os dois lados: escreva a distância do canto à ombreira nos dois compartimentos, a largura e a espessura da parede medida na porta. Isso basta para ligar os dois compartimentos. Um ângulo conhecido ou um lado horizontal / vertical pode substituir uma diagonal.",
-                "Na liście wybierz \"Dodaj drzwi lub okno\" i kliknij na rysunku, na ścianie, w miejscu, gdzie się znajdują. Między dwoma pomieszczeniami wtyczka znajduje oba boki: wpisz odległość od narożnika do ościeża w obu pomieszczeniach, szerokość i grubość ściany zmierzoną w drzwiach. To wystarczy, by powiązać oba pomieszczenia. Znany kąt albo bok poziomy / pionowy może zastąpić przekątną.",
+                "In fondo ai vani, premi \"＋ Aggiungi porta o finestra\" e clicca sul disegno, sul muro, dove si trova. Tra \
+                 due vani il plugin riconosce i due lati: scrivi la distanza dallo spigolo allo stipite nei due vani, la \
+                 larghezza e lo spessore del muro misurato nella porta. Basta questo a collegare i due vani. Un angolo \
+                 noto o un lato orizzontale / verticale può prendere il posto di una diagonale.",
+                "Below the rooms, press \"＋ Add a door or window\" and click on the drawing, on the wall, where it is. \
+                 Between two rooms the plugin finds both sides: type the distance from the corner to the jamb in both \
+                 rooms, the width and the wall thickness measured in the door. That alone links the two rooms. A known \
+                 angle or a horizontal / vertical side can take the place of a diagonal.",
+                "Debajo de las estancias, pulse \"＋ Añadir puerta o ventana\" y haga clic en el dibujo, sobre el muro, donde se encuentra. Entre dos estancias el plugin encuentra los dos lados: escriba la distancia de la esquina a la jamba en las dos estancias, la anchura y el espesor del muro medido en la puerta. Basta con esto para enlazar las dos estancias. Un ángulo conocido o un lado horizontal / vertical puede sustituir a una diagonal.",
+                "Sous les pièces, appuyez sur \"＋ Ajouter une porte ou une fenêtre\" et cliquez sur le dessin, sur le mur, à l'endroit où elle se trouve. Entre deux pièces, le plugin trouve les deux côtés : saisissez la distance de l'angle au tableau dans les deux pièces, la largeur et l'épaisseur du mur mesurée dans la porte. Cela suffit à lier les deux pièces. Un angle connu ou un côté horizontal / vertical peut remplacer une diagonale.",
+                "Odaların altında \"＋ Kapı veya pencere ekle\" düğmesine basın ve çizimde, duvarın üzerinde, bulunduğu yere tıklayın. İki oda arasında eklenti iki kenarı bulur: iki odada köşeden kasaya uzaklığı, genişliği ve kapıda ölçülen duvar kalınlığını girin. İki odayı bağlamak için bu yeterlidir. Bilinen bir açı veya yatay / dikey bir kenar bir köşegenin yerini alabilir.",
+                "Por baixo dos compartimentos, prima \"＋ Acrescentar porta ou janela\" e clique no desenho, sobre a parede, onde ela se encontra. Entre dois compartimentos o plugin encontra os dois lados: escreva a distância do canto à ombreira nos dois compartimentos, a largura e a espessura da parede medida na porta. Basta isto para ligar os dois compartimentos. Um ângulo conhecido ou um lado horizontal / vertical pode substituir uma diagonal.",
+                "Pod pomieszczeniami naciśnij \"＋ Dodaj drzwi lub okno\" i kliknij na rysunku, na ścianie, w miejscu, gdzie się znajdują. Między dwoma pomieszczeniami wtyczka znajduje oba boki: wpisz odległość od narożnika do ościeża w obu pomieszczeniach, szerokość i grubość ściany zmierzoną w drzwiach. To wystarczy, by powiązać oba pomieszczenia. Znany kąt lub bok poziomy / pionowy może zastąpić przekątną.",
             ),
         ),
         (
-            tr!("Poligono esterno fisso", "Fixed outer outline", "Polígono exterior fijo", "Polygone extérieur fixe", "Sabit dış poligon", "Polígono exterior fixo", "Stały obrys zewnętrzny"),
+            tr!("4. Calcola", "4. Compute", "4. Calcular", "4. Calculer", "4. Hesapla", "4. Calcular", "4. Oblicz"),
             tr!(
-                "Se il perimetro esterno è stato rilevato con la stazione totale, disegnalo come polilinea chiusa e, nella \
-                 finestra delle misure, scegli \"Poligono esterno fisso\" e cliccalo: resta fermo. Scrivi lo spessore dei muri \
-                 esterni e controlla i lati dei vani proposti lungo il perimetro: nel calcolo restano a quella distanza dal \
-                 poligono esterno, e i vani si posizionano da soli dentro l'edificio, con meno diagonali.",
-                "If the outer perimeter was surveyed with a total station, draw it as a closed polyline and, in the measures \
-                 window, choose \"Fixed outer outline\" and click it: it stays still. Type the thickness of the outer walls and \
-                 check the room sides proposed along the perimeter: the calculation keeps them at that distance from the \
-                 outline, and the rooms place themselves inside the building, with fewer diagonals.",
-                "Si el perímetro exterior se ha levantado con la estación total, dibújelo como polilínea cerrada y, en la ventana de medidas, elija \"Polígono exterior fijo\" y haga clic en él: queda fijo. Escriba el espesor de los muros exteriores y compruebe los lados de las estancias propuestos a lo largo del perímetro: el cálculo los mantiene a esa distancia del polígono exterior, y las estancias se colocan solas dentro del edificio, con menos diagonales.",
-                "Si le périmètre extérieur a été relevé à la station totale, dessinez-le comme une polyligne fermée et, dans la fenêtre des mesures, choisissez \"Polygone extérieur fixe\" et cliquez dessus : il reste fixe. Saisissez l'épaisseur des murs extérieurs et vérifiez les côtés des pièces proposés le long du périmètre : le calcul les maintient à cette distance du polygone extérieur, et les pièces se placent d'elles-mêmes dans le bâtiment, avec moins de diagonales.",
-                "Dış çevre total station ile ölçüldüyse, onu kapalı bir çoklu çizgi olarak çizin ve ölçü penceresinde \"Sabit dış poligon\" seçip ona tıklayın: yerinden oynamaz. Dış duvarların kalınlığını girin ve çevre boyunca önerilen oda kenarlarını kontrol edin: hesap onları dış poligondan bu uzaklıkta tutar ve odalar daha az köşegenle binanın içine kendiliğinden yerleşir.",
-                "Se o perímetro exterior foi levantado com a estação total, desenhe-o como polilinha fechada e, na janela das medidas, escolha \"Polígono exterior fixo\" e clique nele: fica fixo. Escreva a espessura das paredes exteriores e verifique os lados dos compartimentos propostos ao longo do perímetro: o cálculo mantém-nos a essa distância do polígono exterior, e os compartimentos colocam-se sozinhos dentro do edifício, com menos diagonais.",
-                "Jeśli obrys zewnętrzny zmierzono tachimetrem, narysuj go jako zamkniętą polilinię i w oknie pomiarów wybierz \"Stały obrys zewnętrzny\", a następnie kliknij go: pozostaje nieruchomy. Wpisz grubość ścian zewnętrznych i sprawdź boki pomieszczeń zaproponowane wzdłuż obrysu: obliczenie utrzymuje je w tej odległości od obrysu, a pomieszczenia same ustawiają się wewnątrz budynku, z mniejszą liczbą przekątnych.",
+                "Premi \"▶ Calcola\": le polilinee dei vani vengono portate nella forma calcolata e il disegno si aggiorna \
+                 da solo (Ctrl+Z annulla). Porte e finestre vanno su RILIEVO_APERTURE; su RILIEVO_QUOTE quote dei lati, \
+                 diagonali, collegamenti e la tabella misurata / calcolata / scarto, con in rosso gli scarti oltre la \
+                 tolleranza. Una finestra riassume superfici e scarti. Se le misure non bastano o non tornano, la finestra \
+                 delle misure si riapre con il motivo.",
+                "Press \"▶ Compute\": the room polylines are moved to the computed shape and the drawing updates by itself \
+                 (Ctrl+Z undoes it). Doors and windows go on RILIEVO_APERTURE; on RILIEVO_QUOTE side dimensions, \
+                 diagonals, links and the measured / computed / residual table, residuals over the tolerance in red. A \
+                 window sums up areas and residuals. If the measures are not enough or do not fit, the measures window \
+                 reopens with the reason.",
+                "Pulse \"▶ Calcular\": las polilíneas de las estancias se llevan a la forma calculada y el dibujo se actualiza solo (Ctrl+Z deshace). Puertas y ventanas van a RILIEVO_APERTURE; en RILIEVO_QUOTE cotas de los lados, diagonales, enlaces y la tabla medida / calculada / residuo, con en rojo los residuos fuera de tolerancia. Una ventana resume superficies y residuos. Si las medidas no bastan o no cuadran, la ventana de medidas se vuelve a abrir con el motivo.",
+                "Appuyez sur \"▶ Calculer\" : les polylignes des pièces sont amenées à la forme calculée et le dessin se met à jour tout seul (Ctrl+Z annule). Portes et fenêtres vont sur RILIEVO_APERTURE ; sur RILIEVO_QUOTE cotes des côtés, diagonales, liaisons et le tableau mesuré / calculé / résidu, les résidus hors tolérance en rouge. Une fenêtre résume surfaces et résidus. Si les mesures ne suffisent pas ou ne concordent pas, la fenêtre des mesures se rouvre avec le motif.",
+                "\"▶ Hesapla\" düğmesine basın: oda çoklu çizgileri hesaplanan şekle getirilir ve çizim kendiliğinden güncellenir (Ctrl+Z geri alır). Kapılar ve pencereler RILIEVO_APERTURE üzerine gider; RILIEVO_QUOTE üzerinde kenar ölçüleri, köşegenler, bağlantılar ve ölçülen / hesaplanan / artık tablosu, toleransı aşan artıklar kırmızı. Bir pencere alanları ve artıkları özetler. Ölçüler yetmezse veya tutmazsa ölçü penceresi nedeniyle yeniden açılır.",
+                "Prima \"▶ Calcular\": as polilinhas dos compartimentos são levadas à forma calculada e o desenho atualiza-se sozinho (Ctrl+Z anula). Portas e janelas vão para RILIEVO_APERTURE; em RILIEVO_QUOTE cotas dos lados, diagonais, ligações e a tabela medida / calculada / resíduo, com a vermelho os resíduos fora da tolerância. Uma janela resume áreas e resíduos. Se as medidas não bastarem ou não baterem certo, a janela das medidas reabre-se com o motivo.",
+                "Naciśnij \"▶ Oblicz\": polilinie pomieszczeń zostają przeniesione do obliczonego kształtu, a rysunek aktualizuje się sam (Ctrl+Z cofa). Drzwi i okna trafiają na RILIEVO_APERTURE; na RILIEVO_QUOTE wymiary boków, przekątne, powiązania i tabela zmierzone / obliczone / odchyłka, odchyłki ponad tolerancję na czerwono. Okno podsumowuje powierzchnie i odchyłki. Jeśli pomiarów jest za mało lub się nie zgadzają, okno pomiarów otwiera się ponownie z powodem.",
             ),
         ),
         (
-            tr!("4. Risultato", "4. Result", "4. Resultado", "4. Résultat", "4. Sonuç", "4. Resultado", "4. Wynik"),
-            tr!(
-                "I vani veri vanno sul layer RILIEVO_CORRETTO con la loro superficie in m²; il disegno originale resta. Porte \
-                 e finestre su RILIEVO_APERTURE. Su RILIEVO_QUOTE: lettere, quote dei lati (stile RILIEVO), diagonali, \
-                 collegamenti, spessori e la tabella misurata / calcolata / scarto, \
-                 con in rosso gli scarti oltre la tolleranza. Se le misure non bastano o non tornano, la finestra si \
-                 riapre con il motivo.",
-                "The true rooms go on layer RILIEVO_CORRETTO with their area in m²; the original drawing stays. Doors and \
-                 windows on RILIEVO_APERTURE. On RILIEVO_QUOTE: letters, side dimensions (style RILIEVO), diagonals, links, \
-                 thicknesses and the measured / computed / residual table, \
-                 residuals over the tolerance in red. If the measures are not enough or do not fit, the dialog reopens \
-                 with the reason.",
-                "Las estancias reales van a la capa RILIEVO_CORRETTO con su superficie en m²; el dibujo original se queda. Puertas y ventanas en RILIEVO_APERTURE. En RILIEVO_QUOTE: letras, cotas de los lados (estilo RILIEVO), diagonales, enlaces, espesores y la tabla medida / calculada / residuo, con en rojo los residuos fuera de tolerancia. Si las medidas no bastan o no encajan, la ventana se vuelve a abrir con el motivo.",
-                "Les pièces réelles vont sur le calque RILIEVO_CORRETTO avec leur surface en m² ; le dessin d'origine reste. Portes et fenêtres sur RILIEVO_APERTURE. Sur RILIEVO_QUOTE : lettres, cotes des côtés (style RILIEVO), diagonales, liaisons, épaisseurs et le tableau mesurée / calculée / résidu, avec en rouge les résidus hors tolérance. Si les mesures ne suffisent pas ou ne concordent pas, la fenêtre se rouvre avec la raison.",
-                "Gerçek odalar alanlarıyla (m²) RILIEVO_CORRETTO katmanına gider; özgün çizim kalır. Kapılar ve pencereler RILIEVO_APERTURE üzerinde. RILIEVO_QUOTE üzerinde: harfler, kenar ölçülendirmeleri (RILIEVO stili), köşegenler, bağlantılar, kalınlıklar ve ölçülen / hesaplanan / artık tablosu; tolerans dışı artıklar kırmızı. Ölçüler yetmez veya uyuşmazsa pencere nedeniyle birlikte yeniden açılır.",
-                "Os compartimentos reais vão para a camada RILIEVO_CORRETTO com a sua área em m²; o desenho original fica. Portas e janelas em RILIEVO_APERTURE. Em RILIEVO_QUOTE: letras, cotas dos lados (estilo RILIEVO), diagonais, ligações, espessuras e a tabela medida / calculada / resíduo, com a vermelho os resíduos fora da tolerância. Se as medidas não chegam ou não batem certo, a janela volta a abrir-se com o motivo.",
-                "Rzeczywiste pomieszczenia trafiają na warstwę RILIEVO_CORRETTO z powierzchnią w m²; oryginalny rysunek zostaje. Drzwi i okna na RILIEVO_APERTURE. Na RILIEVO_QUOTE: litery, wymiary boków (styl RILIEVO), przekątne, powiązania, grubości i tabela zmierzony / obliczony / odchyłka, z odchyłkami poza tolerancją na czerwono. Jeśli pomiarów jest za mało lub się nie zgadzają, okno otwiera się ponownie z podaniem przyczyny.",
-            ),
-        ),
-        (
-            tr!("Applica al disegno", "Apply to drawing", "Aplicar al dibujo", "Appliquer au dessin", "Çizime uygula", "Aplicar ao desenho", "Zastosuj na rysunku"),
-            tr!(
-                "Controllato il risultato, Applica al disegno (RV_APPLICA) porta i vertici delle polilinee originali nella \
-                 posizione calcolata: restano le stesse polilinee, sullo stesso layer, e la copia su RILIEVO_CORRETTO viene \
-                 tolta. Ctrl+Z annulla. Nelle Opzioni si può scegliere di farlo subito a ogni calcolo.",
-                "Once the result is checked, Apply to drawing (RV_APPLICA) moves the corners of the original polylines to \
-                 the computed position: same polylines, same layer, and the copy on RILIEVO_CORRETTO is removed. Ctrl+Z \
-                 undoes it. In Options you can choose to do it at every calculation.",
-                "Una vez comprobado el resultado, Aplicar al dibujo (RV_APPLICA) lleva las esquinas de las polilíneas originales a la posición calculada: mismas polilíneas, misma capa, y la copia en RILIEVO_CORRETTO se elimina. Ctrl+Z lo deshace. En Opciones se puede elegir hacerlo en cada cálculo.",
-                "Une fois le résultat vérifié, Appliquer au dessin (RV_APPLICA) amène les angles des polylignes d'origine à la position calculée : mêmes polylignes, même calque, et la copie sur RILIEVO_CORRETTO est supprimée. Ctrl+Z l'annule. Dans Options vous pouvez choisir de le faire à chaque calcul.",
-                "Sonucu kontrol ettikten sonra Çizime uygula (RV_APPLICA) özgün çoklu çizgilerin köşelerini hesaplanan konuma getirir: aynı çoklu çizgiler, aynı katman ve RILIEVO_CORRETTO üzerindeki kopya kaldırılır. Ctrl+Z geri alır. Seçenekler'de bunu her hesapta yapmayı seçebilirsiniz.",
-                "Depois de verificar o resultado, Aplicar ao desenho (RV_APPLICA) leva os cantos das polilinhas originais à posição calculada: as mesmas polilinhas, a mesma camada, e a cópia em RILIEVO_CORRETTO é eliminada. Ctrl+Z anula. Em Opções pode escolher fazê-lo a cada cálculo.",
-                "Po sprawdzeniu wyniku Zastosuj na rysunku (RV_APPLICA) przenosi narożniki oryginalnych polilinii do obliczonego położenia: te same polilinie, ta sama warstwa, a kopia na RILIEVO_CORRETTO zostaje usunięta. Ctrl+Z cofa. W Opcjach można wybrać, by robić to przy każdym obliczeniu.",
-            ),
-        ),
-        (
-            tr!("5. Libretto delle misure", "5. Measures book", "5. Libro de medidas", "5. Carnet de mesures", "5. Ölçü defteri", "5. Caderno de medidas", "5. Dziennik pomiarów"),
+            tr!("Libretto delle misure", "Measures book", "Libro de medidas", "Carnet de mesures", "Ölçü defteri", "Caderno de medidas", "Dziennik pomiarów"),
             tr!(
                 "Libretto misure (RV_LIBRETTO) salva l'ultimo calcolo in un CSV per Excel o Calc: misure, scarti, σ₀, \
                  coordinate dei vertici, superfici e perimetri. Si può anche spuntare nella finestra delle misure.",
@@ -2675,13 +3121,13 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
         (
             tr!("Comandi", "Commands", "Comandos", "Commandes", "Komutlar", "Comandos", "Polecenia"),
             tr!(
-                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO cambia la lingua.",
-                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO changes the language.",
-                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO cambia el idioma.",
-                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE ; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO change la langue.",
-                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO dili değiştirir.",
-                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO muda o idioma.",
-                "RV_VANO, RV_ETICHETTE, RV_APPLICA, RV_LIBRETTO, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO zmienia język.",
+                "RV_PERIMETRO, RV_SPESSORI, RV_VANO, RV_LIBRETTO, RV_APPLICA, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO cambia la lingua.",
+                "RV_PERIMETRO, RV_SPESSORI, RV_VANO, RV_LIBRETTO, RV_APPLICA, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO changes the language.",
+                "RV_PERIMETRO, RV_SPESSORI, RV_VANO, RV_LIBRETTO, RV_APPLICA, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO cambia el idioma.",
+                "RV_PERIMETRO, RV_SPESSORI, RV_VANO, RV_LIBRETTO, RV_APPLICA, RV_GUIDE, RV_MANUALE ; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO change la langue.",
+                "RV_PERIMETRO, RV_SPESSORI, RV_VANO, RV_LIBRETTO, RV_APPLICA, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO dili değiştirir.",
+                "RV_PERIMETRO, RV_SPESSORI, RV_VANO, RV_LIBRETTO, RV_APPLICA, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO muda o idioma.",
+                "RV_PERIMETRO, RV_SPESSORI, RV_VANO, RV_LIBRETTO, RV_APPLICA, RV_GUIDE, RV_MANUALE; RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO zmienia język.",
             ),
         ),
     ]
@@ -2816,50 +3262,51 @@ mod tests {
     }
 
     #[test]
-    fn hub_walks_through_the_rooms() {
+    fn one_window_room_by_room() {
         let s = two();
         let mut d = MeasureDialog::new(vec![Handle::new(0x71), Handle::new(0x72)], &s, &saved_for(&s), None);
-        let (acts, _, default) = d.actions();
-        assert_eq!(acts[default], Action::Room(0), "first incomplete room is proposed");
-        assert!(d.modal_dialog().unwrap().title.contains('2'));
-        // Open room 2 and fill it, with bare letters for an extra diagonal.
-        let m = pick(&d, Action::Room(1));
-        assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m)), CommandStep::NeedPoint));
+        let def = d.modal_dialog().unwrap();
+        // Headings in order: room 1, room 2, then doors … options.
+        let heads: Vec<String> = def
+            .rows
+            .iter()
+            .flat_map(|r| r.controls.iter())
+            .filter_map(|c| match c {
+                DialogControl::StyledText { text, style: TextStyle::Heading, .. } => Some(text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(heads[0].contains('1') && heads[1].contains('2'), "{heads:?}");
+        assert!(heads.len() >= 5, "{heads:?}");
+        // Room 2's boxes, with prefixed ids; bare letters for an extra diagonal.
         let mut m = HashMap::new();
         for i in 0..4 {
-            text(&mut m, &format!("s{i}"), "3,00");
+            text(&mut m, &format!("r1.s{i}"), "3,00");
         }
-        text(&mut m, "o0a", "2A");
-        text(&mut m, "o0b", "2C");
-        text(&mut m, "o0m", "4,03");
-        text(&mut m, "o1a", "b");
-        text(&mut m, "o1b", "d");
-        text(&mut m, "o1m", "4,04");
-        text(&mut m, "o2a", "");
-        text(&mut m, "o2b", "");
-        text(&mut m, "o2m", "");
-        text(&mut m, "c0a", "a");
-        text(&mut m, "c0b", "90");
-        d.on_dialog_response(DialogResponse::Submitted(m));
-        assert_eq!(d.page, Page::Hub);
+        text(&mut m, "r1.o0a", "2A");
+        text(&mut m, "r1.o0b", "2C");
+        text(&mut m, "r1.o0m", "4,03");
+        text(&mut m, "r1.o1a", "b");
+        text(&mut m, "r1.o1b", "d");
+        text(&mut m, "r1.o1m", "4,04");
+        text(&mut m, "r1.c0a", "a");
+        text(&mut m, "r1.c0b", "90");
+        // "Add a door": the values are kept, then the wall is clicked.
+        let ev = DialogEvent { control_id: "add_door".into(), action: "click".into(), value: None, current_values: m.clone() };
+        assert!(matches!(d.on_dialog_action(ev), DialogActionResponse::Submit));
+        assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m.clone())), CommandStep::Dispatch(_)));
         assert_eq!(d.saved.sides[4][2], "3,00");
         assert!(d.saved.others.iter().any(|r| r[0] == "2B" && r[1] == "2D" && r[3] == "4,04"), "{:?}", d.saved.others);
         assert_eq!(d.saved.constraints, vec![vec!["2A".to_string(), "90".into()]]);
-        // Room 1's proposed diagonal is untouched and still first.
         assert!(d.saved.others[0][0].starts_with('1'));
         let (ok, status) = d.room_status(1);
         assert!(ok && status.contains('2'), "{status}");
         assert!(!d.room_status(0).0);
-        // Back from a page changes nothing.
-        let m = pick(&d, Action::Options);
-        d.on_dialog_response(DialogResponse::Submitted(m));
-        assert_eq!(d.page, Page::Options);
-        d.on_dialog_response(DialogResponse::Cancelled);
-        assert_eq!(d.page, Page::Hub);
         // Compute hands over to the command.
-        let m = pick(&d, Action::Compute);
+        let mut d = MeasureDialog::new(vec![Handle::new(0x71), Handle::new(0x72)], &s, &d.saved, None);
         assert!(matches!(d.on_dialog_response(DialogResponse::Submitted(m)), CommandStep::Dispatch(ref c) if c == "RV_VANOAPPLY"));
         assert!(d.modal_dialog().is_none());
+        assert!(d.saved.replace, "the drawing is always updated");
     }
 
     #[test]
@@ -2887,13 +3334,11 @@ mod tests {
         text(&mut m, "t", "0,30");
         text(&mut m, "d2", "1,00");
         d.on_dialog_response(DialogResponse::Submitted(m));
-        assert_eq!(d.page, Page::Hub);
+        assert_eq!(d.page, Page::All);
         assert_eq!(d.saved.openings.len(), 2);
         assert_eq!(d.saved.openings[0][1], "1B-1C");
         assert_eq!(d.saved.openings[1][1], "2A-2D");
         assert!(d.unlinked().unwrap().is_empty(), "the door links the rooms");
-        let (acts, _, default) = d.actions();
-        assert_eq!(acts[default], Action::Compute);
         assert!(d.opening_lines()[0].contains("↔"), "{:?}", d.opening_lines());
     }
 
@@ -2917,15 +3362,12 @@ mod tests {
     fn single_room_uses_plain_letters() {
         let s = Survey::new(vec![vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]]]);
         let mut d = MeasureDialog::new(vec![Handle::new(0x77)], &s, &saved_for(&s), None);
-        let m = pick(&d, Action::Room(0));
-        d.on_dialog_response(DialogResponse::Submitted(m));
         let mut m = HashMap::new();
-        text(&mut m, "o1a", "b");
-        text(&mut m, "o1b", "d");
-        text(&mut m, "o1m", "5");
-        d.on_dialog_response(DialogResponse::Submitted(m));
+        text(&mut m, "r0.o1a", "b");
+        text(&mut m, "r0.o1b", "d");
+        text(&mut m, "r0.o1m", "5");
+        d.read_all(&m);
         assert!(d.saved.others.iter().any(|r| r[0] == "b" && r[3] == "5"));
-        // Closing the hub ends the command.
         // Closing asks whether to delete the letters; "No" ends the command.
         assert!(matches!(d.on_dialog_response(DialogResponse::Cancelled), CommandStep::NeedPoint));
         assert_eq!(d.page, Page::AskClean);

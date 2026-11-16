@@ -12,12 +12,19 @@ adds a **Survey** ribbon tab for architectural surveys measured with a tape or a
 laser meter:
 
 1. draw each room **by eye** as a closed polyline with the CAD's own commands;
-2. the plugin writes **corner letters** (A, B, C …) — printable as a field sketch;
-3. type the measured **sides and diagonals** in a table: the plugin proposes the
+2. *(optional)* **1. Outer perimeter**: choose the building outline surveyed with
+   a total station, which will stay still;
+3. *(optional)* **2. Outer wall thicknesses**: click the perimeter side by side and
+   type the wall thickness towards the inside for each;
+4. **3. Rooms: numbers, letters and measures**: select the rooms and press Enter;
+   each room gets its number and the corners their letters (A, B, C … — printable
+   as a field sketch) and **a single window** opens with all the rooms, from room 1
+   to the last, scrolled with the bar on the right; the plugin proposes the
    diagonals needed (n − 3 for n corners, all running inside the room);
-4. the room is **recomputed with its true shape**: exact with the minimum
-   measures, **least-squares adjusted** when there are more, with the **residual**
-   of every measure and the standard deviation σ₀.
+5. press **Compute**: the rooms are **recomputed with their true shape** and the
+   drawing updates by itself — exact with the minimum measures, **least-squares
+   adjusted** when there are more, with the **residual** of every measure and the
+   standard deviation σ₀.
 
 Several **linked rooms** can be surveyed together (corners 1A, 1B … 2A …), tied by
 **wall thicknesses** and **measures through doors** and adjusted at once; the last
@@ -29,13 +36,14 @@ Known angles and horizontal / vertical sides can replace diagonals
 door** written in both rooms with the wall thickness links them by itself. Each
 room shows its **area in m²**.
 
-The result goes on layer **RILIEVO_CORRETTO** (corner A fixed, side A–B in the
-drawn direction); the original stays for comparison. Layer **RILIEVO_QUOTE** gets
+Compute moves the room polylines to the computed shape (Ctrl+Z undoes it). Layer
+**RILIEVO_QUOTE** gets
 the letters, side dimensions (dimension style **RILIEVO**), diagonals with their
 length and a *measured / computed / residual* table, with residuals over the
 tolerance in red.
 
-Commands: `RV_VANO` (sides, diagonals, links), `RV_ETICHETTE` (corner letters),
+Commands: `RV_PERIMETRO` (outer perimeter), `RV_SPESSORI` (outer wall thicknesses),
+`RV_VANO` (rooms: numbers, letters, measures), `RV_ETICHETTE` (corner letters only),
 `RV_APPLICA` (move the original rooms to the result), `RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_MANUALE` (surveying manual, PDF), `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO`.
 
 The interface and the PDF manual are in English, Italian, Spanish, French,

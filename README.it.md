@@ -12,15 +12,21 @@ Plugin per [Open CAD Studio](https://github.com/HakanSeven12/OpenCADStudio) che
 aggiunge la scheda **Rilievo** per il rilievo architettonico a misure dirette
 (cordella o distanziometro):
 
-1. disegni il vano **a occhio** come polilinea chiusa, con i normali comandi del CAD;
-2. il plugin scrive le **lettere dei vertici** (A, B, C …) — utili anche stampate
-   come eidotipo da portare in cantiere;
-3. inserisci in una tabella le **misure dei lati e delle diagonali**: il plugin
-   propone le diagonali che servono (n − 3 per un vano di n vertici, scelte in modo
-   che corrano dentro il vano, anche a L);
-4. il vano viene **ricalcolato con la forma vera**: esatto con le misure minime,
-   **compensato ai minimi quadrati** quando ci sono misure in più, con lo **scarto**
-   di ogni misura e lo scarto quadratico medio σ₀ — come una compensazione Pregeo.
+1. disegni i vani **a occhio** come polilinee chiuse, con i normali comandi del CAD;
+2. *(facoltativo)* **1. Perimetro esterno**: scegli il perimetro dell'edificio
+   rilevato con la stazione totale, che resterà fermo;
+3. *(facoltativo)* **2. Spessori muri esterni**: clicchi il perimetro lato per
+   lato e per ognuno scrivi lo spessore del muro verso l'interno;
+4. **3. Vani: numeri, lettere e misure**: selezioni i vani e premi Invio; ogni
+   vano riceve il suo numero e gli spigoli le lettere (A, B, C … — utili anche
+   stampate come eidotipo) e si apre **una sola finestra** con tutti i vani, dal
+   vano 1 all'ultimo, da scorrere con la barra a destra; il plugin propone le
+   diagonali che servono (n − 3 per un vano di n vertici, scelte in modo che
+   corrano dentro il vano, anche a L);
+5. premi **Calcola**: i vani vengono **ricalcolati con la forma vera** e il disegno
+   si aggiorna da solo — esatti con le misure minime, **compensati ai minimi
+   quadrati** quando ci sono misure in più, con lo **scarto** di ogni misura e lo
+   scarto quadratico medio σ₀, come una compensazione Pregeo.
 
 Si possono rilevare anche **più vani collegati**: si cliccano uno dopo l'altro, i
 vertici diventano 1A, 1B … 2A …, e i vani si legano tra loro con gli **spessori dei
@@ -33,8 +39,8 @@ finestre** (lato, distanza dallo spigolo, larghezza): una **porta comune** scrit
 nei due vani con lo spessore del muro basta a collegarli. Ogni vano riporta la sua
 **superficie in m²**.
 
-Il risultato va sul layer **RILIEVO_CORRETTO** (vertice A fermo, lato A–B nella
-direzione disegnata); il disegno originale resta per confronto. Sul layer
+Con Calcola le polilinee dei vani prendono la forma calcolata (Ctrl+Z annulla).
+Sul layer
 **RILIEVO_QUOTE** vanno lettere, quote dei lati (stile di quota **RILIEVO**),
 diagonali con la loro misura e una tabella *misurata / calcolata / scarto*, con in
 rosso gli scarti oltre la tolleranza.
@@ -47,9 +53,11 @@ le altre lingue). `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO` forza una lingua.
 
 | Comando | Pulsante | Cosa fa |
 |---|---|---|
-| `RV_VANO` | **Misure e diagonali** | clicca uno o più vani, Invio: si apre l'elenco dei vani; una scheda per vano con lati e diagonali, porte e finestre con un clic sul disegno, poi Calcola |
-| `RV_ETICHETTE` | **Lettere vertici** | scrive solo le lettere sui vertici (layer RILIEVO_ETICHETTE), per l'eidotipo |
-| `RV_APPLICA` | **Applica al disegno** | porta le polilinee originali nella forma calcolata (dopo aver controllato il risultato) |
+| `RV_PERIMETRO` | **1. Perimetro esterno** | facoltativo: clicca la polilinea del perimetro rilevato, Invio; resta ferma nel calcolo |
+| `RV_SPESSORI` | **2. Spessori muri esterni** | clicca il perimetro lato per lato e scrivi lo spessore del muro verso l'interno (layer RILIEVO_PERIMETRO) |
+| `RV_VANO` | **3. Vani: numeri, lettere e misure** | seleziona i vani, Invio: numeri e lettere sul disegno e una sola finestra con tutti i vani, porte e finestre, poi Calcola, che aggiorna il disegno |
+| `RV_ETICHETTE` | | scrive solo le lettere sui vertici, per l'eidotipo |
+| `RV_APPLICA` | | porta le polilinee originali nella forma dell'ultimo calcolo |
 | `RV_LIBRETTO` | **Libretto misure** | salva l'ultimo calcolo in CSV: misure, scarti, σ₀, coordinate, superfici |
 | `RV_GUIDE` | **Guida** | breve guida |
 | `RV_MANUALE` | **Manuale PDF** | manuale di rilievo di un appartamento, con disegni ([docs/Manuale_rilievo.pdf](docs/Manuale_rilievo.pdf); nelle altre lingue `docs/manual_<lingua>.pdf`) |

@@ -330,6 +330,37 @@ impl Survey {
         best
     }
 
+    /// The outer-wall rows from a thickness per side of the outline (`None`:
+    /// not given): every room side running along a side of the outline that
+    /// has a thickness, within reach of it (four times the thickness, or 5 %
+    /// of the outline's longest side) and inside it.
+    pub fn outer_rows_with(&self, thick: &[Option<f64>], fmt: &dyn Fn(f64) -> String) -> Vec<Vec<String>> {
+        let mut rows = Vec::new();
+        let m = self.outer;
+        if m < 3 {
+            return rows;
+        }
+        let first = self.points.len() - m;
+        let outline = self.outline().to_vec();
+        let longest = (0..m).map(|i| solve::dist(outline[i], outline[(i + 1) % m])).fold(0.0f64, f64::max);
+        for (r, ids) in self.point_of.iter().enumerate() {
+            let n = ids.len();
+            for i in 0..n {
+                let (a, b) = (ids[i], ids[(i + 1) % n]);
+                let mid = [(self.points[a][0] + self.points[b][0]) / 2.0, (self.points[a][1] + self.points[b][1]) / 2.0];
+                if !inside(&outline, mid) {
+                    continue;
+                }
+                let Some((p, _, d)) = self.outer_side_for(a, b) else { continue };
+                let Some(Some(t)) = thick.get(p - first).copied() else { continue };
+                if t > 0.0 && d <= (4.0 * t).max(longest * 0.05) {
+                    rows.push(vec![format!("{}–{}", self.corner(r, i), self.corner(r, (i + 1) % n)), fmt(t)]);
+                }
+            }
+        }
+        rows
+    }
+
     /// The room sides that run along the outer outline, within `reach` of
     /// it and inside it: the rows proposed for the outer walls.
     pub fn suggest_outer_walls(&self, reach: f64) -> Vec<Vec<String>> {

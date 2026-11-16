@@ -11,7 +11,7 @@ S = {
             "doğacak hiçbir sorumluluğu kabul etmez. Sonuçları her zaman kontrol ölçüleriyle doğrulayın.",
 
     "d_room": "Oda {r}",
-    "d_sketch": "kroki: numaralı odalar, harfli köşeler (Köşe harfleri ile yazılır)",
+    "d_sketch": "kroki: numaralı odalar, harfli köşeler (3. Odalar düğmesiyle yazılır)",
     "d_check": "B–D kontrol",
     "d_out1": "C–E: dışarıdan geçer,",
     "d_out2": "ölçülemez",
@@ -44,10 +44,7 @@ S = {
            "olarak çizin. Ölçüler önemli değildir: önemli olan, her gerçek köşenin doğru sırada çoklu çizginin bir "
            "köşesi olmasıdır. Girintiler, nişler, çıkıntılı kolonlar ve pahlar da köşedir (örnekteki 3. oda). "
            "Koridor da diğerleri gibi bir odadır.",
-    "p2b": "<b>Köşe harfleri</b> ile odaları seçin — numaralara vermek istediğiniz sırayla tek tek ya da bir pencereyle "
-           "hepsini birden (yukarıdan aşağıya, soldan sağa numaralanır) — ve Enter'a basın: köşelerde A, B, C … "
-           "harfleri, her odada ise numarası ve alanı belirir; 2. odanın B köşesinin adı 2B'dir. Küçük bir pencere "
-           "harf yüksekliğini sorar: köşelerin sık olduğu yerlerde küçültün. Planı yazdırın: bu sizin krokinizdir.",
+    "p2b": "<b>3. Odalar: numaralar, harfler ve ölçüler</b> düğmesine basın ve odaları seçin — numaralar için istediğiniz sırayla tek tek ya da bir pencereyle hepsini birden (yukarıdan aşağıya, soldan sağa numaralanır) — ve Enter'a basın: her odada numarası kalın olarak, köşelerde A, B, C … harfleri belirir; 2. odanın B köşesine 2B denir. Ölçü penceresi de açılır: şimdilik <b>Kapat</b> ile kapatın ve harfleri <b>tutmayı</b> seçin. Planı yazdırın: krokiniz budur.",
     "t2": [["Öneri", "Neden"],
            ["Odaları sahada da izleyeceğiniz bir sırayla numaralayın", "Daha hızlı yazılır ve oda daha az karıştırılır."],
            ["Çoklu çizgi iç yüzde", "Ölçüler odaların içinden alınır; dış duvarlar sonra kalınlıklardan çıkarılır."],
@@ -80,8 +77,7 @@ S = {
            "komşu odaya doğru <b>en az 3 ölçü</b> ya da <b>ortak bir kapı</b> gerekir. En kolay yol kapıdır.",
     "cap4": "1. oda ile 2. oda arasındaki kapı: köşeden uzaklık ve genişlik her iki taraftan ölçülür, duvar kalınlığı "
             "kasada ölçülür.",
-    "p4b": "Penceredeki listeden <b>Kapı veya pencere ekle</b> seçin ve iki oda arasındaki duvarın üzerinde, kapının "
-           "yakınında <b>çizime tıklayın</b>. Eklenti iki kenarı kendiliğinden bulur (yeşille vurgular) ve şunları sorar:",
+    "p4b": "Ölçü penceresinde, odaların altında <b>＋ Kapı veya pencere ekle</b> düğmesine basın ve <b>çizime</b>, iki oda arasındaki duvarın üzerine, kapının yakınına <b>tıklayın</b>. Eklenti iki kenarı kendisi bulur (yeşil gösterir) ve şunları sorar:",
     "t4": [["Kutu", "Örnek"],
            ["1B köşesinden kasaya uzaklık (1. odada ölçülen)", "1,00"],
            ["Genişlik", "0,90"],
@@ -90,7 +86,7 @@ S = {
     "p4c": "Uzaklık köşeden kasaya kadar alınır; eklenti tıklanan noktaya en yakın köşeyi önerir, diğerini de "
            "seçebilirsiniz. Bu kadarı yeter: iki oda bağlanmış olur (karşılıklı kasalar, paralel duvar, bilinen "
            "kalınlık). Kapıdan geçen bir ölçü daha (örneğin 1B'den 2D'ye) kontrol işi görür.",
-    "p4d": "Kapı yoksa (veya kontrol için) listeden <b>Odalar arası diğer ölçüler</b> seçin:",
+    "p4d": "Kapı yoksa (veya kontrol için) pencerenin altındaki <b>Odalar arası diğer ölçüler</b> bölümünü kullanın:",
     "links": [
         "<b>duvar kalınlığı</b>: Başlangıç = bir kenar (1B-1C), Bitiş = o duvarın arkasındaki diğer odanın köşesi (2A), "
         "Ölçülen = kapıda gönyesinde alınan kalınlık;",
@@ -104,10 +100,10 @@ S = {
 
     "h_fix": "Total station ile ölçülen sabit çevre",
     "p_fix": "Binanın dış çevresi total station ile ölçüldüyse (ya da zaten kesinse), eklenti onu sabit referans olarak kullanır: asla yerinden oynatılmaz ve odalar onun içine kendiliğinden yerleşir.",
-    "fix": ["çevreyi gerçek koordinatlarda <b>kapalı bir çoklu çizgi</b> olarak, odaları da içinde göz kararı çizin;", "<b>Kenarlar ve köşegenler</b> başlatıldığında, odalar seçilmeden önce bir pencere <b>sabit çevreyi</b> sorar (isteğe bağlı): çizimde ona tıklamayı seçin ya da onsuz devam edin. Daha sonra ölçü penceresinin listesinden de eklenebilir;", "<b>Dış duvarlar</b> sayfasında dış duvarların kalınlığını (pencerelerde ölçülen) girin ve çevre boyunca önerilen oda kenarlarını kontrol edin: her biri çevreye paralel, bu uzaklıkta kalır;", "çevre üzerinde iki kenarı olan köşe oda, konumu için köşegene ihtiyaç duymaz; çevre üzerinde tek kenarı olan oda yine de diğerlerine bağlanmalıdır (örneğin bir kapıyla)."],
+    "fix": ["çevreyi gerçek koordinatlarda <b>kapalı çoklu çizgi</b> olarak, odaları da içinde göz kararı çizin;", "<b>1. Dış çevre</b> düğmesine basın, çoklu çizgiye tıklayın ve Enter'a basın (tıklamadan Enter = çevre yok);", "<b>2. Dış duvar kalınlıkları</b> düğmesine basın ve çevrenin kenarlarına tek tek tıklayın: her biri için içe doğru duvar kalınlığını (pencerelerde ölçülen) girin. Kalınlığı olan kenarlar yeşil olur; kalınlıklar çizimde, RILIEVO_PERIMETRO katmanında yazılı kalır. Bitirmek için Enter;", "hesapta çevre boyunca oda kenarları ona paralel ve bu uzaklıkta kalır: çevrede iki kenarı olan köşe odasının konumu için köşegen gerekmez; çevrede tek kenarı olan oda yine diğerlerine bağlanmalıdır (örneğin bir kapıyla)."],
     "h_hatch": "Odalar arası dolu duvarlar: tarama",
     "p_hatch": "Dolu bir duvarın içinden ölçüm yapılamaz, ama kalınlığı kapılarda ölçülür. Çizimde odalar arasındaki duvarlara <b>tarama</b> koyarsanız eklenti onları kendiliğinden tanır:",
-    "hatch": ["aralarında tarama olan, karşılıklı duran farklı odaların iki kenarını bulur ve <b>Odalar arası dolu duvarlar</b> sayfasında önerir;", "<b>bir kapıda ölçülen kalınlığı</b> girin; aynı duvarda kalınlığıyla birlikte ortak bir kapı zaten varsa kutu boş kalabilir;", "hesapta iki kenar bu uzaklıkta paralel kalır, artıkları tabloda görünür."],
+    "hatch": ["aralarında tarama olan, karşılıklı duran farklı odaların iki kenarını bulur ve ölçü penceresinin <b>Odalar arası dolu duvarlar</b> bölümünde önerir;", "<b>bir kapıda ölçülen kalınlığı</b> girin; aynı duvarda kalınlığıyla birlikte ortak bir kapı zaten varsa kutu boş kalabilir;", "hesapta iki kenar bu uzaklıkta paralel kalır, artıkları tabloda görünür."],
     "p_hatch2": "Dolu bir duvar iki oda arasındaki uzaklığı ve dönüklüğü sabitler, ama duvar boyunca kaymayı sabitlemez: yine aynı duvarda bir kapı, aynı odaya doğru paralel olmayan ikinci bir duvar ya da sabit çevre gerekir.",
 
     "h5": "5. Kapılar, pencereler ve dış duvarlar",
@@ -122,18 +118,7 @@ S = {
              "uzunluğu) kontrol edin.",
 
     "h6": "6. Büroda: hesap ve kontrol",
-    "calc": [
-        "<b>Kenarlar ve köşegenler</b>: tüm odalara tıklayın (krokiyle aynı sırada) ve Enter'a basın. Odaların "
-        "durumlarıyla listesi açılır: her seferinde bir oda açıp kenarları ve köşegenleri yazın, kapıları çizime "
-        "tıklayarak ekleyin; her şey tamamlandığında liste <b>Hesapla</b>'yı önerir.",
-        "Ölçüler yetmez veya uyuşmazsa pencere, nedeni ve önceden yazılmış ölçülerle yeniden açılır.",
-        "Sonuç her odanın alanıyla birlikte <b>RILIEVO_CORRETTO</b> katmanına gider; ölçülendirmeler, köşegenler ve "
-        "tablo <b>RILIEVO_QUOTE</b> üzerinde; kapılar ve pencereler <b>RILIEVO_APERTURE</b> üzerinde. Göz kararı çizim "
-        "karşılaştırma için kalır. <b>Çizime uygula</b> ardından özgün çoklu çizgileri hesaplanan şekle getirir.",
-        "Artık tablosunu okuyun: kırmızı bir artık yeniden kontrol edilecek ölçüyü gösterir. Yalnızca bir fazla "
-        "ölçüyle hata birkaç ölçüye dağılır: bir tane daha almak onu bulmaya yardım eder.",
-        "<b>Ölçü defteri</b> her şeyi Excel veya Calc için bir CSV'ye kaydeder (ölçüler, artıklar, koordinatlar, alanlar).",
-    ],
+    "calc": ["<b>3. Odalar: numaralar, harfler ve ölçüler</b> düğmesine basın, tüm odaları (krokideki sırayla) seçin ve Enter'a basın. 1. odadan sonuncusuna kadar tüm odaların alt alta, her birinin başlığı ve durumuyla yer aldığı <b>tek bir pencere</b> açılır: sağdaki çubukla kaydırın ve kenarları ve köşegenleri girin. Odaların altında kapılar ve pencereler, dolu duvarlar, odalar arası diğer ölçüler ve seçenekler bulunur.", "<b>▶ Hesapla</b> düğmesine basın: oda çoklu çizgileri hesaplanan şekle getirilir ve <b>çizim kendiliğinden güncellenir</b> (Ctrl+Z geri alır). Ölçüler yetmezse veya tutmazsa pencere, nedeni ve önceden yazılmış ölçülerle yeniden açılır.", "Ölçülendirmeler, köşegenler ve tablo <b>RILIEVO_QUOTE</b> üzerine; kapılar ve pencereler <b>RILIEVO_APERTURE</b> üzerine gider. <b>Hesap sonucu</b> penceresi alanları, fazla ölçüleri ve σ₀'ı özetler.", "Artıklar tablosunu okuyun: kırmızı bir artık yeniden kontrol edilecek ölçüyü gösterir. Tek bir fazla ölçüyle hata birkaç ölçüye dağılır: bir ölçü daha almak onu bulmaya yardım eder.", "<b>Ölçü defteri</b> her şeyi Excel veya Calc için bir CSV'ye kaydeder (ölçüler, artıklar, koordinatlar, alanlar)."],
     "h_vals": "Yaklaşık değerler",
     "t6": [["Büyüklük", "Tipik değer", "Daha yüksekse"],
            ["bir kenarın veya köşegenin artığı", "1 cm içinde", "yeniden ölçün; yer değiştirmiş rakamları ve doğru köşeyi kontrol edin"],
@@ -153,7 +138,7 @@ S = {
     "ex_cap": "Başlangıç çizimi: sabit çevre E1–E7, köşe harfleriyle numaralı odalar, taramayla doldurulmuş duvarlar, P1–P6 kapıları ve pencereler (mavi).",
     "ex_ties": [["Oda", "Çevre üzerindeki kenarlar", "Dolu duvarlar (tarama)", "Kapılar"], ["1", "C–D, D–A", "A–B 4 ile; B–C 2 ile", "P5"], ["2", "C–D", "D–A 1 ile; A–B 5 ile; B–C 3 ile", "P2"], ["3", "B–C, C–D, D–E", "A–B 6 ile; E–A 2 ile", "P6"], ["4", "A–B, D–A", "C–D 1 ile; B–C 5 ile", "P1, P5"], ["5", "A–B", "D–A 4 ile; C–D 2 ile; B–C 6 ve 7 ile", "P1, P2, P3, P4"], ["6", "B–C, C–D", "D–A 5 ile; A–B 7 ile; C–D 3 ile", "P3, P6"], ["7", "A–B, B–C", "C–D 6 ile; D–A 5 ile", "P4"]],
     "ex_ties_note": "Yedi odadan altısı çevreye paralel olmayan iki kenarla değer: çevre tek başına onları yerine koyar. 2. odanın çevre üzerinde tek kenarı var, ama 1. odaya doğru olan (paralel olmayan) dolu duvar onu sabitler. Böylece dolu duvarlar ve kapılar kontrol işi de görür.",
-    "ex_steps": [["Total station ile çevre", "Binanın E1…E7 dış köşelerini total station ile ölçün ve gerçek koordinatlarda kapalı bir çoklu çizgiyle birleştirin. Çizimin tek kesin öğesidir: eklenti onu asla oynatmaz."], ["Göz kararı odalar", "Çevrenin içinde her odayı duvarların iç yüzünde kapalı bir çoklu çizgi olarak çizin. Yalnızca köşelerin sayısı ve sırası önemlidir: dış duvar pahlı olduğu için 3. odanın beş köşesi var, 1. ve 4. odalar eğik cepheyi izler."], ["Dolu duvarlarda tarama", "Tarama komutuyla (HATCH) çevre ile odalar arasındaki boşluğu, yani tüm duvarları doldurun. Tarama eklentiye hangi odaların dolu bir duvarla ayrıldığını söyler: hassas olması gerekmez, iki kenar arasında olması yeterlidir."], ["Harfler", "<b>Köşe harfleri</b> komutunu başlatın, odalara şekildeki 1…7 sırasıyla tıklayın ve Enter'a basın. Harfler hemen belirir; küçük pencerede yüksekliklerini değiştirebilirsiniz. Çizimi yazdırın: sahaya götürülecek kroki budur."], ["Sahada: odalar", "Her odada kenarları aynı yükseklikte ve en az bir köşegeni ölçün. Çevre üzerinde iki kenarı olan odaların şekli için köşegen gerekmez, ama fazladan bir köşegen yanlış okunmuş bir rakamı fark etmenin tek yoludur. Örneğin 1. oda için:"], ["Sahada: kalınlıklar ve kapılar", "Dış duvarların kalınlığını pencerelerde (burada 0,40), iç duvarlarınkini kapılarda (burada 0,30) ölçün. Her kapı için iki taraftan köşeden kasaya uzaklığı ve genişliği not edin:"], ["Kenarlar ve köşegenler: çevre ve odalar", "<b>Kenarlar ve köşegenler</b> komutunu başlatın. İlk pencere sabit çevreyi sorar: <b>Çevreyi seç</b> seçeneğini seçip E1…E7 çoklu çizgisine tıklayın. Sonra odalara aynı 1…7 sırasıyla tıklayıp Enter'a basın."], ["Dış duvarlar ve dolu duvarlar", "Ölçü penceresi <b>Dış duvarlar</b> sayfasında açılır: kalınlık olarak 0,40 yazın ve önerilen kenarları kontrol edin (tablonun ikinci sütunu). Sonra <b>Odalar arası dolu duvarlar, taramadan</b> sayfasını açın: satırlar zaten önerilmiştir; ortak kapı olmayan yerlere 0,30 yazın, kapı olan yerlerde kalınlık kapıdan alınır."], ["Kenarlar, köşegenler ve kapılar", "Listeden her seferinde bir oda açıp kenarları ve köşegenleri yazın. Sonra <b>Kapı veya pencere ekle</b> seçin ve P1…P6 kapılarının her birinin duvarına tıklayın: eklenti iki kenarı bulur ve uzaklıkları, genişliği ve kalınlığı sorar. Pencereler de aynı şekilde, dış duvara eklenir."], ["Hesap ve kontrol", "Liste tüm odaları tamam ve bağlı gösterdiğinde <b>Hesapla</b>'ya basın. <b>Hesap sonucu</b> penceresi fazla ölçüleri ve σ₀'ı özetler; tablodaki kırmızı artıklar yeniden kontrol edilecek ölçüleri gösterir. Her şey yolundaysa <b>Çizime uygula</b> oda çoklu çizgilerini hesaplanan şekle getirir ve <b>Ölçü defteri</b> her şeyi bir CSV'ye kaydeder."]],
+    "ex_steps": [["Total station ile çevre", "Binanın E1…E7 dış köşelerini total station ile ölçün ve gerçek koordinatlarda kapalı bir çoklu çizgiyle birleştirin. Çizimin tek kesin öğesidir: eklenti onu asla oynatmaz."], ["Göz kararı odalar", "Çevrenin içinde her odayı duvarların iç yüzünde kapalı bir çoklu çizgi olarak çizin. Yalnızca köşelerin sayısı ve sırası önemlidir: dış duvar pahlı olduğu için 3. odanın beş köşesi var, 1. ve 4. odalar eğik cepheyi izler."], ["Dolu duvarlarda tarama", "Tarama komutuyla (HATCH) çevre ile odalar arasındaki boşluğu, yani tüm duvarları doldurun. Tarama eklentiye hangi odaların dolu bir duvarla ayrıldığını söyler: hassas olması gerekmez, iki kenar arasında olması yeterlidir."], ["Harfler", "<b>3. Odalar: numaralar, harfler ve ölçüler</b> düğmesine basın, odalara şekildeki 1…7 sırasıyla tıklayın ve Enter'a basın. Numaralar ve harfler hemen belirir ve ölçü penceresi açılır: kapatın ve harfleri tutmayı seçin. Çizimi yazdırın: sahaya götürülecek kroki budur."], ["Sahada: odalar", "Her odada kenarları aynı yükseklikte ve en az bir köşegeni ölçün. Çevre üzerinde iki kenarı olan odaların şekli için köşegen gerekmez, ama fazladan bir köşegen yanlış okunmuş bir rakamı fark etmenin tek yoludur. Örneğin 1. oda için:"], ["Sahada: kalınlıklar ve kapılar", "Dış duvarların kalınlığını pencerelerde (burada 0,40), iç duvarlarınkini kapılarda (burada 0,30) ölçün. Her kapı için iki taraftan köşeden kasaya uzaklığı ve genişliği not edin:"], ["1. ve 2. düğmeler: çevre ve kalınlıklar", "Büroda <b>1. Dış çevre</b> düğmesine basın, E1…E7 çoklu çizgisine tıklayın ve Enter'a basın. Sonra <b>2. Dış duvar kalınlıkları</b> düğmesine basın, ilk kenara tıklayın, 0,40 yazın ve tüm kenarlarda kullanmak için kutuyu işaretleyin: hepsi yeşil olur. Bitirmek için Enter."], ["3. düğme: odalar ve ölçü penceresi", "<b>3. Odalar: numaralar, harfler ve ölçüler</b> düğmesine basın, odalara aynı 1…7 sırasıyla tıklayın ve Enter'a basın. Pencere 1'den 7'ye odalarla, alt alta açılır; daha aşağıda satırları önceden önerilmiş <b>Odalar arası dolu duvarlar (taramadan)</b> bölümü: ortak kapı olmayan yerlere 0,30 yazın, olan yerlerde kapıdan alınır."], ["Kenarlar, köşegenler ve kapılar", "Pencereyi kaydırın ve her odanın kenarlarını ve köşegenlerini girin. Sonra <b>＋ Kapı veya pencere ekle</b> düğmesine basın ve P1…P6 kapılarının her birinin duvarına tıklayın: eklenti iki kenarı bulur, uzaklıkları, genişliği ve kalınlığı sorar, sonra pencereye döner. Pencereler de aynı şekilde, dış duvar üzerinde eklenir."], ["Hesapla", "Her oda ✔ gösterdiğinde ve odalar bağlı olduğunda <b>▶ Hesapla</b> düğmesine basın: oda çoklu çizgileri hesaplanan şekli alır ve çizim kendiliğinden güncellenir. <b>Hesap sonucu</b> penceresi fazla ölçüleri ve σ₀'ı özetler; tabloda kırmızı artıklar yeniden kontrol edilecek ölçüleri gösterir. <b>Ölçü defteri</b> her şeyi bir CSV'ye kaydeder."]],
     "ex_room_step": 5,
     "ex_door_step": 6,
     "ex_room1": [["Ölçü (1. oda)", "Değer", "Not"], ["1A–1B", "4,10", "kenar"], ["1B–1C", "8,30", "kenar"], ["1C–1D", "4,58", "çevre üzerindeki kenar"], ["1D–1A", "8,31", "çevre üzerindeki kenar (eğik)"], ["1A–1C", "9,26", "kontrol köşegeni"], ["1B–1D", "9,48", "ikinci köşegen (isteğe bağlı)"]],

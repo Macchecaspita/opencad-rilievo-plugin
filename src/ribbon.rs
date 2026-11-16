@@ -27,11 +27,16 @@ impl CadModule for RilievoModule {
         GROUPS.get_or_init(|| {
             vec![
                 RibbonGroup {
-                    title: tr!("Vano", "Room", "Estancia", "Pièce", "Oda", "Compartimento", "Pomieszczenie"),
+                    title: tr!("Edificio", "Building", "Edificio", "Bâtiment", "Bina", "Edifício", "Budynek"),
                     tools: vec![
-                        cmd("RV_ETICHETTE", tr!("Lettere vertici", "Corner letters", "Letras de esquinas", "Lettres des angles", "Köşe harfleri", "Letras dos cantos", "Litery narożników"), include_bytes!("../icons/labels.svg")),
-                        cmd("RV_VANO", tr!("Misure e diagonali", "Sides and diagonals", "Lados y diagonales", "Côtés et diagonales", "Kenarlar ve köşegenler", "Lados e diagonais", "Boki i przekątne"), include_bytes!("../icons/room.svg")),
-                        cmd("RV_APPLICA", tr!("Applica al disegno", "Apply to drawing", "Aplicar al dibujo", "Appliquer au dessin", "Çizime uygula", "Aplicar ao desenho", "Zastosuj na rysunku"), include_bytes!("../icons/apply.svg")),
+                        cmd("RV_PERIMETRO", tr!("1. Perimetro esterno", "1. Outer perimeter", "1. Perímetro exterior", "1. Périmètre extérieur", "1. Dış çevre", "1. Perímetro exterior", "1. Obrys zewnętrzny"), include_bytes!("../icons/perimeter.svg")),
+                        cmd("RV_SPESSORI", tr!("2. Spessori muri esterni", "2. Outer wall thicknesses", "2. Espesores de muros exteriores", "2. Épaisseurs des murs extérieurs", "2. Dış duvar kalınlıkları", "2. Espessuras das paredes exteriores", "2. Grubości ścian zewnętrznych"), include_bytes!("../icons/walls.svg")),
+                    ],
+                },
+                RibbonGroup {
+                    title: tr!("Vani", "Rooms", "Estancias", "Pièces", "Odalar", "Compartimentos", "Pomieszczenia"),
+                    tools: vec![
+                        cmd("RV_VANO", tr!("3. Vani: numeri, lettere e misure", "3. Rooms: numbers, letters and measures", "3. Estancias: números, letras y medidas", "3. Pièces : numéros, lettres et mesures", "3. Odalar: numaralar, harfler ve ölçüler", "3. Compartimentos: números, letras e medidas", "3. Pomieszczenia: numery, litery i pomiary"), include_bytes!("../icons/room.svg")),
                         cmd("RV_LIBRETTO", tr!("Libretto misure", "Measures book", "Libro de medidas", "Carnet de mesures", "Ölçü defteri", "Caderno de medidas", "Dziennik pomiarów"), include_bytes!("../icons/book.svg")),
                     ],
                 },

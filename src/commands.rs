@@ -159,13 +159,29 @@ const OUTER_WEIGHT: f64 = 30.0;
 /// Add the fixed outer outline named in `saved`, read live from the drawing.
 /// When it is gone, the survey goes on without it and the message says so.
 fn add_outer(host: &dyn HostApi, survey: Survey, saved: &mut Saved) -> (Survey, Option<String>) {
+    // The perimeter of buttons 1 and 2, when there is one.
+    let thick = match perimeter() {
+        Some((o, t)) => {
+            saved.outer = o;
+            Some(t)
+        }
+        None => None,
+    };
     if saved.outer.trim().is_empty() {
+        saved.outer_walls.clear();
         return (survey, None);
     }
     match parse_handle(&saved.outer).and_then(|h| fetch_room(host, h)) {
-        Some(o) => (survey.with_outer(o.pts), None),
+        Some(o) => {
+            let s = survey.with_outer(o.pts);
+            if let Some(t) = thick {
+                saved.outer_walls = s.outer_rows_with(&t, &|v| fmt_num(v, 3));
+            }
+            (s, None)
+        }
         None => {
             saved.outer.clear();
+            set_perimeter(None);
             (
                 survey,
                 Some(tr!(
@@ -234,6 +250,97 @@ static SAVED: Mutex<Option<HashMap<String, Saved>>> = Mutex::new(None);
 static PENDING: Mutex<Option<(Vec<Handle>, Saved)>> = Mutex::new(None);
 /// The fixed perimeter chosen before the rooms (handle, hex), until they are.
 static PRE_OUTER: Mutex<Option<String>> = Mutex::new(None);
+/// The fixed perimeter of the building (button 1) and the thickness of the
+/// wall behind each of its sides (button 2), for this session.
+type Perim = (String, Vec<Option<f64>>);
+static PERIMETER: Mutex<Option<Perim>> = Mutex::new(None);
+
+/// The fixed perimeter (handle, hex) and its sides' wall thicknesses.
+pub fn perimeter() -> Option<Perim> {
+    PERIMETER.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+pub fn set_perimeter(p: Option<Perim>) {
+    *PERIMETER.lock().unwrap_or_else(|e| e.into_inner()) = p;
+}
+
+/// Layer of the wall thicknesses written along the perimeter.
+pub const LAYER_PERIM: &str = "RILIEVO_PERIMETRO";
+
+fn perimeter_title() -> String {
+    tr!("Perimetro esterno", "Outer perimeter", "Perímetro exterior", "Périmètre extérieur", "Dış çevre", "Perímetro exterior", "Obrys zewnętrzny").to_string()
+}
+
+fn thickness_title() -> String {
+    tr!("Spessori muri esterni", "Outer wall thicknesses", "Espesores de muros exteriores", "Épaisseurs des murs extérieurs", "Dış duvar kalınlıkları", "Espessuras das paredes exteriores", "Grubości ścian zewnętrznych").to_string()
+}
+
+fn no_polyline_text() -> String {
+    tr!(
+        "Il disegno non ha polilinee chiuse: disegna il perimetro e i vani con PLINEA … Chiudi.",
+        "The drawing has no closed polylines: draw the perimeter and the rooms with PLINE … Close.",
+        "El dibujo no tiene polilíneas cerradas: dibuje el perímetro y las estancias con PLINE … Cerrar.",
+        "Le dessin n'a pas de polylignes fermées : dessinez le périmètre et les pièces avec PLINE … Clore.",
+        "Çizimde kapalı çoklu çizgi yok: çevreyi ve odaları PLINE … Kapat ile çizin.",
+        "O desenho não tem polilinhas fechadas: desenhe o perímetro e os compartimentos com PLINE … Fechar.",
+        "Rysunek nie ma zamkniętych polilinii: narysuj obrys i pomieszczenia poleceniem PLINE … Zamknij.",
+    )
+    .to_string()
+}
+
+/// Where the thickness of side `k` is written: its middle, inside the wall.
+fn thickness_spot(pts: &[P2], k: usize, t: f64) -> P2 {
+    let n = pts.len();
+    let (a, b) = (pts[k], pts[(k + 1) % n]);
+    let l = solve::dist(a, b).max(1e-12);
+    let s = if solve::signed_area(pts) > 0.0 { 1.0 } else { -1.0 };
+    let nrm = [-(b[1] - a[1]) / l * s, (b[0] - a[0]) / l * s];
+    let m = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
+    [m[0] + nrm[0] * t / 2.0, m[1] + nrm[1] * t / 2.0]
+}
+
+/// Write each side's wall thickness along the perimeter (layer
+/// RILIEVO_PERIMETRO), replacing what was there: it stays with the drawing
+/// and is read back when the perimeter is chosen again.
+fn write_thickness_labels(host: &mut dyn HostApi, pts: &[P2], z: f64, thick: &[Option<f64>]) {
+    ensure_layer(host, LAYER_PERIM, 30);
+    let old: Vec<Handle> = host.document().entities().filter(|e| e.common().layer.eq_ignore_ascii_case(LAYER_PERIM)).map(|e| e.common().handle).collect();
+    host.begin_undo_group("RV_SPESSORI");
+    for h in old {
+        host.remove_entity(h);
+    }
+    let h = sizes_for(&[pts.to_vec()]).0;
+    for (k, t) in thick.iter().enumerate() {
+        if let Some(t) = t {
+            host.add_entity(mtext(&fmt_num(*t, 2), thickness_spot(pts, k, *t), z, h, AttachmentPoint::MiddleCenter, LAYER_PERIM));
+        }
+    }
+    host.end_undo_group();
+    host.set_dirty();
+}
+
+/// The thicknesses written along the perimeter earlier, side by side.
+fn read_thickness_labels(host: &dyn HostApi, pts: &[P2]) -> Vec<Option<f64>> {
+    let n = pts.len();
+    let mut thick = vec![None; n];
+    for e in host.document().entities() {
+        if !e.common().layer.eq_ignore_ascii_case(LAYER_PERIM) {
+            continue;
+        }
+        let EntityType::MText(m) = e else { continue };
+        let Some(t) = parse_num(m.value.trim()).filter(|v| *v > 0.0) else { continue };
+        let p = [m.insertion_point.x, m.insertion_point.y];
+        let best = (0..n)
+            .map(|k| (k, solve::dist(p, thickness_spot(pts, k, t))))
+            .min_by(|a, b| a.1.total_cmp(&b.1));
+        if let Some((k, d)) = best {
+            if d <= solve::dist(pts[k], pts[(k + 1) % n]) / 2.0 {
+                thick[k] = Some(t);
+            }
+        }
+    }
+    thick
+}
 /// The letter height last chosen in Corner letters, used by the next
 /// calculations too.
 static LETTER_H: Mutex<Option<f64>> = Mutex::new(None);
@@ -423,9 +530,102 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         "RV_MANUALE" => open_manual(host),
         // First the fixed perimeter of the building (optional, asked in a
         // window), then the rooms: all in the same picking command.
+        // Button 3: the rooms (numbers and letters), then the measures window.
         "RV_VANO" => {
-            set_pre_outer(None);
-            start_pick_asking(host, "RV_VANOOPEN", "RV_VANO", true);
+            let except = perimeter().and_then(|(o, _)| parse_handle(&o));
+            start_pick_except(host, "RV_VANOOPEN", "RV_VANO", except);
+        }
+        // Button 1: the fixed perimeter of the building (optional).
+        "RV_PERIMETRO" => {
+            let all = rooms(host);
+            if all.is_empty() {
+                host.start_interactive(Box::new(tools::ReportDialog::titled(perimeter_title(), vec![no_polyline_text()])));
+            } else {
+                let _ = host.set_selection(&[]);
+                host.start_interactive(Box::new(tools::PerimeterTool::new(all)));
+            }
+        }
+        "RV_PERIMETROSET" => {
+            let picked = arg.as_deref().and_then(parse_handle);
+            let _ = host.set_selection(&[]);
+            let lines = match picked.and_then(|h| fetch_room(host, h).map(|r| (h, r))) {
+                Some((h, room)) => {
+                    let thick = read_thickness_labels(host, &room.pts);
+                    let n = room.pts.len();
+                    let done = thick.iter().filter(|t| t.is_some()).count();
+                    *PERIMETER.lock().unwrap_or_else(|e| e.into_inner()) = Some((hex(h), thick));
+                    vec![tr!(
+                        format!("Perimetro esterno scelto: {n} lati. Resterà fermo; i vani verranno posizionati al suo interno. Ora dai lo spessore dei muri con «Spessori muri esterni» ({done} lati su {n} hanno già uno spessore)."),
+                        format!("Outer perimeter chosen: {n} sides. It will stay still; the rooms will be placed inside it. Now give the wall thicknesses with «Outer wall thicknesses» ({done} of {n} sides already have one)."),
+                        format!("Perímetro exterior elegido: {n} lados. Quedará fijo; las estancias se colocarán dentro de él. Ahora dé el espesor de los muros con «Espesores de muros exteriores» ({done} de {n} lados ya tienen espesor)."),
+                        format!("Périmètre extérieur choisi : {n} côtés. Il restera fixe ; les pièces seront placées à l'intérieur. Donnez maintenant l'épaisseur des murs avec « Épaisseurs des murs extérieurs » ({done} côtés sur {n} en ont déjà une)."),
+                        format!("Dış çevre seçildi: {n} kenar. Sabit kalacak; odalar onun içine yerleştirilecek. Şimdi «Dış duvar kalınlıkları» ile duvar kalınlıklarını verin ({n} kenardan {done} tanesinin zaten kalınlığı var)."),
+                        format!("Perímetro exterior escolhido: {n} lados. Ficará fixo; os compartimentos serão colocados dentro dele. Agora dê a espessura das paredes com «Espessuras das paredes exteriores» ({done} de {n} lados já têm espessura)."),
+                        format!("Wybrano obrys zewnętrzny: {n} boków. Pozostanie nieruchomy; pomieszczenia zostaną ustawione w jego wnętrzu. Teraz nadaj grubości ścian przyciskiem «Grubości ścian zewnętrznych» ({done} z {n} boków ma już grubość)."),
+                    )]
+                }
+                None => {
+                    *PERIMETER.lock().unwrap_or_else(|e| e.into_inner()) = None;
+                    vec![tr!(
+                        "Nessun perimetro fisso: i vani verranno calcolati solo con le loro misure e i collegamenti tra loro.",
+                        "No fixed perimeter: the rooms will be computed from their own measures and the links between them only.",
+                        "Sin perímetro fijo: las estancias se calcularán solo con sus medidas y los enlaces entre ellas.",
+                        "Pas de périmètre fixe : les pièces seront calculées avec leurs seules mesures et les liaisons entre elles.",
+                        "Sabit çevre yok: odalar yalnızca kendi ölçüleri ve aralarındaki bağlantılarla hesaplanacak.",
+                        "Sem perímetro fixo: os compartimentos serão calculados só com as suas medidas e as ligações entre eles.",
+                        "Brak stałego obrysu: pomieszczenia zostaną obliczone tylko z ich pomiarów i powiązań między nimi.",
+                    )
+                    .to_string()]
+                }
+            };
+            host.start_interactive(Box::new(tools::ReportDialog::titled(perimeter_title(), lines)));
+        }
+        // Button 2: the thickness of each side of the perimeter.
+        "RV_SPESSORI" => match perimeter().and_then(|(o, t)| parse_handle(&o).and_then(|h| fetch_room(host, h)).map(|r| (r, t))) {
+            Some((room, thick)) => {
+                let longest = (0..room.pts.len()).map(|i| solve::dist(room.pts[i], room.pts[(i + 1) % room.pts.len()])).fold(0.0f64, f64::max);
+                let default_t = 0.30 / survey::unit_factor(survey::guess_unit(longest));
+                let _ = host.set_selection(&[]);
+                host.start_interactive(Box::new(tools::ThicknessTool::new(room.pts, room.z, thick, default_t)));
+            }
+            None => {
+                host.start_interactive(Box::new(tools::ReportDialog::titled(
+                    thickness_title(),
+                    vec![tr!(
+                        "Prima scegli il perimetro esterno con il pulsante «Perimetro esterno».",
+                        "First choose the outer perimeter with the «Outer perimeter» button.",
+                        "Primero elija el perímetro exterior con el botón «Perímetro exterior».",
+                        "Choisissez d'abord le périmètre extérieur avec le bouton « Périmètre extérieur ».",
+                        "Önce «Dış çevre» düğmesiyle dış çevreyi seçin.",
+                        "Primeiro escolha o perímetro exterior com o botão «Perímetro exterior».",
+                        "Najpierw wybierz obrys zewnętrzny przyciskiem «Obrys zewnętrzny».",
+                    )
+                    .to_string()],
+                )));
+            }
+        },
+        "RV_SPESSORISET" => {
+            let list: Vec<Option<f64>> = arg.as_deref().unwrap_or("").split(';').map(|t| t.trim().parse::<f64>().ok().filter(|v| *v > 0.0)).collect();
+            if let Some((o, _)) = perimeter() {
+                if let Some(room) = parse_handle(&o).and_then(|h| fetch_room(host, h)) {
+                    let mut thick = list;
+                    thick.resize(room.pts.len(), None);
+                    write_thickness_labels(host, &room.pts, room.z, &thick);
+                    let n = thick.len();
+                    let done = thick.iter().filter(|t| t.is_some()).count();
+                    *PERIMETER.lock().unwrap_or_else(|e| e.into_inner()) = Some((o, thick));
+                    let line = tr!(
+                        format!("Spessori dati a {done} lati su {n} del perimetro (scritti sul disegno, layer {LAYER_PERIM}). Ora scegli i vani con «Vani: numeri, lettere e misure»."),
+                        format!("Thicknesses given to {done} of {n} sides of the perimeter (written on the drawing, layer {LAYER_PERIM}). Now choose the rooms with «Rooms: numbers, letters and measures»."),
+                        format!("Espesores dados a {done} de {n} lados del perímetro (escritos en el dibujo, capa {LAYER_PERIM}). Ahora elija las estancias con «Estancias: números, letras y medidas»."),
+                        format!("Épaisseurs données à {done} côtés sur {n} du périmètre (écrites sur le dessin, calque {LAYER_PERIM}). Choisissez maintenant les pièces avec « Pièces : numéros, lettres et mesures »."),
+                        format!("Çevrenin {n} kenarından {done} tanesine kalınlık verildi (çizime yazıldı, katman {LAYER_PERIM}). Şimdi «Odalar: numaralar, harfler ve ölçüler» ile odaları seçin."),
+                        format!("Espessuras dadas a {done} de {n} lados do perímetro (escritas no desenho, camada {LAYER_PERIM}). Agora escolha os compartimentos com «Compartimentos: números, letras e medidas»."),
+                        format!("Nadano grubość {done} z {n} boków obrysu (zapisane na rysunku, warstwa {LAYER_PERIM}). Teraz wybierz pomieszczenia przyciskiem «Pomieszczenia: numery, litery i pomiary»."),
+                    );
+                    host.start_interactive(Box::new(tools::ReportDialog::titled(thickness_title(), vec![line])));
+                }
+            }
         }
         "RV_VANOPICK" => {
             let except = PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()).as_deref().and_then(parse_handle);
@@ -465,13 +665,13 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             if hs.is_empty() {
                 return true;
             }
-            // The fixed perimeter chosen before the rooms, if any.
-            let pre = PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()).take();
-            match pre {
-                Some(o) if !hs.contains(&parse_handle(&o).unwrap_or(Handle::new(0))) => {
-                    handle(host, &format!("RV_ESTERNOSET {}|{o}|first", key(&hs)));
-                }
-                _ => open_dialog(host, &hs, None),
+            // The fixed perimeter (button 1) is not a room.
+            let hs: Vec<Handle> = match perimeter() {
+                Some((o, _)) => hs.into_iter().filter(|h| hex(*h) != o).collect(),
+                None => hs,
+            };
+            if !hs.is_empty() {
+                open_dialog(host, &hs, None);
             }
         }
         "RV_PULISCI" => {
@@ -802,17 +1002,6 @@ pub fn set_pre_outer(h: Option<String>) {
     *PRE_OUTER.lock().unwrap_or_else(|e| e.into_inner()) = h;
 }
 
-/// Like [`start_pick`]; with `ask_outer` the picking command first asks for
-/// the fixed perimeter (unless rooms are already selected).
-fn start_pick_asking(host: &mut dyn HostApi, verb: &'static str, title: &'static str, ask_outer: bool) {
-    let all = rooms(host);
-    let pre: Vec<Handle> = host.selection().iter().copied().filter(|h| all.iter().any(|r| r.handle == *h)).collect();
-    if !ask_outer || all.is_empty() || !pre.is_empty() {
-        start_pick_except(host, verb, title, None);
-        return;
-    }
-    host.start_interactive(Box::new(tools::PickRoomTool::new(all, verb, title).asking_outer()));
-}
 
 /// Like [`start_pick`], leaving out one polyline (the fixed perimeter).
 fn start_pick_except(host: &mut dyn HostApi, verb: &'static str, title: &'static str, except: Option<Handle>) {
