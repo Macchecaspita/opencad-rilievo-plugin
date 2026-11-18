@@ -914,6 +914,7 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         }
         "RV_APPLICA" => apply_to_drawing(host, true),
         "RV_FORO" => crate::holes::start(host),
+        "RV_FOROSPIGOLO" => crate::holes::corner_picked(host),
         "RV_FOROLATO" => crate::holes::side_picked(host),
         "RV_FOROAPPLY" => crate::holes::apply(host),
         "RV_LIBRETTO" => match last_book() {
