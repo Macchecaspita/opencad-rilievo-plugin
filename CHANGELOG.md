@@ -12,6 +12,12 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.14.0] - 2026-11-18
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
 ### Aggiunto
 - **Porte e finestre** (nuovo pulsante tra «3. Vani» e «Libretto misure»,
   comando `RV_FORO`): apre porte e finestre nei muri del disegno finito. Si
@@ -22,6 +28,16 @@ del rilascio.
   nascono il serramento e la quota «larghezza su altezza» in centimetri, fuori
   dal perimetro dell'edificio. Solo disegno: un vano interrotto non entra più
   nel calcolo.
+- Il muro viene riconosciuto dalla sua altra faccia (offset dello spessore,
+  vano o perimetro), anche senza vani disegnati.
+- Le spallette partono perpendicolari al lato cliccato e arrivano alla faccia
+  opposta anche quando non è parallela; anche quella linea viene interrotta.
+- **Finestra**: telaio a filo della faccia interna del muro. **Porta**: solo il
+  foro e, all'esterno, la linea della quota.
+- Dopo ogni foro il comando termina: per il successivo si preme di nuovo il
+  pulsante, che ripropone gli ultimi valori.
+- Nuova voce «5. Porte e finestre nei muri» nella guida rapida, in tutte le
+  23 lingue (traduzioni automatiche).
 
 ## [0.13.0] - 2026-11-18
 

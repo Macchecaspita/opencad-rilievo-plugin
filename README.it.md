@@ -63,6 +63,7 @@ automatiche, non riviste da madrelingua, quindi le correzioni sono benvenute.
 | `RV_VANO` | **3. Vani: numeri, lettere e misure** | seleziona i vani, Invio: numeri e lettere sul disegno e una sola finestra con tutti i vani, porte e finestre, poi Calcola, che aggiorna il disegno |
 | `RV_ETICHETTE` | | scrive solo le lettere sui vertici, per l'eidotipo |
 | `RV_APPLICA` | | porta le polilinee originali nella forma dell'ultimo calcolo |
+| `RV_FORO` | **Porte e finestre** | a disegno finito apre porte e finestre nei muri: tipo, larghezza, altezza, spigolo, tratto e distanza; interrompe le due facce del muro anche non parallele, svuota la campitura e mette la quota larghezza/altezza fuori dal perimetro |
 | `RV_LIBRETTO` | **Libretto misure** | salva l'ultimo calcolo in CSV: misure, scarti, σ₀, coordinate, superfici |
 | `RV_GUIDE` | **Guida** | breve guida |
 | `RV_MANUALE` | **Manuale PDF** | manuale di rilievo di un appartamento, con disegni ([docs/Manuale_rilievo.pdf](docs/Manuale_rilievo.pdf); nelle altre lingue `docs/manual_<lingua>.pdf`) |

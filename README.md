@@ -45,7 +45,7 @@ tolerance in red.
 
 Commands: `RV_PERIMETRO` (outer perimeter), `RV_SPESSORI` (outer wall thicknesses),
 `RV_VANO` (rooms: numbers, letters, measures), `RV_ETICHETTE` (corner letters only),
-`RV_APPLICA` (move the original rooms to the result), `RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_MANUALE` (surveying manual, PDF), `RV_LANG <code>|AUTO`.
+`RV_APPLICA` (move the original rooms to the result), `RV_FORO` (doors and windows cut into the walls of the finished drawing, with a width/height label outside the building), `RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_MANUALE` (surveying manual, PDF), `RV_LANG <code>|AUTO`.
 
 The interface and the PDF manual are in the same 23 languages as Open CAD
 Studio (Arabic, Bulgarian, Chinese simplified and traditional, Czech, Dutch,
