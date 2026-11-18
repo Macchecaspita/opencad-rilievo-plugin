@@ -372,13 +372,16 @@ pub struct HoleTool {
     toward: Option<usize>,
     /// Into the wall, from the clicked side (found when the side is picked).
     n: Option<P2>,
+    /// Where the corner was clicked: the host can report one click twice
+    /// (as an object pick and as a point), which must not choose the side.
+    corner_click: Option<P2>,
     msg: Option<String>,
 }
 
 impl HoleTool {
     pub fn new(rings: Vec<Ring>, m: f64) -> Self {
         let last = LAST.lock().unwrap_or_else(|e| e.into_inner()).unwrap_or(Last { kind: HoleKind::Window, w: 1.2 / m, h: 1.4 / m, d: 1.0 / m });
-        HoleTool { rings, m, phase: Phase::Ask, kind: last.kind, w: last.w, h: last.h, d: last.d, t: 0.3 / m, found: None, corner: None, toward: None, n: None, msg: None }
+        HoleTool { rings, m, phase: Phase::Ask, kind: last.kind, w: last.w, h: last.h, d: last.d, t: 0.3 / m, found: None, corner: None, toward: None, n: None, corner_click: None, msg: None }
     }
 
     /// Back to the corner step after an opening that could not be placed,
@@ -498,11 +501,13 @@ impl InteractiveCommand for HoleTool {
             Phase::Corner => {
                 if let Some(c) = self.nearest_corner(p) {
                     self.corner = Some(c);
+                    self.corner_click = Some(p);
                     self.phase = Phase::Side;
                     self.msg = None;
                 }
                 CommandStep::NeedPoint
             }
+            Phase::Side if self.corner_click.is_some_and(|q| solve::dist(q, p) < 1e-9) => CommandStep::NeedPoint,
             Phase::Side => match self.nearest_side(p) {
                 Some(s) => {
                     let mut next = self.clone();
