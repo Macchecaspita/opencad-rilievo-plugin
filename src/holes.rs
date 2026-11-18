@@ -247,17 +247,23 @@ pub fn cut(v: &[(P2, f64)], closed: bool, s: usize, p: P2, q: P2) -> Vec<Vec<(P2
         .collect()
 }
 
-/// Window frame across the wall: a band in the middle of the wall, posts at
-/// the jambs and, when wide enough, a mullion with two sashes.
-pub fn window_lines(j: P2, k: P2, n: P2, t: f64, m: f64) -> Vec<Vec<P2>> {
-    let u = unit(j, k);
-    let w = solve::dist(j, k);
-    let depth = (0.28 * t).max(1e-6);
-    let lo = t / 2.0 - depth / 2.0;
-    let hi = t / 2.0 + depth / 2.0;
-    let at = |s: f64, d: f64| add(add(j, mul(u, s)), mul(n, d));
+/// Window frame in the hole j–k (clicked face) / j2–k2 (other face, maybe
+/// not parallel): a band against the inside face of the wall (the other
+/// face when `inner_far`), posts at the jambs and, when wide enough, a
+/// mullion with two sashes.
+pub fn window_lines(j: P2, k: P2, j2: P2, k2: P2, inner_far: bool, m: f64) -> Vec<Vec<P2>> {
+    let w = solve::dist(j, k).max(1e-12);
+    let t = solve::dist(j, j2).min(solve::dist(k, k2));
+    let depth = (0.25 * t).max(1e-6);
+    let lerp = |a: P2, b: P2, f: f64| add(a, mul(sub(b, a), f));
+    let at = |s: f64, x: f64| {
+        let f = s / w;
+        let (c, o) = (lerp(j, k, f), lerp(j2, k2, f));
+        let (inner, other) = if inner_far { (o, c) } else { (c, o) };
+        add(inner, mul(unit(inner, other), x))
+    };
     let f = (0.06 / m).min(w / 8.0);
-    let mut out = vec![vec![at(0.0, lo), at(w, lo), at(w, hi), at(0.0, hi), at(0.0, lo)]];
+    let mut out = vec![vec![at(0.0, 0.0), at(w, 0.0), at(w, depth), at(0.0, depth), at(0.0, 0.0)]];
     let mut posts = vec![f, w - f];
     let sashes: Vec<(f64, f64)> = if w > 0.7 / m {
         posts.push(w / 2.0 - f / 2.0);
@@ -267,35 +273,66 @@ pub fn window_lines(j: P2, k: P2, n: P2, t: f64, m: f64) -> Vec<Vec<P2>> {
         vec![(f, w - f)]
     };
     for s in posts {
-        out.push(vec![at(s, lo), at(s, hi)]);
+        out.push(vec![at(s, 0.0), at(s, depth)]);
     }
     for (s0, s1) in sashes {
-        out.push(vec![at(s0, t / 2.0), at(s1, t / 2.0)]);
+        out.push(vec![at(s0, depth / 2.0), at(s1, depth / 2.0)]);
     }
     out
 }
 
-/// Door leaf hinged at the first jamb, opened towards `side` (±n), at the
-/// face of the wall on that side.
-pub fn door_leaf(j: P2, k: P2, n: P2, t: f64, into_far_side: bool) -> (P2, P2, P2, f64) {
-    let w = solve::dist(j, k);
-    let (hj, hk, dir) = if into_far_side { (add(j, mul(n, t)), add(k, mul(n, t)), n) } else { (j, k, mul(n, -1.0)) };
-    let tip = add(hj, mul(dir, w));
-    let u = unit(j, k);
-    let ccw = dir[0] * u[1] - dir[1] * u[0] > 0.0;
-    let bulge = if ccw { (std::f64::consts::PI / 8.0).tan() } else { -(std::f64::consts::PI / 8.0).tan() };
-    (hj, tip, hk, bulge)
+/// Where the ray p + n·s meets the faces roughly across it (within about
+/// 25° of square, so walls not parallel are found too): (face, s), nearest
+/// first.
+pub fn ray_hits(faces: &[Face], p: P2, n: P2, eps: f64, max: f64, tol: f64) -> Vec<(usize, f64)> {
+    let mut out = Vec::new();
+    for (x, f) in faces.iter().enumerate() {
+        let d = sub(f.b, f.a);
+        let len = solve::dist(f.a, f.b);
+        if len < 1e-9 || dot(mul(d, 1.0 / len), n).abs() > 0.42 {
+            continue;
+        }
+        let den = cross(n, d);
+        if den.abs() < 1e-12 {
+            continue;
+        }
+        let ap = sub(f.a, p);
+        let s = cross(ap, d) / den;
+        let r = cross(ap, n) / den;
+        if s > eps && s <= max && r >= -tol / len && r <= 1.0 + tol / len {
+            out.push((x, s));
+        }
+    }
+    out.sort_by(|a, b| a.1.total_cmp(&b.1));
+    out
+}
+
+/// The other face of the wall behind the hole j–k: the distance across at
+/// each jamb and the face hit, preferring the thickness `want`.
+pub fn far_face(faces: &[Face], j: P2, k: P2, n: P2, want: f64, eps: f64, max: f64, tol: f64) -> Option<(f64, usize, f64, usize)> {
+    let pick = |hits: Vec<(usize, f64)>, same: Option<usize>| -> Option<(usize, f64)> {
+        if let Some(sx) = same {
+            if let Some(h) = hits.iter().find(|h| h.0 == sx) {
+                return Some(*h);
+            }
+        }
+        let wt = (0.35 * want).max(eps * 3.0);
+        hits.iter().filter(|h| (h.1 - want).abs() <= wt).min_by(|a, b| (a.1 - want).abs().total_cmp(&(b.1 - want).abs())).copied().or_else(|| hits.first().copied())
+    };
+    let (fj, dj) = pick(ray_hits(faces, j, n, eps, max, tol), None)?;
+    let (fk, dk) = pick(ray_hits(faces, k, n, eps, max, tol), Some(fj))?;
+    Some((dj, fj, dk, fk))
 }
 
 /// Where the "width over height" label goes: the base side of the opening
 /// (on the outer face), the direction out of the building, and whether a
 /// building outline was found on that side.
-pub fn label_side(j: P2, k: P2, n: P2, t: f64, outline: Option<&Ring>, m: f64) -> (P2, P2, P2) {
+pub fn label_side(j: P2, k: P2, j2: P2, k2: P2, n: P2, outline: Option<&Ring>, m: f64) -> (P2, P2, P2) {
     let near_out = add(mid(j, k), mul(n, -0.05 / m));
-    let far_out = add(mid(j, k), mul(n, t + 0.05 / m));
+    let far_out = add(mid(j2, k2), mul(n, 0.05 / m));
     match outline {
         Some(o) if !o.contains(near_out) => (j, k, mul(n, -1.0)),
-        Some(o) if !o.contains(far_out) => (add(j, mul(n, t)), add(k, mul(n, t)), n),
+        Some(o) if !o.contains(far_out) => (j2, k2, n),
         _ => (j, k, mul(n, -1.0)),
     }
 }
@@ -834,7 +871,7 @@ pub fn outline(rings: &[Ring], perimeter: Option<Handle>) -> Option<&Ring> {
 pub fn wall_direction(ring: &Ring, rings: &[Ring], faces: &[Face], c: P2, d: P2, perimeter: Option<Handle>, m: f64) -> P2 {
     let inw = inward(ring, c, d);
     let out = mul(inw, -1.0);
-    let found = |n: P2| find_opposite(faces, c, d, n, 0.01 / m, 1.2 / m, false, None).map(|(_, t)| t);
+    let found = |n: P2| ray_hits(faces, mid(c, d), n, 0.01 / m, 1.2 / m, 0.002 / m).first().map(|h| h.1);
     match (found(inw), found(out)) {
         (Some(_), None) => inw,
         (None, Some(_)) => out,
@@ -858,7 +895,7 @@ pub fn side_picked(host: &mut dyn HostApi) {
         let m = tool.m;
         let n = wall_direction(&tool.rings[r], &tool.rings, &fs, c, d, perimeter_handle(), m);
         tool.n = Some(n);
-        tool.found = find_opposite(&fs, c, d, n, 0.01 / m, 1.2 / m, false, None).map(|(_, t)| t);
+        tool.found = ray_hits(&fs, mid(c, d), n, 0.01 / m, 1.2 / m, 0.002 / m).first().map(|h| h.1);
     }
     host.start_interactive(Box::new(tool));
 }
@@ -1013,10 +1050,10 @@ fn apply_inner(host: &mut dyn HostApi, tool: &HoleTool) -> Result<String, String
         )
         .to_string());
     }
-    let want_tol = (0.03 / m).max(0.15 * tool.t);
-    let opposite = find_opposite(&fs, j, k, n, 0.01 / m, 1.2 / m, true, Some((tool.t, want_tol)));
-    let t = opposite.map(|(_, dn)| dn).unwrap_or(tool.t);
-    let (j2, k2) = (add(j, mul(n, t)), add(k, mul(n, t)));
+    // The other face of the wall, square to the hole's jambs or not.
+    let far = far_face(&fs, j, k, n, tool.t, 0.01 / m, 1.2 / m, tol * 5.0);
+    let (dj, dk) = far.map(|(a, _, b, _)| (a, b)).unwrap_or((tool.t, tool.t));
+    let (j2, k2) = (add(j, mul(n, dj)), add(k, mul(n, dk)));
     let layer = live(host, ring.handle).map(|e| e.common().layer.clone()).unwrap_or_default();
 
     host.begin_undo_group("RV_FORO");
@@ -1029,38 +1066,28 @@ fn apply_inner(host: &mut dyn HostApi, tool: &HoleTool) -> Result<String, String
         open_line(host, h, j, k, tol);
     }
     let mut cut_far = false;
-    if opposite.is_some() {
-        for h in faces_holding(&fs, j2, k2, tol * 5.0) {
-            cut_far |= open_line(host, h, j2, k2, tol * 5.0);
+    if let Some((_, fj, _, fk)) = far {
+        if fs[fj].handle == fs[fk].handle {
+            for h in faces_holding(&fs, j2, k2, tol * 5.0) {
+                cut_far |= open_line(host, h, j2, k2, tol * 5.0);
+            }
         }
     }
     // Jambs across the wall, as wall lines.
     let mut ents = vec![commands::pline(&[j, j2], ring.z, false, &layer), commands::pline(&[k, k2], ring.z, false, &layer)];
     hole_in_hatches(host, &[j, k, k2, j2]);
     commands::ensure_layer(host, LAYER_OPENINGS, 4);
-    match tool.kind {
-        HoleKind::Window => {
-            for l in window_lines(j, k, n, t, m) {
-                ents.push(coloured(commands::pline(&l, ring.z, false, LAYER_OPENINGS), ACI_FRAME));
-            }
-        }
-        HoleKind::Door => {
-            // Into the building on an outer wall, into the clicked room on an
-            // inner one.
-            let from_outside = outline(&tool.rings, perimeter_handle()).is_some_and(|o| !o.contains(add(mid(j, k), mul(n, -0.05 / m))));
-            let (hinge, tip, other, bulge) = door_leaf(j, k, n, t, from_outside);
-            ents.push(coloured(commands::pline(&[hinge, tip], ring.z, false, LAYER_OPENINGS), ACI_FRAME));
-            let mut arc = codec::entities::LwPolyline::new();
-            let mut v0 = LwVertex::new(Vector2::new(tip[0], tip[1]));
-            v0.bulge = bulge;
-            arc.vertices = vec![v0, LwVertex::new(Vector2::new(other[0], other[1]))];
-            arc.elevation = ring.z;
-            arc.common.layer = LAYER_OPENINGS.to_string();
-            ents.push(coloured(EntityType::LwPolyline(arc), ACI_FRAME));
+    // Which face is the inside of the building: the window sits against it.
+    let ol = outline(&tool.rings, perimeter_handle());
+    let (bj, bk, e) = label_side(j, k, j2, k2, n, ol, m);
+    let outside_is_near = ol.is_some_and(|o| !o.contains(add(mid(j, k), mul(n, -0.05 / m))));
+    if tool.kind == HoleKind::Window {
+        // Doors have no frame: just the hole and, outside, the bracket.
+        for l in window_lines(j, k, j2, k2, outside_is_near || ol.is_none(), m) {
+            ents.push(coloured(commands::pline(&l, ring.z, false, LAYER_OPENINGS), ACI_FRAME));
         }
     }
     // Width over height, outside the building.
-    let (bj, bk, e) = label_side(j, k, n, t, outline(&tool.rings, perimeter_handle()), m);
     let th = (0.13 * tool.w).clamp(0.08 / m, 0.2 / m);
     let g = 0.35 * th;
     ents.push(coloured(commands::pline(&[bj, add(bj, mul(e, g)), add(bk, mul(e, g)), bk], ring.z, false, LAYER_OPENINGS), ACI_BRACKET));
@@ -1166,9 +1193,13 @@ mod tests {
         let (x, _) = find_opposite(&faces, [9.7, 0.3], [0.3, 0.3], nr, 0.01, 1.2, false, None).unwrap();
         assert_eq!(x, 0);
         // The label goes outside the building in both cases.
-        let (bj, _, e) = label_side([2.0, 0.3], [3.0, 0.3], nr, 0.3, Some(&outer), 1.0);
+        let (bj, _, e) = label_side([2.0, 0.3], [3.0, 0.3], [2.0, 0.0], [3.0, 0.0], nr, Some(&outer), 1.0);
         assert!((bj[1]).abs() < 1e-9 && (e[1] + 1.0).abs() < 1e-9);
-        let (bj, _, e) = label_side([2.0, 0.0], [3.0, 0.0], n, 0.3, Some(&outer), 1.0);
+        let (bj, _, e) = label_side([2.0, 0.0], [3.0, 0.0], [2.0, 0.3], [3.0, 0.3], n, Some(&outer), 1.0);
+        // A slanted outer face: the jambs reach it at their own lengths.
+        let slant = vec![Face { handle: Handle::new(7), seg: 0, a: [0.0, -0.3], b: [10.0, -0.4] }];
+        let (dj, _, dk, _) = far_face(&slant, [2.0, 0.0], [3.0, 0.0], [0.0, -1.0], 0.3, 0.01, 1.2, 0.002).unwrap();
+        assert!((dj - 0.32).abs() < 1e-9 && (dk - 0.33).abs() < 1e-9, "{dj} {dk}");
         assert!(bj[1].abs() < 1e-9 && (e[1] + 1.0).abs() < 1e-9);
         // The wall's side: where its other face is, even with no room drawn.
         let only = vec![outer.clone()];
@@ -1185,7 +1216,7 @@ mod tests {
         assert_eq!(r.neighbours(2), vec![1]);
         assert_eq!(cm_text(1.1, 1.0), "110");
         assert_eq!(cm_text(120.0, 0.01), "120");
-        let w = window_lines([0.0, 0.0], [1.2, 0.0], [0.0, 1.0], 0.3, 1.0);
+        let w = window_lines([0.0, 0.0], [1.2, 0.0], [0.0, 0.3], [1.2, 0.3], true, 1.0);
         assert!(w.len() >= 6);
     }
 }
