@@ -1121,6 +1121,11 @@ impl ThicknessTool {
         self.asking
     }
 
+    /// The perimeter's corners, height and thicknesses so far.
+    pub fn state(&self) -> (&[P2], f64, &[Option<f64>]) {
+        (&self.pts, self.z, &self.thick)
+    }
+
     pub fn new(pts: Vec<P2>, z: f64, thick: Vec<Option<f64>>, default_t: f64) -> Self {
         let mut thick = thick;
         thick.resize(pts.len(), None);
@@ -1301,6 +1306,13 @@ impl InteractiveCommand for ThicknessTool {
             } else {
                 self.thick[k] = None;
             }
+            // Draw the side's offset line and value at once, so a forgotten
+            // side shows up on the drawing: the host gives a tool no drawing
+            // access, so hand the tool to a command that writes and resumes.
+            let mut next = self.clone();
+            next.msg = None;
+            *THICK_RESUME.lock().unwrap_or_else(|e| e.into_inner()) = Some(next);
+            return deferred("RV_SPESSORILATO", String::new());
         }
         CommandStep::NeedPoint
     }

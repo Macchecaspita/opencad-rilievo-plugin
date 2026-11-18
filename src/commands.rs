@@ -640,6 +640,16 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         },
         "RV_SPESSORILATO" => {
             if let Some(tool) = tools::take_thickness_resume() {
+                if tool.asking().is_none() {
+                    // A side was just answered: its line and value go on the
+                    // drawing now, and the thicknesses are kept.
+                    let (pts, z, thick) = tool.state();
+                    write_thickness_labels(host, pts, z, thick);
+                    let mut g = PERIMETER.lock().unwrap_or_else(|e| e.into_inner());
+                    if let Some((_, t)) = g.as_mut() {
+                        *t = thick.to_vec();
+                    }
+                }
                 host.start_interactive(Box::new(tool));
             }
         }
@@ -652,6 +662,7 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                     write_thickness_labels(host, &room.pts, room.z, &thick);
                     let n = thick.len();
                     let done = thick.iter().filter(|t| t.is_some()).count();
+                    let missing: Vec<String> = (0..n).filter(|&k| thick[k].is_none()).map(|k| format!("E{}–E{}", k + 1, (k + 1) % n + 1)).collect();
                     *PERIMETER.lock().unwrap_or_else(|e| e.into_inner()) = Some((o, thick));
                     let line = tr!(
                         format!("Spessori dati a {done} lati su {n} del perimetro (scritti sul disegno, layer {LAYER_PERIM}). Ora scegli i vani con «Vani: numeri, lettere e misure»."),
@@ -662,7 +673,20 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                         format!("Espessuras dadas a {done} de {n} lados do perímetro (escritas no desenho, camada {LAYER_PERIM}). Agora escolha os compartimentos com «Compartimentos: números, letras e medidas»."),
                         format!("Nadano grubość {done} z {n} boków obrysu (zapisane na rysunku, warstwa {LAYER_PERIM}). Teraz wybierz pomieszczenia przyciskiem «Pomieszczenia: numery, litery i pomiary»."),
                     );
-                    host.start_interactive(Box::new(tools::ReportDialog::titled(thickness_title(), vec![line])));
+                    let mut lines = vec![line];
+                    if !missing.is_empty() {
+                        let m = missing.join(", ");
+                        lines.push(tr!(
+                            format!("⚠ Lati ancora senza spessore (arancioni): {m}. Se serve, premi di nuovo «Spessori muri esterni» e cliccali."),
+                            format!("⚠ Sides still without a thickness (orange): {m}. If needed, press «Outer wall thicknesses» again and click them."),
+                            format!("⚠ Lados aún sin espesor (naranjas): {m}. Si hace falta, pulse de nuevo «Espesores de muros exteriores» y haga clic en ellos."),
+                            format!("⚠ Côtés encore sans épaisseur (orange) : {m}. Si besoin, appuyez de nouveau sur « Épaisseurs des murs extérieurs » et cliquez-les."),
+                            format!("⚠ Henüz kalınlığı olmayan kenarlar (turuncu): {m}. Gerekirse «Dış duvar kalınlıkları» düğmesine yeniden basıp onlara tıklayın."),
+                            format!("⚠ Lados ainda sem espessura (laranja): {m}. Se for preciso, prima de novo «Espessuras das paredes exteriores» e clique neles."),
+                            format!("⚠ Boki wciąż bez grubości (pomarańczowe): {m}. W razie potrzeby naciśnij ponownie «Grubości ścian zewnętrznych» i kliknij je."),
+                        ));
+                    }
+                    host.start_interactive(Box::new(tools::ReportDialog::titled(thickness_title(), lines)));
                 }
             }
         }

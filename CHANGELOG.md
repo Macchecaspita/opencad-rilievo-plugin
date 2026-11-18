@@ -12,6 +12,20 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.12.3] - 2026-11-18
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- **Spessori muri esterni**: appena si preme OK nella finestra dello spessore,
+  la linea parallela e il valore di quel lato compaiono subito sul disegno
+  (layer RILIEVO_PERIMETRO), senza aspettare Invio. Così si vede a colpo
+  d'occhio quale lato manca.
+- Alla fine (Invio) la finestra di riepilogo elenca i lati rimasti senza
+  spessore, per esempio «E2–E3», e ricorda come completarli.
+
 ## [0.12.2] - 2026-11-16
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
