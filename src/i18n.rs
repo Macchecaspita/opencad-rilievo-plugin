@@ -1,5 +1,5 @@
-//! Interface language: Italian, English, Spanish, French, Turkish,
-//! Portuguese or Polish, following Open CAD Studio; English otherwise.
+//! Interface language: the 23 languages of Open CAD Studio, following its
+//! setting; English otherwise.
 //!
 //! The host does not pass its UI language to plugins, so it is read from the
 //! host's own settings file, `<config>/OpenCADStudio/settings.json`, key
@@ -7,7 +7,7 @@
 //! `"system"` (or no file) the operating system's locale decides. Any
 //! other language gets English.
 //!
-//! `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO` overrides the choice; the override is kept in
+//! `RV_LANG <code>|AUTO` (`it`, `en`, `de`, `zh-CN`, …) overrides the choice; the override is kept in
 //! `<config>/OpenCADStudio/rilievovani-lang.txt`. The ribbon is built once
 //! when the plugin loads, so its labels follow a change after a restart;
 //! messages and prompts follow it at once.
@@ -15,30 +15,20 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU8, Ordering};
 
-/// Pick the form for the current language. Every arm is an expression, so
-/// `format!` works in each and only the chosen one is evaluated. With two
-/// arms (Italian, English) every other language gets the English one.
+/// Pick the form for the current language: `tr!(it, en, es, fr, tr, pt, pl)`.
+/// Every form is an expression, so `format!` works in each and only the
+/// chosen one is evaluated. The other languages of Open CAD Studio come from
+/// `i18n/<code>.json` at build time (see the `tr_macro` crate); a sentence
+/// not translated there falls back to English.
 #[macro_export]
 macro_rules! tr {
-    ($it:expr, $en:expr $(,)?) => {
-        if $crate::i18n::italian() {
-            $it
-        } else {
-            $en
-        }
-    };
-    ($it:expr, $en:expr, $es:expr, $fr:expr, $tr:expr, $pt:expr, $pl:expr $(,)?) => {
-        match $crate::i18n::current() {
-            $crate::i18n::Lang::It => $it,
-            $crate::i18n::Lang::En => $en,
-            $crate::i18n::Lang::Es => $es,
-            $crate::i18n::Lang::Fr => $fr,
-            $crate::i18n::Lang::Tr => $tr,
-            $crate::i18n::Lang::Pt => $pt,
-            $crate::i18n::Lang::Pl => $pl,
-        }
+    ($($t:tt)*) => {
+        $crate::i18n::tr_impl!($($t)*)
     };
 }
+
+#[doc(hidden)]
+pub use tr_macro::tr_impl;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Lang {
@@ -49,12 +39,52 @@ pub enum Lang {
     Tr,
     Pt,
     Pl,
+    Bg,
+    Cs,
+    De,
+    El,
+    Fi,
+    Hi,
+    Hu,
+    Ja,
+    Ko,
+    Lo,
+    Nl,
+    Ru,
+    Vi,
+    ZhCn,
+    ZhTw,
+    Ar,
 }
 
-pub const ALL: [Lang; 7] = [Lang::It, Lang::En, Lang::Es, Lang::Fr, Lang::Tr, Lang::Pt, Lang::Pl];
+pub const ALL: [Lang; 23] = [
+    Lang::It,
+    Lang::En,
+    Lang::Es,
+    Lang::Fr,
+    Lang::Tr,
+    Lang::Pt,
+    Lang::Pl,
+    Lang::Bg,
+    Lang::Cs,
+    Lang::De,
+    Lang::El,
+    Lang::Fi,
+    Lang::Hi,
+    Lang::Hu,
+    Lang::Ja,
+    Lang::Ko,
+    Lang::Lo,
+    Lang::Nl,
+    Lang::Ru,
+    Lang::Vi,
+    Lang::ZhCn,
+    Lang::ZhTw,
+    Lang::Ar,
+];
 
 impl Lang {
-    /// Two-letter code, as typed after `RV_LANG` and kept in the override file.
+    /// Code, as typed after `RV_LANG` and kept in the override file.
     pub fn code(self) -> &'static str {
         match self {
             Lang::It => "it",
@@ -64,6 +94,22 @@ impl Lang {
             Lang::Tr => "tr",
             Lang::Pt => "pt",
             Lang::Pl => "pl",
+            Lang::Bg => "bg",
+            Lang::Cs => "cs",
+            Lang::De => "de",
+            Lang::El => "el",
+            Lang::Fi => "fi",
+            Lang::Hi => "hi",
+            Lang::Hu => "hu",
+            Lang::Ja => "ja",
+            Lang::Ko => "ko",
+            Lang::Lo => "lo",
+            Lang::Nl => "nl",
+            Lang::Ru => "ru",
+            Lang::Vi => "vi",
+            Lang::ZhCn => "zh-CN",
+            Lang::ZhTw => "zh-TW",
+            Lang::Ar => "ar",
         }
     }
 
@@ -77,6 +123,22 @@ impl Lang {
             Lang::Tr => "Türkçe",
             Lang::Pt => "português",
             Lang::Pl => "polski",
+            Lang::Bg => "български",
+            Lang::Cs => "čeština",
+            Lang::De => "Deutsch",
+            Lang::El => "Ελληνικά",
+            Lang::Fi => "suomi",
+            Lang::Hi => "हिन्दी",
+            Lang::Hu => "magyar",
+            Lang::Ja => "日本語",
+            Lang::Ko => "한국어",
+            Lang::Lo => "ລາວ",
+            Lang::Nl => "Nederlands",
+            Lang::Ru => "русский",
+            Lang::Vi => "Tiếng Việt",
+            Lang::ZhCn => "简体中文",
+            Lang::ZhTw => "繁體中文",
+            Lang::Ar => "العربية",
         }
     }
 
@@ -84,13 +146,15 @@ impl Lang {
         ALL.iter().position(|&l| l == self).unwrap() as u8 + 1
     }
 
-    /// From a tag such as `"it"`, `"pt-BR"`, `"fr_CH.UTF-8"`.
+    /// From a tag such as `"it"`, `"pt-BR"`, `"fr_CH.UTF-8"`, `"zh-TW"`.
     pub fn from_tag(tag: &str) -> Option<Lang> {
-        let t = tag.trim().to_ascii_lowercase();
-        ALL.into_iter().find(|l| {
-            let c = l.code();
-            t == c || (t.starts_with(c) && matches!(t.as_bytes().get(2), Some(b'-' | b'_' | b'.')))
-        })
+        let t = tag.trim().to_ascii_lowercase().replace('_', "-");
+        let lang = t.split(['-', '.', '@']).next().unwrap_or("");
+        if lang == "zh" {
+            let traditional = ["-tw", "-hk", "-mo", "-hant"].iter().any(|s| t.contains(s));
+            return Some(if traditional { Lang::ZhTw } else { Lang::ZhCn });
+        }
+        ALL.into_iter().find(|l| l.code() == lang)
     }
 }
 
@@ -111,10 +175,10 @@ pub fn italian() -> bool {
     current() == Lang::It
 }
 
-/// Whether numbers are written with a decimal comma (every language here
-/// but English).
+/// Whether numbers are written with a decimal comma (as is usual in the
+/// language) rather than a point.
 pub fn decimal_comma() -> bool {
-    current() != Lang::En
+    !matches!(current(), Lang::En | Lang::Hi | Lang::Ja | Lang::Ko | Lang::ZhCn | Lang::ZhTw | Lang::Ar)
 }
 
 pub fn current() -> Lang {
@@ -133,6 +197,12 @@ pub fn current() -> Lang {
 /// in the CAD is picked up without restarting).
 pub fn refresh() {
     store(resolve());
+}
+
+/// Use this language until the next [`refresh`] (tests).
+#[doc(hidden)]
+pub fn force(l: Lang) {
+    store(l);
 }
 
 fn store(l: Lang) {
@@ -221,7 +291,12 @@ pub fn parse_choice(s: &str) -> Option<Choice> {
         "tr" | "tur" | "türkçe" | "turkce" | "turkish" | "turco" => Lang::Tr,
         "pt" | "por" | "português" | "portugues" | "portuguese" | "portoghese" => Lang::Pt,
         "pl" | "pol" | "polski" | "polish" | "polacco" => Lang::Pl,
-        _ => return None,
+        "de" | "deu" | "deutsch" | "german" | "tedesco" => Lang::De,
+        "nl" | "nld" | "nederlands" | "dutch" | "olandese" => Lang::Nl,
+        "ru" | "rus" | "русский" | "russian" | "russo" => Lang::Ru,
+        "zh" | "zh-cn" | "zh_cn" | "chinese" | "cinese" => Lang::ZhCn,
+        "zh-tw" | "zh_tw" => Lang::ZhTw,
+        other => return Lang::from_tag(other).map(Choice::Fixed),
     };
     Some(Choice::Fixed(l))
 }
@@ -279,7 +354,10 @@ mod tests {
         assert_eq!(Lang::from_tag("pl"), Some(Lang::Pl));
         assert_eq!(Lang::from_tag("fr-CA"), Some(Lang::Fr));
         assert_eq!(Lang::from_tag("es-419"), Some(Lang::Es));
-        assert_eq!(Lang::from_tag("de-DE"), None);
+        assert_eq!(Lang::from_tag("de-DE"), Some(Lang::De));
+        assert_eq!(Lang::from_tag("zh-TW"), Some(Lang::ZhTw));
+        assert_eq!(Lang::from_tag("zh_CN.UTF-8"), Some(Lang::ZhCn));
+        assert_eq!(Lang::from_tag("xx-YY"), None);
         for l in ALL {
             assert_eq!(ALL[l.id() as usize - 1], l);
         }

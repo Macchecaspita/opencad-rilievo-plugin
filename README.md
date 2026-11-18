@@ -45,11 +45,15 @@ tolerance in red.
 
 Commands: `RV_PERIMETRO` (outer perimeter), `RV_SPESSORI` (outer wall thicknesses),
 `RV_VANO` (rooms: numbers, letters, measures), `RV_ETICHETTE` (corner letters only),
-`RV_APPLICA` (move the original rooms to the result), `RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_MANUALE` (surveying manual, PDF), `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO`.
+`RV_APPLICA` (move the original rooms to the result), `RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_MANUALE` (surveying manual, PDF), `RV_LANG <code>|AUTO`.
 
-The interface and the PDF manual are in English, Italian, Spanish, French,
-Turkish, Portuguese and Polish, following the language of Open CAD Studio
-(English for any other language); `RV_LANG` forces one.
+The interface and the PDF manual are in the same 23 languages as Open CAD
+Studio (Arabic, Bulgarian, Chinese simplified and traditional, Czech, Dutch,
+English, Finnish, French, German, Greek, Hindi, Hungarian, Italian, Japanese,
+Korean, Lao, Polish, Portuguese, Russian, Spanish, Turkish, Vietnamese) and
+follow its language; `RV_LANG it|en|de|zh-CN|…|AUTO` forces one. Italian and
+English are the reference texts: the other languages are machine translations,
+not reviewed by native speakers, so corrections are welcome.
 
 Build with `cargo build --release`; install the library and `plugin.toml` in
 `<config>/OpenCADStudio/plugins/opencad.rilievovani/`, or add the repository

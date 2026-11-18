@@ -1,0 +1,9 @@
+[package]
+name = "tr_macro"
+version = "0.1.0"
+edition = "2021"
+description = "Room Survey: pick a message's form for the interface language, the extra languages read from i18n/<code>.json at build time."
+license = "GPL-3.0-only"
+
+[lib]
+proc-macro = true

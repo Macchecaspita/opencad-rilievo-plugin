@@ -1,13 +1,15 @@
 """Genera i manuali di rilievo di Room Survey, uno per lingua:
-docs/Manuale_rilievo.pdf (italiano) e docs/manual_<lingua>.pdf (en, es, fr,
-tr, pt, pl). I testi sono in docs/manual/<lingua>.py.
-Esegui:  python docs/manuale.py [lingua …]   (serve reportlab).
+docs/Manuale_rilievo.pdf (italiano) e docs/manual_<lingua>.pdf per le altre
+22 lingue di Open CAD Studio. I testi sono in docs/manual/<lingua>.py.
+Esegui:  python docs/manuale.py [lingua …]   (serve reportlab; per ja, ko,
+zh-CN, zh-TW, ar, hi e lo serve anche Chrome, con i font Noto CJK e FreeSans).
 
 I PDF vengono anche incorporati nel plugin (comando RV_MANUALE)."""
 
 import importlib.util
 import math
 import os
+import re
 import sys
 
 from reportlab.graphics.shapes import Circle, Drawing, Line, PolyLine, Polygon, String, Wedge
@@ -22,7 +24,8 @@ from reportlab.platypus import (KeepTogether, PageBreak, Paragraph, SimpleDocTem
                                 TableStyle)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-LANGS = ["it", "en", "es", "fr", "tr", "pt", "pl"]
+LANGS = ["it", "en", "es", "fr", "tr", "pt", "pl", "bg", "cs", "de", "el", "fi", "hu", "nl", "ru", "vi",
+         "ja", "ko", "zh-CN", "zh-TW", "ar", "hi", "lo"]
 
 # Testi della lingua in corso (impostati da build()).
 T = {}
@@ -65,12 +68,17 @@ subtitle = ParagraphStyle("subtitle", parent=base, fontSize=13, leading=18, text
 note = ParagraphStyle("note", parent=base, backColor=LIGHT, borderPadding=(6, 8, 6, 8), spaceBefore=6, spaceAfter=10)
 
 
+def fix_glyphs(text):
+    """DejaVu non ha il «＋» a larghezza piena dei pulsanti: usa il + normale."""
+    return text.replace("＋", "+")
+
+
 def P(text, style=base):
-    return Paragraph(text, style)
+    return Paragraph(fix_glyphs(text), style)
 
 
 def bullets(items):
-    return [Paragraph(t, bullet, bulletText="•") for t in items]
+    return [Paragraph(fix_glyphs(t), bullet, bulletText="•") for t in items]
 
 
 # ── Disegni ────────────────────────────────────────────────────────────────
@@ -366,7 +374,7 @@ def table(rows, widths, head=True):
 
 
 def cell(s):
-    return Paragraph(s, ParagraphStyle("c", parent=base, fontSize=8.2, leading=10.5, spaceAfter=0))
+    return Paragraph(fix_glyphs(s), ParagraphStyle("c", parent=base, fontSize=8.2, leading=10.5, spaceAfter=0))
 
 
 def footer(canvas, doc):
@@ -465,6 +473,141 @@ def build(lang):
     print(out)
 
 
+# ── Lingue con scritture complesse: HTML stampato in PDF da Chrome ─────────
+# reportlab non sa comporre l'arabo, il devanagari e il lao né usare i font
+# CJK: per queste lingue il manuale si scrive in HTML (stessi testi e stessi
+# disegni, in SVG) e Chrome headless lo stampa in PDF.
+
+HTML_FONTS = {
+    "ja": "'Noto Sans CJK JP'", "ko": "'Noto Sans CJK KR'", "zh-CN": "'Noto Sans CJK SC'",
+    "zh-TW": "'Noto Sans CJK TC'", "ar": "'DejaVu Sans'", "hi": "'FreeSans', 'FreeSerif'",
+    "lo": "'DejaVu Sans'",
+}
+RTL = {"ar"}
+
+
+def _svg_text_anchor():
+    """Fa scrivere a renderSVG l'attributo text-anchor invece di spostare il
+    testo con le misure di DejaVu, sbagliate per i glifi che DejaVu non ha."""
+    from reportlab.graphics import renderSVG
+    orig = renderSVG.SVGCanvas.drawString
+    if getattr(orig, "_anchor", False):
+        return
+
+    def draw(self, s, x, y, angle=0, link_info=None, text_anchor="left", textRenderMode=0, **attrs):
+        a = {"end": "end", "middle": "middle"}.get(text_anchor)
+        if a:
+            attrs["text-anchor"] = a
+        return orig(self, s, x, y, angle, link_info, "start", textRenderMode, **attrs)
+
+    draw._anchor = True
+    renderSVG.SVGCanvas.drawString = draw
+
+
+def svg(d, family):
+    from reportlab.graphics import renderSVG
+    _svg_text_anchor()
+    s = renderSVG.drawToString(d)
+    s = s[s.index("<svg"):]
+    # le misure di reportlab sono in punti, quelle dell'SVG in pixel CSS
+    s = re.sub(r'(<svg[^>]*?) width="([\d.]+)" height="([\d.]+)"',
+               lambda g: f'{g[1]} width="{float(g[2]) * 4 / 3:.1f}" height="{float(g[3]) * 4 / 3:.1f}"', s, count=1)
+    s = s.replace("font-family: DV-B;", f"font-family: {family}; font-weight: bold;")
+    s = s.replace("font-family: DV;", f"font-family: {family};")
+    return f'<div class="fig">{s}</div>'
+
+
+def h_table(rows_, widths, head=True):
+    out = ['<table>', "<colgroup>" + "".join(f'<col style="width:{w}mm">' for w in widths) + "</colgroup>"]
+    for i, r in enumerate(rows_):
+        tag = "th" if head and i == 0 else "td"
+        out.append("<tr>" + "".join(f"<{tag}>{c}</{tag}>" for c in r) + "</tr>")
+    out.append("</table>")
+    return "".join(out)
+
+
+def h_bullets(items):
+    return "<ul>" + "".join(f"<li>{t}</li>" for t in items) + "</ul>"
+
+
+def build_html(lang):
+    import subprocess
+    import tempfile
+    global T, DEC
+    m = load(lang)
+    T, DEC = m.S, m.DEC
+    fam = HTML_FONTS[lang] + ", 'DejaVu Sans', sans-serif"
+    out = os.path.join(HERE, m.OUT)
+    p = lambda t, c="": f'<p class="{c}">{t}</p>'
+    h = []
+    h += ['<div class="cover">', '<div class="title">Room Survey</div>', p(T["subtitle"], "subtitle"),
+          svg(plan_overview(), fam), p(T["warn"], "note"), "</div>", '<div class="pb"></div>']
+    h += [f'<h1>{T["h1"]}</h1>', p(T["p1"]), h_table(T["t1"], [10, 30, 124]), f'<h2>{T["h_tools"]}</h2>',
+          h_bullets(T["tools"])]
+    h += [f'<h1>{T["h2"]}</h1>', p(T["p2a"]), p(T["p2b"]), h_table(T["t2"], [62, 102]), '<div class="pb"></div>']
+    h += [f'<h1>{T["h3"]}</h1>', p(T["p3a"]), p(T["p3b"]),
+          f'<div class="two">{svg(plan_room(), fam)}{svg(plan_l(), fam)}</div>', p(T["cap3"], "cap"),
+          f'<h2>{T["h_check"]}</h2>', p(T["p_check"]), f'<h2>{T["h_obst"]}</h2>',
+          f'<div class="two"><div>{svg(plan_obstacle(), fam)}</div><div>{"".join(p(x) for x in T["obst"])}</div></div>',
+          '<div class="pb"></div>']
+    h += [f'<h1>{T["h4"]}</h1>', p(T["p4a"]), svg(plan_door(), fam), p(T["cap4"], "cap"), p(T["p4b"]),
+          h_table(T["t4"], [110, 30]), p(T["p4c"]), p(T["p4d"]), h_bullets(T["links"]),
+          f'<h2>{T["h_order"]}</h2>', p(T["p_order"]), f'<h2>{T["h_fix"]}</h2>', p(T["p_fix"]),
+          h_bullets(T["fix"]), f'<h2>{T["h_hatch"]}</h2>', p(T["p_hatch"]), h_bullets(T["hatch"]),
+          p(T["p_hatch2"])]
+    h += [f'<h1>{T["h5"]}</h1>', f'<h2>{T["h_dw"]}</h2>', p(T["p_dw"]), f'<h2>{T["h_ext"]}</h2>', p(T["p_ext"]),
+          f'<h1>{T["h6"]}</h1>', h_bullets(T["calc"]), f'<h2>{T["h_vals"]}</h2>', h_table(T["t6"], [56, 36, 72]),
+          f'<h2>{T["h_list"]}</h2>', h_bullets(T["list"])]
+    h += ['<div class="pb"></div>', f'<h1>{T["ex_h"]}</h1>', p(T["ex_p"]), svg(plan_example(), fam),
+          p(T["ex_cap"], "cap"), h_table(T["ex_ties"], [16, 48, 58, 42]), p(T["ex_ties_note"])]
+    for k, (title_, text) in enumerate(T["ex_steps"], 1):
+        h += [f"<h2>{k}. {title_}</h2>", p(text)]
+        if k == T["ex_room_step"]:
+            h.append(h_table(T["ex_room1"], [60, 30, 74]))
+        if k == T["ex_door_step"]:
+            h.append(h_table(T["ex_doors"], [14, 50, 50, 24, 26]))
+    h += [p(T["ex_end"]), p(T["end"], "small")]
+    foot = T["foot"].replace('"', "'")
+    side = ("right", "left") if lang in RTL else ("left", "right")
+    css = f"""
+@page {{ size: A4; margin: 16mm 18mm 18mm 18mm;
+  @bottom-{side[0]} {{ content: "{foot}"; font-family: {fam}; font-size: 7.5pt; color: #8a8a8a; }}
+  @bottom-{side[1]} {{ content: counter(page); font-family: {fam}; font-size: 7.5pt; color: #8a8a8a; }} }}
+body {{ font-family: {fam}; font-size: 9.6pt; line-height: 1.42; color: #222; margin: 0; }}
+h1 {{ font-size: 15pt; color: #d4471f; margin: 8pt 0 8pt; break-after: avoid; }}
+h2 {{ font-size: 11.5pt; margin: 10pt 0 4pt; break-after: avoid; }}
+p {{ margin: 0 0 5pt; }}
+.cover {{ padding-top: 30mm; }}
+.title {{ font-size: 24pt; font-weight: bold; margin-bottom: 6pt; }}
+.subtitle {{ font-size: 13pt; color: #d4471f; margin-bottom: 18pt; line-height: 1.4; }}
+.note {{ background: #f2f2f2; padding: 6pt 8pt; margin: 10pt 0; }}
+.cap {{ font-size: 8.2pt; color: #8a8a8a; text-align: center; margin: 2pt 0 10pt; }}
+.small {{ font-size: 8.2pt; color: #8a8a8a; margin-top: 16pt; }}
+.pb {{ break-after: page; }}
+.fig {{ direction: ltr; text-align: center; break-inside: avoid; }}
+.fig svg {{ max-width: 100%; height: auto; }}
+.two {{ display: flex; gap: 6mm; align-items: flex-start; break-inside: avoid; direction: ltr; }}
+html[dir=rtl] .two > * {{ direction: rtl; }}
+.two > * {{ flex: 1; }}
+table {{ border-collapse: collapse; margin: 4pt 0 8pt; font-size: 8.2pt; table-layout: fixed; }}
+th, td {{ border: 0.3pt solid #c8c8c8; padding: 3pt 4pt; vertical-align: top; text-align: start; }}
+th {{ background: #f2f2f2; }}
+tr {{ break-inside: avoid; }}
+ul {{ margin: 0 0 6pt; padding-inline-start: 14pt; }}
+li {{ margin-bottom: 3pt; }}
+"""
+    html = (f'<!DOCTYPE html><html lang="{lang}" dir="{"rtl" if lang in RTL else "ltr"}"><head><meta charset="utf-8">'
+            f'<title>{T["doc_title"]}</title><style>{css}</style></head><body>{"".join(h)}</body></html>')
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "manual.html")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(html)
+        subprocess.run([os.environ.get("CHROME", "google-chrome"), "--headless", "--no-sandbox", "--disable-gpu",
+                        "--no-pdf-header-footer", f"--print-to-pdf={out}", "file://" + src],
+                       check=True, capture_output=True)
+    print(out)
+
+
 if __name__ == "__main__":
     for lang in sys.argv[1:] or LANGS:
-        build(lang)
+        (build_html if lang in HTML_FONTS else build)(lang)

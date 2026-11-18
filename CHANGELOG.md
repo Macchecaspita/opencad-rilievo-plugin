@@ -12,6 +12,35 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.13.0] - 2026-11-18
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Aggiunto
+- **23 lingue, le stesse di Open CAD Studio.** Oltre a italiano, inglese,
+  spagnolo, francese, turco, portoghese e polacco, interfaccia, guida e
+  messaggi sono ora anche in arabo, bulgaro, ceco, cinese semplificato e
+  tradizionale, coreano, finlandese, giapponese, greco, hindi, lao,
+  nederlandese, russo, tedesco, ungherese e vietnamita. La lingua segue quella
+  di Open CAD Studio; `RV_LANG <codice>` (per esempio `RV_LANG de` o
+  `RV_LANG zh-CN`) la forza, `RV_LANG AUTO` torna automatica.
+- **Manuale PDF in tutte le 23 lingue** (pulsante *Manuale PDF*), con i
+  disegni e l'esempio completo. Le versioni in arabo, hindi, lao, giapponese,
+  coreano e cinese sono stampate con Chrome per comporre correttamente queste
+  scritture.
+- **Attenzione:** le nuove traduzioni sono **automatiche e non riviste da
+  madrelingua**. I testi di riferimento restano italiano e inglese; le
+  correzioni sono benvenute.
+
+### Modificato
+- Guida rapida e manuali aggiornati al funzionamento della 0.12: le linee degli
+  spessori compaiono subito dopo OK e Invio elenca i lati dimenticati.
+- Le traduzioni aggiuntive stanno in `i18n/<codice>.json` e vengono inserite
+  nel plugin in fase di compilazione: una frase non tradotta ricade
+  sull'inglese.
+
 ## [0.12.3] - 2026-11-18
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

@@ -940,15 +940,32 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
 
 /// The surveying manual (PDF) in each language, built into the plugin.
 fn manual_pdf() -> &'static [u8] {
-    tr!(
-        include_bytes!("../docs/Manuale_rilievo.pdf").as_slice(),
-        include_bytes!("../docs/manual_en.pdf").as_slice(),
-        include_bytes!("../docs/manual_es.pdf").as_slice(),
-        include_bytes!("../docs/manual_fr.pdf").as_slice(),
-        include_bytes!("../docs/manual_tr.pdf").as_slice(),
-        include_bytes!("../docs/manual_pt.pdf").as_slice(),
-        include_bytes!("../docs/manual_pl.pdf").as_slice(),
-    )
+    use crate::i18n::Lang;
+    match crate::i18n::current() {
+        Lang::It => include_bytes!("../docs/Manuale_rilievo.pdf"),
+        Lang::En => include_bytes!("../docs/manual_en.pdf"),
+        Lang::Es => include_bytes!("../docs/manual_es.pdf"),
+        Lang::Fr => include_bytes!("../docs/manual_fr.pdf"),
+        Lang::Tr => include_bytes!("../docs/manual_tr.pdf"),
+        Lang::Pt => include_bytes!("../docs/manual_pt.pdf"),
+        Lang::Pl => include_bytes!("../docs/manual_pl.pdf"),
+        Lang::Bg => include_bytes!("../docs/manual_bg.pdf"),
+        Lang::Cs => include_bytes!("../docs/manual_cs.pdf"),
+        Lang::De => include_bytes!("../docs/manual_de.pdf"),
+        Lang::El => include_bytes!("../docs/manual_el.pdf"),
+        Lang::Fi => include_bytes!("../docs/manual_fi.pdf"),
+        Lang::Hi => include_bytes!("../docs/manual_hi.pdf"),
+        Lang::Hu => include_bytes!("../docs/manual_hu.pdf"),
+        Lang::Ja => include_bytes!("../docs/manual_ja.pdf"),
+        Lang::Ko => include_bytes!("../docs/manual_ko.pdf"),
+        Lang::Lo => include_bytes!("../docs/manual_lo.pdf"),
+        Lang::Nl => include_bytes!("../docs/manual_nl.pdf"),
+        Lang::Ru => include_bytes!("../docs/manual_ru.pdf"),
+        Lang::Vi => include_bytes!("../docs/manual_vi.pdf"),
+        Lang::ZhCn => include_bytes!("../docs/manual_zh-CN.pdf"),
+        Lang::ZhTw => include_bytes!("../docs/manual_zh-TW.pdf"),
+        Lang::Ar => include_bytes!("../docs/manual_ar.pdf"),
+    }
 }
 
 /// Write the manual next to the temporary files and open it with the
@@ -1000,32 +1017,32 @@ fn help(host: &mut dyn HostApi) {
     host.push_output(&tr!(
         format!(
             "Room Survey {}: RV_VANO (misure di lati, diagonali e collegamenti di uno o più vani), RV_ETICHETTE \
-             (lettere sui vertici), RV_APPLICA (porta i vani originali nella forma calcolata), RV_LIBRETTO (salva il libretto delle misure), RV_GUIDE (guida), RV_MANUALE (manuale di rilievo in PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+             (lettere sui vertici), RV_APPLICA (porta i vani originali nella forma calcolata), RV_LIBRETTO (salva il libretto delle misure), RV_GUIDE (guida), RV_MANUALE (manuale di rilievo in PDF), RV_LANG AUTO|it|en|de|zh-CN|….",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
             "Room Survey {}: RV_VANO (sides, diagonals and links of one or more rooms), RV_ETICHETTE (corner letters), \
-             RV_APPLICA (move the original rooms to the computed shape), RV_LIBRETTO (save the measures book), RV_GUIDE (guide), RV_MANUALE (surveying manual, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+             RV_APPLICA (move the original rooms to the computed shape), RV_LIBRETTO (save the measures book), RV_GUIDE (guide), RV_MANUALE (surveying manual, PDF), RV_LANG AUTO|it|en|de|zh-CN|….",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Room Survey {}: RV_VANO (lados, diagonales y enlaces de una o varias estancias), RV_ETICHETTE (letras de las esquinas), RV_APPLICA (lleva las estancias originales a la forma calculada), RV_LIBRETTO (guarda el libro de medidas), RV_GUIDE (guía), RV_MANUALE (manual de levantamiento, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {}: RV_VANO (lados, diagonales y enlaces de una o varias estancias), RV_ETICHETTE (letras de las esquinas), RV_APPLICA (lleva las estancias originales a la forma calculada), RV_LIBRETTO (guarda el libro de medidas), RV_GUIDE (guía), RV_MANUALE (manual de levantamiento, PDF), RV_LANG AUTO|it|en|de|zh-CN|….",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Room Survey {} : RV_VANO (côtés, diagonales et liaisons d'une ou plusieurs pièces), RV_ETICHETTE (lettres des angles), RV_APPLICA (amène les pièces d'origine à la forme calculée), RV_LIBRETTO (enregistre le carnet de mesures), RV_GUIDE (guide), RV_MANUALE (manuel de relevé, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {} : RV_VANO (côtés, diagonales et liaisons d'une ou plusieurs pièces), RV_ETICHETTE (lettres des angles), RV_APPLICA (amène les pièces d'origine à la forme calculée), RV_LIBRETTO (enregistre le carnet de mesures), RV_GUIDE (guide), RV_MANUALE (manuel de relevé, PDF), RV_LANG AUTO|it|en|de|zh-CN|….",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Room Survey {}: RV_VANO (bir veya birden çok odanın kenarları, köşegenleri ve bağlantıları), RV_ETICHETTE (köşe harfleri), RV_APPLICA (özgün odaları hesaplanan şekle getirir), RV_LIBRETTO (ölçü defterini kaydeder), RV_GUIDE (rehber), RV_MANUALE (ölçüm kılavuzu, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {}: RV_VANO (bir veya birden çok odanın kenarları, köşegenleri ve bağlantıları), RV_ETICHETTE (köşe harfleri), RV_APPLICA (özgün odaları hesaplanan şekle getirir), RV_LIBRETTO (ölçü defterini kaydeder), RV_GUIDE (rehber), RV_MANUALE (ölçüm kılavuzu, PDF), RV_LANG AUTO|it|en|de|zh-CN|….",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Room Survey {}: RV_VANO (lados, diagonais e ligações de um ou mais compartimentos), RV_ETICHETTE (letras dos cantos), RV_APPLICA (leva os compartimentos originais à forma calculada), RV_LIBRETTO (guarda o caderno de medidas), RV_GUIDE (guia), RV_MANUALE (manual de levantamento, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {}: RV_VANO (lados, diagonais e ligações de um ou mais compartimentos), RV_ETICHETTE (letras dos cantos), RV_APPLICA (leva os compartimentos originais à forma calculada), RV_LIBRETTO (guarda o caderno de medidas), RV_GUIDE (guia), RV_MANUALE (manual de levantamento, PDF), RV_LANG AUTO|it|en|de|zh-CN|….",
             env!("CARGO_PKG_VERSION")
         ),
         format!(
-            "Room Survey {}: RV_VANO (boki, przekątne i powiązania jednego lub wielu pomieszczeń), RV_ETICHETTE (litery narożników), RV_APPLICA (doprowadza oryginalne pomieszczenia do obliczonego kształtu), RV_LIBRETTO (zapisuje dziennik pomiarów), RV_GUIDE (przewodnik), RV_MANUALE (podręcznik pomiaru, PDF), RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO.",
+            "Room Survey {}: RV_VANO (boki, przekątne i powiązania jednego lub wielu pomieszczeń), RV_ETICHETTE (litery narożników), RV_APPLICA (doprowadza oryginalne pomieszczenia do obliczonego kształtu), RV_LIBRETTO (zapisuje dziennik pomiarów), RV_GUIDE (przewodnik), RV_MANUALE (podręcznik pomiaru, PDF), RV_LANG AUTO|it|en|de|zh-CN|….",
             env!("CARGO_PKG_VERSION")
         ),
     ));
@@ -1042,7 +1059,8 @@ fn lang(host: &mut dyn HostApi, rest: &str) {
                 }
             }
             None => {
-                host.push_error("RV_LANG: IT | EN | ES | FR | TR | PT | PL | AUTO");
+                let codes: Vec<&str> = crate::i18n::ALL.iter().map(|l| l.code()).collect();
+                host.push_error(&format!("RV_LANG: AUTO | {}", codes.join(" | ")));
                 return;
             }
         }

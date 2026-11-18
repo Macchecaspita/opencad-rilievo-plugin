@@ -46,9 +46,13 @@ Sul layer
 diagonali con la loro misura e una tabella *misurata / calcolata / scarto*, con in
 rosso gli scarti oltre la tolleranza.
 
-L'interfaccia e il manuale PDF sono in **italiano, inglese, spagnolo, francese,
-turco, portoghese e polacco** e seguono la lingua di Open CAD Studio (inglese per
-le altre lingue). `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO` forza una lingua.
+L'interfaccia e il manuale PDF sono nelle **stesse 23 lingue di Open CAD Studio**
+(arabo, bulgaro, ceco, cinese semplificato e tradizionale, coreano, finlandese,
+francese, giapponese, greco, hindi, inglese, italiano, lao, nederlandese,
+polacco, portoghese, russo, spagnolo, tedesco, turco, ungherese, vietnamita) e
+seguono la lingua del programma. `RV_LANG it|en|de|zh-CN|…|AUTO` forza una lingua.
+I testi di riferimento sono italiano e inglese: le altre lingue sono traduzioni
+automatiche, non riviste da madrelingua, quindi le correzioni sono benvenute.
 
 ## Comandi
 
@@ -62,7 +66,7 @@ le altre lingue). `RV_LANG IT|EN|ES|FR|TR|PT|PL|AUTO` forza una lingua.
 | `RV_LIBRETTO` | **Libretto misure** | salva l'ultimo calcolo in CSV: misure, scarti, σ₀, coordinate, superfici |
 | `RV_GUIDE` | **Guida** | breve guida |
 | `RV_MANUALE` | **Manuale PDF** | manuale di rilievo di un appartamento, con disegni ([docs/Manuale_rilievo.pdf](docs/Manuale_rilievo.pdf); nelle altre lingue `docs/manual_<lingua>.pdf`) |
-| `RV_LANG IT\|EN\|ES\|FR\|TR\|PT\|PL\|AUTO` | | lingua dei messaggi e del manuale |
+| `RV_LANG <codice>\|AUTO` | | lingua dei messaggi e del manuale (`it`, `en`, `de`, `zh-CN`, …) |
 
 ### Consigli di rilievo
 
