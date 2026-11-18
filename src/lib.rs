@@ -22,6 +22,7 @@ use ocs_plugin_api::ribbon::CadModule;
 #[macro_use]
 pub mod i18n;
 pub mod commands;
+pub mod holes;
 pub mod labels;
 mod ribbon;
 pub mod solve;

@@ -1,0 +1,32 @@
+# Test builds: a push to a branch `prova/...` builds the Windows library and
+# keeps it as a workflow artifact, to try on a PC before anything is
+# released. Nothing is published.
+name: Test build
+
+on:
+  push:
+    branches: ["prova/**"]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned toolchain
+        shell: bash
+        run: rustup toolchain install "$(grep -m1 '^channel' rust-toolchain.toml | cut -d'"' -f2)" --profile minimal
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --release
+      - run: cargo build --release
+      - name: Stage
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/opencad_rilievo_plugin.dll dist/
+          cp plugin.toml dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opencad.rilievovani-windows-test
+          path: dist/
+          retention-days: 14

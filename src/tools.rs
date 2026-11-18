@@ -69,7 +69,7 @@ fn ring3(pts: &[P2], z: f64) -> Vec<[f64; 3]> {
 /// is selected, and the chosen rooms are also outlined in green, so they
 /// stand out from the ones not chosen yet. Enter confirms.
 /// The point of segment a–b nearest p.
-fn seg_foot(p: P2, a: P2, b: P2) -> P2 {
+pub(crate) fn seg_foot(p: P2, a: P2, b: P2) -> P2 {
     let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
     let l2 = dx * dx + dy * dy;
     if l2 <= 0.0 {
@@ -376,15 +376,15 @@ impl InteractiveCommand for PickRoomTool {
 
 // ── Dialog helpers ──────────────────────────────────────────────────────────
 
-fn info(text: String) -> DialogControl {
+pub(crate) fn info(text: String) -> DialogControl {
     DialogControl::InfoText { text, align_h: None }
 }
 
-fn number(id: &str, label: &str, default: f64) -> DialogControl {
+pub(crate) fn number(id: &str, label: &str, default: f64) -> DialogControl {
     DialogControl::Number { id: id.into(), label: label.into(), default, min: Some(0.0), max: None, step: None }
 }
 
-fn checkbox(id: &str, label: &str, default: bool) -> DialogControl {
+pub(crate) fn checkbox(id: &str, label: &str, default: bool) -> DialogControl {
     DialogControl::Checkbox { id: id.into(), label: label.into(), default }
 }
 
@@ -393,7 +393,7 @@ fn help_section(id: &str, title: &str, paragraphs: Vec<String>) -> DialogControl
     DialogControl::Fields { id: id.into(), title: Some(title.into()), controls: paragraphs.into_iter().map(info).collect(), collapsed: true }
 }
 
-fn get_num(m: &HashMap<String, DialogValue>, id: &str) -> Option<f64> {
+pub(crate) fn get_num(m: &HashMap<String, DialogValue>, id: &str) -> Option<f64> {
     match m.get(id)? {
         DialogValue::Number(v) => Some(*v),
         DialogValue::Text(s) => commands::parse_num(s),
@@ -401,7 +401,7 @@ fn get_num(m: &HashMap<String, DialogValue>, id: &str) -> Option<f64> {
     }
 }
 
-fn get_bool(m: &HashMap<String, DialogValue>, id: &str, default: bool) -> bool {
+pub(crate) fn get_bool(m: &HashMap<String, DialogValue>, id: &str, default: bool) -> bool {
     match m.get(id) {
         Some(DialogValue::Bool(b)) => *b,
         _ => default,
@@ -1395,7 +1395,7 @@ fn get_text(m: &HashMap<String, DialogValue>, id: &str) -> String {
     }
 }
 
-fn get_choice(m: &HashMap<String, DialogValue>, id: &str, default: usize) -> usize {
+pub(crate) fn get_choice(m: &HashMap<String, DialogValue>, id: &str, default: usize) -> usize {
     match m.get(id) {
         Some(DialogValue::Choice { index, .. }) => *index,
         _ => default,
@@ -3141,6 +3141,28 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
                 "\"▶ Hesapla\" düğmesine basın: oda çoklu çizgileri hesaplanan şekle getirilir ve çizim kendiliğinden güncellenir (Ctrl+Z geri alır). Kapılar ve pencereler RILIEVO_APERTURE üzerine gider; RILIEVO_QUOTE üzerinde kenar ölçüleri, köşegenler, bağlantılar ve ölçülen / hesaplanan / artık tablosu, toleransı aşan artıklar kırmızı. Bir pencere alanları ve artıkları özetler. Ölçüler yetmezse veya tutmazsa ölçü penceresi nedeniyle yeniden açılır.",
                 "Prima \"▶ Calcular\": as polilinhas dos compartimentos são levadas à forma calculada e o desenho atualiza-se sozinho (Ctrl+Z anula). Portas e janelas vão para RILIEVO_APERTURE; em RILIEVO_QUOTE cotas dos lados, diagonais, ligações e a tabela medida / calculada / resíduo, com a vermelho os resíduos fora da tolerância. Uma janela resume áreas e resíduos. Se as medidas não bastarem ou não baterem certo, a janela das medidas reabre-se com o motivo.",
                 "Naciśnij \"▶ Oblicz\": polilinie pomieszczeń zostają przeniesione do obliczonego kształtu, a rysunek aktualizuje się sam (Ctrl+Z cofa). Drzwi i okna trafiają na RILIEVO_APERTURE; na RILIEVO_QUOTE wymiary boków, przekątne, powiązania i tabela zmierzone / obliczone / odchyłka, odchyłki ponad tolerancję na czerwono. Okno podsumowuje powierzchnie i odchyłki. Jeśli pomiarów jest za mało lub się nie zgadzają, okno pomiarów otwiera się ponownie z powodem.",
+            ),
+        ),
+        (
+            tr!("5. Porte e finestre nei muri", "5. Doors and windows in the walls", "5. Puertas y ventanas en los muros", "5. Portes et fenêtres dans les murs", "5. Duvarlarda kapılar ve pencereler", "5. Portas e janelas nas paredes", "5. Drzwi i okna w ścianach"),
+            tr!(
+                "A disegno finito, \"Porte e finestre\" apre il foro nel muro: scegli porta o finestra, larghezza e \
+                 altezza; clicca lo spigolo da cui misuri (perimetro esterno o vano), poi il lato su cui sta il foro, e \
+                 scrivi la distanza dallo spigolo. Il lato cliccato e la linea parallela dall'altra parte del muro vengono \
+                 interrotti, la campitura si svuota nel foro e su RILIEVO_APERTURE nascono serramento e quota \
+                 larghezza/altezza, fuori dal perimetro dell'edificio. Solo disegno: un vano interrotto non entra più nel \
+                 calcolo.",
+                "With the drawing finished, \"Doors and windows\" opens the hole in the wall: choose door or window, width \
+                 and height; click the corner you measure from (outer perimeter or room), then the side the opening is \
+                 on, and type the distance from the corner. The clicked side and the parallel line on the other side of \
+                 the wall are cut, the hatch is emptied in the hole and the frame and a width/height label appear on \
+                 RILIEVO_APERTURE, outside the building's perimeter. Drawing only: an opened room no longer takes part in \
+                 the calculation.",
+                "Con el dibujo terminado, \"Puertas y ventanas\" abre el hueco en el muro: elija puerta o ventana, ancho y alto; haga clic en la esquina desde la que mide (perímetro exterior o estancia), luego en el lado donde está el hueco, y escriba la distancia desde la esquina. El lado pulsado y la línea paralela al otro lado del muro se interrumpen, el sombreado se vacía en el hueco y en RILIEVO_APERTURE aparecen la carpintería y la cota ancho/alto, fuera del perímetro del edificio. Solo dibujo: una estancia interrumpida ya no entra en el cálculo.",
+                "Une fois le dessin terminé, \"Portes et fenêtres\" ouvre le trou dans le mur : choisissez porte ou fenêtre, largeur et hauteur ; cliquez sur le coin depuis lequel vous mesurez (périmètre extérieur ou pièce), puis sur le côté où se trouve l'ouverture, et saisissez la distance depuis le coin. Le côté cliqué et la ligne parallèle de l'autre côté du mur sont interrompus, la hachure est vidée dans le trou et la menuiserie et la cote largeur/hauteur apparaissent sur RILIEVO_APERTURE, à l'extérieur du périmètre du bâtiment. Dessin seul : une pièce interrompue n'entre plus dans le calcul.",
+                "Çizim bitince \"Kapılar ve pencereler\" duvarda boşluğu açar: kapı veya pencere, genişlik ve yükseklik seçin; ölçtüğünüz köşeye (dış çevre veya oda), sonra açıklığın bulunduğu kenara tıklayın ve köşeden uzaklığı yazın. Tıklanan kenar ve duvarın diğer tarafındaki paralel çizgi kesilir, tarama boşlukta boşaltılır ve RILIEVO_APERTURE üzerinde doğrama ile genişlik/yükseklik ölçüsü binanın çevresinin dışında belirir. Yalnızca çizim: kesilen oda artık hesaba girmez.",
+                "Com o desenho terminado, \"Portas e janelas\" abre o vão na parede: escolha porta ou janela, largura e altura; clique no canto a partir do qual mede (perímetro exterior ou compartimento), depois no lado onde fica o vão, e escreva a distância a partir do canto. O lado clicado e a linha paralela do outro lado da parede são interrompidos, a trama esvazia-se no vão e em RILIEVO_APERTURE surgem a caixilharia e a cota largura/altura, fora do perímetro do edifício. Só desenho: um compartimento interrompido já não entra no cálculo.",
+                "Po zakończeniu rysunku \"Drzwi i okna\" otwiera otwór w ścianie: wybierz drzwi lub okno, szerokość i wysokość; kliknij narożnik, od którego mierzysz (obrys zewnętrzny lub pomieszczenie), potem bok, na którym jest otwór, i wpisz odległość od narożnika. Kliknięty bok i równoległa linia po drugiej stronie ściany zostają przerwane, kreskowanie opróżnia się w otworze, a na RILIEVO_APERTURE pojawiają się stolarka i wymiar szerokość/wysokość, na zewnątrz obrysu budynku. Tylko rysunek: przerwane pomieszczenie nie wchodzi już do obliczeń.",
             ),
         ),
         (

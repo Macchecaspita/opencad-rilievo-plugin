@@ -102,10 +102,21 @@ fn fetch_rooms(host: &dyn HostApi, hs: &[Handle]) -> Option<Vec<Room>> {
 /// Every hatch of the drawing, as its boundary loops (arcs as short chords).
 /// A hatch between two rooms marks a solid wall.
 pub fn hatches(host: &dyn HostApi) -> Vec<Vec<Vec<P2>>> {
-    use codec::entities::BoundaryEdge;
     let mut out = Vec::new();
     for e in host.document().entities() {
         let EntityType::Hatch(h) = e else { continue };
+        let loops = hatch_loops(h);
+        if !loops.is_empty() {
+            out.push(loops);
+        }
+    }
+    out
+}
+
+/// A hatch's boundary loops (arcs as short chords).
+pub fn hatch_loops(h: &codec::entities::Hatch) -> Vec<Vec<P2>> {
+    use codec::entities::BoundaryEdge;
+    {
         let mut loops = Vec::new();
         for path in &h.paths {
             let mut pts: Vec<P2> = Vec::new();
@@ -139,11 +150,8 @@ pub fn hatches(host: &dyn HostApi) -> Vec<Vec<Vec<P2>>> {
                 loops.push(pts);
             }
         }
-        if !loops.is_empty() {
-            out.push(loops);
-        }
+        loops
     }
-    out
 }
 
 /// Reach within which two facing sides with a hatch between them make a
@@ -308,7 +316,7 @@ fn thickness_spot(pts: &[P2], k: usize, t: f64) -> P2 {
 }
 
 /// The direction of a→b, turned so that text along it reads left to right.
-fn readable_angle(a: P2, b: P2) -> f64 {
+pub(crate) fn readable_angle(a: P2, b: P2) -> f64 {
     let mut ang = (b[1] - a[1]).atan2(b[0] - a[0]);
     use std::f64::consts::{FRAC_PI_2, PI};
     if ang > FRAC_PI_2 + 1e-9 {
@@ -527,11 +535,11 @@ pub fn decimals(tol: f64) -> usize {
     ((-tol.log10()).ceil() + 1.0).clamp(0.0, 4.0) as usize
 }
 
-fn hex(h: Handle) -> String {
+pub(crate) fn hex(h: Handle) -> String {
     format!("{:X}", h.value())
 }
 
-fn parse_handle(tok: &str) -> Option<Handle> {
+pub(crate) fn parse_handle(tok: &str) -> Option<Handle> {
     let t = tok.trim().trim_start_matches("0x").trim_start_matches("0X");
     u64::from_str_radix(t, 16).ok().filter(|v| *v != 0).map(Handle::new)
 }
@@ -905,6 +913,9 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
             }
         }
         "RV_APPLICA" => apply_to_drawing(host, true),
+        "RV_FORO" => crate::holes::start(host),
+        "RV_FOROLATO" => crate::holes::side_picked(host),
+        "RV_FOROAPPLY" => crate::holes::apply(host),
         "RV_LIBRETTO" => match last_book() {
             Some((_, default)) => host.start_interactive(Box::new(tools::BookDialog::new(default))),
             None => host.push_error(tr!(
@@ -1243,7 +1254,7 @@ fn labels_only(host: &mut dyn HostApi, hs: &[Handle], h: f64) {
 
 // ── Layers, text ────────────────────────────────────────────────────────────
 
-fn ensure_layer(host: &mut dyn HostApi, name: &str, aci: i16) {
+pub(crate) fn ensure_layer(host: &mut dyn HostApi, name: &str, aci: i16) {
     if host.document().layers.get(name).is_some() {
         return;
     }
@@ -1255,7 +1266,7 @@ fn ensure_layer(host: &mut dyn HostApi, name: &str, aci: i16) {
     }
 }
 
-fn mtext(value: &str, at: P2, z: f64, h: f64, att: AttachmentPoint, layer: &str) -> EntityType {
+pub(crate) fn mtext(value: &str, at: P2, z: f64, h: f64, att: AttachmentPoint, layer: &str) -> EntityType {
     // Width 0: one line, no wrapping (the default box is 10 units wide and
     // breaks a sentence into one word per line).
     let mut t = MText::with_value(value, Vector3::new(at[0], at[1], z)).with_height(h).with_width(0.0);
@@ -1264,7 +1275,7 @@ fn mtext(value: &str, at: P2, z: f64, h: f64, att: AttachmentPoint, layer: &str)
     EntityType::MText(Box::new(t))
 }
 
-fn pline(pts: &[P2], z: f64, closed: bool, layer: &str) -> EntityType {
+pub(crate) fn pline(pts: &[P2], z: f64, closed: bool, layer: &str) -> EntityType {
     let mut p = LwPolyline::new();
     p.vertices = pts.iter().map(|q| LwVertex::new(Vector2::new(q[0], q[1]))).collect();
     p.is_closed = closed;

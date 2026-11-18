@@ -12,6 +12,17 @@ del rilascio.
 
 ## [Non rilasciato]
 
+### Aggiunto
+- **Porte e finestre** (nuovo pulsante tra «3. Vani» e «Libretto misure»,
+  comando `RV_FORO`): apre porte e finestre nei muri del disegno finito. Si
+  scelgono tipo, larghezza e altezza; si clicca lo spigolo da cui si misura
+  (perimetro esterno o vano), il lato su cui sta il foro e si scrive la
+  distanza. Il lato cliccato e la linea parallela dall'altra parte del muro
+  vengono interrotti, la campitura si svuota nel foro, e su RILIEVO_APERTURE
+  nascono il serramento e la quota «larghezza su altezza» in centimetri, fuori
+  dal perimetro dell'edificio. Solo disegno: un vano interrotto non entra più
+  nel calcolo.
+
 ## [0.13.0] - 2026-11-18
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso

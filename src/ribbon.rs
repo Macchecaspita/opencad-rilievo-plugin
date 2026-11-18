@@ -37,6 +37,7 @@ impl CadModule for RilievoModule {
                     title: tr!("Vani", "Rooms", "Estancias", "Pièces", "Odalar", "Compartimentos", "Pomieszczenia"),
                     tools: vec![
                         cmd("RV_VANO", tr!("3. Vani: numeri, lettere e misure", "3. Rooms: numbers, letters and measures", "3. Estancias: números, letras y medidas", "3. Pièces : numéros, lettres et mesures", "3. Odalar: numaralar, harfler ve ölçüler", "3. Compartimentos: números, letras e medidas", "3. Pomieszczenia: numery, litery i pomiary"), include_bytes!("../icons/room.svg")),
+                        cmd("RV_FORO", tr!("Porte e finestre", "Doors and windows", "Puertas y ventanas", "Portes et fenêtres", "Kapılar ve pencereler", "Portas e janelas", "Drzwi i okna"), include_bytes!("../icons/openings.svg")),
                         cmd("RV_LIBRETTO", tr!("Libretto misure", "Measures book", "Libro de medidas", "Carnet de mesures", "Ölçü defteri", "Caderno de medidas", "Dziennik pomiarów"), include_bytes!("../icons/book.svg")),
                     ],
                 },
