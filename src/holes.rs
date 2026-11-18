@@ -290,13 +290,12 @@ pub fn door_leaf(j: P2, k: P2, n: P2, t: f64, into_far_side: bool) -> (P2, P2, P
 /// Where the "width over height" label goes: the base side of the opening
 /// (on the outer face), the direction out of the building, and whether a
 /// building outline was found on that side.
-pub fn label_side(j: P2, k: P2, n: P2, t: f64, clicked_outer: bool, outline: Option<&Ring>, m: f64) -> (P2, P2, P2) {
-    if clicked_outer {
-        return (j, k, mul(n, -1.0));
-    }
-    let probe = add(mid(j, k), mul(n, t + 0.05 / m));
+pub fn label_side(j: P2, k: P2, n: P2, t: f64, outline: Option<&Ring>, m: f64) -> (P2, P2, P2) {
+    let near_out = add(mid(j, k), mul(n, -0.05 / m));
+    let far_out = add(mid(j, k), mul(n, t + 0.05 / m));
     match outline {
-        Some(o) if !o.contains(probe) => (add(j, mul(n, t)), add(k, mul(n, t)), n),
+        Some(o) if !o.contains(near_out) => (j, k, mul(n, -1.0)),
+        Some(o) if !o.contains(far_out) => (add(j, mul(n, t)), add(k, mul(n, t)), n),
         _ => (j, k, mul(n, -1.0)),
     }
 }
@@ -371,23 +370,26 @@ pub struct HoleTool {
     found: Option<f64>,
     corner: Option<(usize, usize)>,
     toward: Option<usize>,
+    /// Into the wall, from the clicked side (found when the side is picked).
+    n: Option<P2>,
     msg: Option<String>,
 }
 
 impl HoleTool {
     pub fn new(rings: Vec<Ring>, m: f64) -> Self {
         let last = LAST.lock().unwrap_or_else(|e| e.into_inner()).unwrap_or(Last { kind: HoleKind::Window, w: 1.2 / m, h: 1.4 / m, d: 1.0 / m });
-        HoleTool { rings, m, phase: Phase::Ask, kind: last.kind, w: last.w, h: last.h, d: last.d, t: 0.3 / m, found: None, corner: None, toward: None, msg: None }
+        HoleTool { rings, m, phase: Phase::Ask, kind: last.kind, w: last.w, h: last.h, d: last.d, t: 0.3 / m, found: None, corner: None, toward: None, n: None, msg: None }
     }
 
-    /// Ready for the next opening, on the drawing as it is now: the window
-    /// opens again with the last kind and sizes (Cancel to finish).
+    /// Back to the corner step after an opening that could not be placed,
+    /// on the drawing as it is now.
     fn again(mut self, rings: Vec<Ring>, msg: Option<String>) -> Self {
         self.rings = rings;
-        self.phase = Phase::Ask;
+        self.phase = Phase::Corner;
         self.corner = None;
         self.toward = None;
         self.found = None;
+        self.n = None;
         self.msg = msg;
         self
     }
@@ -805,24 +807,52 @@ pub fn start(host: &mut dyn HostApi) {
 
 /// The chosen side: corner, other end, the wall's inward direction, and
 /// whether the clicked polyline is the building's outline.
-fn side_of(tool: &HoleTool) -> Option<(P2, P2, P2, bool)> {
+fn side_of(tool: &HoleTool) -> Option<(P2, P2)> {
     let (r, i) = tool.corner?;
     let s = tool.toward?;
     let ring = tool.rings.get(r)?;
-    let (c, d) = (ring.pts[i], ring.pts[s]);
-    let outer = is_outer(ring, &tool.rings, commands::perimeter().and_then(|(h, _)| commands::parse_handle(&h)));
+    Some((ring.pts[i], ring.pts[s]))
+}
+
+/// The building's outline: the fixed perimeter when chosen, otherwise the
+/// largest polyline.
+pub fn outline(rings: &[Ring], perimeter: Option<Handle>) -> Option<&Ring> {
+    rings
+        .iter()
+        .find(|r| Some(r.handle) == perimeter)
+        .or_else(|| rings.iter().max_by(|a, b| a.area().total_cmp(&b.area())))
+}
+
+/// Which way the wall lies from side c–d of `ring`: the side where the
+/// other face of the wall is drawn. When both sides (or neither) have one,
+/// into the building from its outline and out of a room otherwise.
+pub fn wall_direction(ring: &Ring, rings: &[Ring], faces: &[Face], c: P2, d: P2, perimeter: Option<Handle>, m: f64) -> P2 {
     let inw = inward(ring, c, d);
-    let n = if outer { inw } else { mul(inw, -1.0) };
-    Some((c, d, n, outer))
+    let out = mul(inw, -1.0);
+    let found = |n: P2| find_opposite(faces, c, d, n, 0.01 / m, 1.2 / m, false, None).map(|(_, t)| t);
+    match (found(inw), found(out)) {
+        (Some(_), None) => inw,
+        (None, Some(_)) => out,
+        _ => {
+            let outer = is_outer(ring, rings, perimeter) || outline(rings, perimeter).is_some_and(|o| o.handle == ring.handle);
+            if outer { inw } else { out }
+        }
+    }
+}
+
+fn perimeter_handle() -> Option<Handle> {
+    commands::perimeter().and_then(|(h, _)| commands::parse_handle(&h))
 }
 
 /// `RV_FOROLATO`: a side was clicked; find the wall's thickness on the
 /// drawing and ask the distance.
 pub fn side_picked(host: &mut dyn HostApi) {
     let Some(mut tool) = take_resume() else { return };
-    if let Some((c, d, n, _)) = side_of(&tool) {
+    if let (Some((c, d)), Some((r, _))) = (side_of(&tool), tool.corner) {
         let fs = faces(host);
         let m = tool.m;
+        let n = wall_direction(&tool.rings[r], &tool.rings, &fs, c, d, perimeter_handle(), m);
+        tool.n = Some(n);
         tool.found = find_opposite(&fs, c, d, n, 0.01 / m, 1.2 / m, false, None).map(|(_, t)| t);
     }
     host.start_interactive(Box::new(tool));
@@ -932,25 +962,27 @@ fn coloured(mut e: EntityType, aci: i16) -> EntityType {
 /// again for the next one.
 pub fn apply(host: &mut dyn HostApi) {
     let Some(tool) = take_resume() else { return };
-    let msg = match apply_inner(host, &tool) {
-        Ok(m) => {
-            host.push_info(&m);
-            Some(m)
-        }
+    // Done: the next opening starts from the button again (a window opened
+    // by the plugin on its own can end up out of sight and hold the command).
+    match apply_inner(host, &tool) {
+        Ok(m) => host.push_info(&m),
         Err(e) => {
             host.push_error(&e);
-            Some(format!("⚠ {e}"))
+            let rs = rings(host);
+            host.start_interactive(Box::new(tool.again(rs, Some(format!("⚠ {e}")))));
         }
-    };
-    let rs = rings(host);
-    host.start_interactive(Box::new(tool.again(rs, msg)));
+    }
 }
 
 fn apply_inner(host: &mut dyn HostApi, tool: &HoleTool) -> Result<String, String> {
-    let (c, d, n, outer) = side_of(tool).ok_or_else(no_polylines)?;
+    let (c, d) = side_of(tool).ok_or_else(no_polylines)?;
     let (r, _) = tool.corner.ok_or_else(no_polylines)?;
     let ring = tool.rings[r].clone();
     let m = tool.m;
+    let n = match tool.n {
+        Some(n) => n,
+        None => wall_direction(&ring, &tool.rings, &faces(host), c, d, perimeter_handle(), m),
+    };
     let tol = 0.002 / m;
     let u = unit(c, d);
     let j = add(c, mul(u, tool.d));
@@ -1008,8 +1040,10 @@ fn apply_inner(host: &mut dyn HostApi, tool: &HoleTool) -> Result<String, String
             }
         }
         HoleKind::Door => {
-            // Into the building from the perimeter, into the room from a room.
-            let (hinge, tip, other, bulge) = door_leaf(j, k, n, t, outer);
+            // Into the building on an outer wall, into the clicked room on an
+            // inner one.
+            let from_outside = outline(&tool.rings, perimeter_handle()).is_some_and(|o| !o.contains(add(mid(j, k), mul(n, -0.05 / m))));
+            let (hinge, tip, other, bulge) = door_leaf(j, k, n, t, from_outside);
             ents.push(coloured(commands::pline(&[hinge, tip], ring.z, false, LAYER_OPENINGS), ACI_FRAME));
             let mut arc = codec::entities::LwPolyline::new();
             let mut v0 = LwVertex::new(Vector2::new(tip[0], tip[1]));
@@ -1021,8 +1055,7 @@ fn apply_inner(host: &mut dyn HostApi, tool: &HoleTool) -> Result<String, String
         }
     }
     // Width over height, outside the building.
-    let outline = tool.rings.iter().filter(|o| o.contains(add(mid(j, k), mul(n, t / 2.0)))).max_by(|a, b| a.area().total_cmp(&b.area()));
-    let (bj, bk, e) = label_side(j, k, n, t, outer, outline, m);
+    let (bj, bk, e) = label_side(j, k, n, t, outline(&tool.rings, perimeter_handle()), m);
     let th = (0.13 * tool.w).clamp(0.08 / m, 0.2 / m);
     let g = 0.35 * th;
     ents.push(coloured(commands::pline(&[bj, add(bj, mul(e, g)), add(bk, mul(e, g)), bk], ring.z, false, LAYER_OPENINGS), ACI_BRACKET));
@@ -1128,10 +1161,15 @@ mod tests {
         let (x, _) = find_opposite(&faces, [9.7, 0.3], [0.3, 0.3], nr, 0.01, 1.2, false, None).unwrap();
         assert_eq!(x, 0);
         // The label goes outside the building in both cases.
-        let (bj, _, e) = label_side([2.0, 0.3], [3.0, 0.3], nr, 0.3, false, Some(&outer), 1.0);
+        let (bj, _, e) = label_side([2.0, 0.3], [3.0, 0.3], nr, 0.3, Some(&outer), 1.0);
         assert!((bj[1]).abs() < 1e-9 && (e[1] + 1.0).abs() < 1e-9);
-        let (bj, _, e) = label_side([2.0, 0.0], [3.0, 0.0], n, 0.3, true, Some(&outer), 1.0);
+        let (bj, _, e) = label_side([2.0, 0.0], [3.0, 0.0], n, 0.3, Some(&outer), 1.0);
         assert!(bj[1].abs() < 1e-9 && (e[1] + 1.0).abs() < 1e-9);
+        // The wall's side: where its other face is, even with no room drawn.
+        let only = vec![outer.clone()];
+        let offs = vec![faces[0].clone(), Face { handle: Handle::new(9), seg: 0, a: [0.3, 0.3], b: [9.7, 0.3] }];
+        let w = wall_direction(&outer, &only, &offs, [0.0, 0.0], [10.0, 0.0], None, 1.0);
+        assert!((w[1] - 1.0).abs() < 1e-9, "{w:?}");
     }
 
     #[test]
