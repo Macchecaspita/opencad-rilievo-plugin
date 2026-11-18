@@ -529,7 +529,7 @@ impl InteractiveCommand for HoleTool {
     }
 
     fn needs_object_pick(&self) -> bool {
-        matches!(self.phase, Phase::Corner | Phase::Side | Phase::CornerInfo | Phase::SideInfo)
+        matches!(self.phase, Phase::Corner | Phase::Side)
     }
 
     fn on_object_pick(&mut self, _handle: Handle, pt: [f64; 3]) -> CommandStep {
@@ -538,12 +538,6 @@ impl InteractiveCommand for HoleTool {
 
     fn on_point(&mut self, pt: [f64; 3]) -> CommandStep {
         let p = [pt[0], pt[1]];
-        // A notice that did not show must not hold the clicks.
-        if self.phase == Phase::CornerInfo {
-            self.phase = Phase::Corner;
-        } else if self.phase == Phase::SideInfo {
-            self.phase = Phase::Side;
-        }
         match self.phase {
             Phase::Corner => {
                 match self.nearest_corner(p) {
@@ -760,9 +754,7 @@ impl InteractiveCommand for HoleTool {
                 }
                 self.phase = Phase::CornerInfo;
                 self.msg = None;
-                // The host shows a tool's window when the tool starts: start
-                // it again for the notice.
-                hand_over(self.clone(), "RV_FOROSPIGOLO")
+                CommandStep::NeedPoint
             }
             (Phase::Ask, _) => CommandStep::Cancel,
             (Phase::CornerInfo, DialogResponse::Submitted(_)) => {
@@ -947,8 +939,8 @@ fn perimeter_handle() -> Option<Handle> {
     commands::perimeter().and_then(|(h, _)| commands::parse_handle(&h))
 }
 
-/// `RV_FOROSPIGOLO`: start the tool again with its next notice (before the
-/// corner, after the corner).
+/// `RV_FOROSPIGOLO`: a corner was clicked; start the tool again with the
+/// notice for the side.
 pub fn corner_picked(host: &mut dyn HostApi) {
     if let Some(tool) = take_resume() {
         host.start_interactive(Box::new(tool));
