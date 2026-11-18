@@ -381,12 +381,8 @@ fn hand_over(tool: HoleTool, verb: &str) -> CommandStep {
 enum Phase {
     /// Door or window, width, height.
     Ask,
-    /// A notice: now click the corner.
-    CornerInfo,
     /// Click the corner the distance is measured from.
     Corner,
-    /// A notice: now click the side.
-    SideInfo,
     /// Click the side of that corner the opening is on.
     Side,
     /// Distance from the corner and wall thickness.
@@ -488,7 +484,7 @@ fn unit_name(m: f64) -> &'static str {
 impl InteractiveCommand for HoleTool {
     fn prompt(&self) -> String {
         let p = match self.phase {
-            Phase::Ask | Phase::Dist | Phase::CornerInfo | Phase::SideInfo => tr!(
+            Phase::Ask | Phase::Dist => tr!(
                 "Porte e finestre: rispondi nella finestra",
                 "Doors and windows: answer in the window",
                 "Puertas y ventanas: responda en la ventana",
@@ -540,20 +536,13 @@ impl InteractiveCommand for HoleTool {
         let p = [pt[0], pt[1]];
         match self.phase {
             Phase::Corner => {
-                match self.nearest_corner(p) {
-                    // A notice for the side: a click shows no window, so the
-                    // tool goes through a command that starts it again.
-                    Some(c) => {
-                        let mut next = self.clone();
-                        next.corner = Some(c);
-                        next.corner_click = Some(p);
-                        next.phase = Phase::SideInfo;
-                        next.msg = None;
-                        *self = next.clone();
-                        hand_over(next, "RV_FOROSPIGOLO")
-                    }
-                    None => CommandStep::NeedPoint,
+                if let Some(c) = self.nearest_corner(p) {
+                    self.corner = Some(c);
+                    self.corner_click = Some(p);
+                    self.phase = Phase::Side;
+                    self.msg = None;
                 }
+                CommandStep::NeedPoint
             }
             Phase::Side if self.corner_click.is_some_and(|q| solve::dist(q, p) < 1e-9) => CommandStep::NeedPoint,
             Phase::Side => match self.nearest_side(p) {
@@ -587,7 +576,7 @@ impl InteractiveCommand for HoleTool {
                     }
                 }
             }
-            Phase::Side | Phase::SideInfo => {
+            Phase::Side => {
                 if let Some((r, i)) = self.corner {
                     let ring = &self.rings[r];
                     let c = ring.pts[i];
@@ -648,39 +637,6 @@ impl InteractiveCommand for HoleTool {
                     .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
                     .width(520.0)
             }),
-            Phase::CornerInfo => Some(
-                DialogDef::new(tr!("Porte e finestre — spigolo", "Doors and windows — corner", "Puertas y ventanas — esquina", "Portes et fenêtres — coin", "Kapılar ve pencereler — köşe", "Portas e janelas — canto", "Drzwi i okna — narożnik"))
-                    .with_control(tools::info(tr!(
-                        "Ora clicca nel disegno lo spigolo da cui misuri la distanza: un vertice del perimetro esterno o di un vano. Lo spigolo più vicino al cursore è segnato con una crocetta verde.",
-                        "Now click on the drawing the corner you measure the distance from: a vertex of the outer perimeter or of a room. The corner nearest the cursor is marked with a green cross.",
-                        "Ahora haga clic en el dibujo en la esquina desde la que mide la distancia: un vértice del perímetro exterior o de una estancia. La esquina más cercana al cursor se marca con una cruz verde.",
-                        "Cliquez maintenant sur le dessin le coin depuis lequel vous mesurez la distance : un sommet du périmètre extérieur ou d'une pièce. Le coin le plus proche du curseur est marqué d'une croix verte.",
-                        "Şimdi çizimde uzaklığı ölçtüğünüz köşeye tıklayın: dış çevrenin veya bir odanın bir köşesi. İmlece en yakın köşe yeşil bir çarpıyla işaretlenir.",
-                        "Agora clique no desenho no canto a partir do qual mede a distância: um vértice do perímetro exterior ou de um compartimento. O canto mais próximo do cursor fica marcado com uma cruz verde.",
-                        "Teraz kliknij na rysunku narożnik, od którego mierzysz odległość: wierzchołek obrysu zewnętrznego lub pomieszczenia. Narożnik najbliższy kursorowi jest oznaczony zielonym krzyżykiem.",
-                    ).to_string()))
-                    .submit_label("OK")
-                    .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
-                    .width(460.0),
-            ),
-            Phase::SideInfo => {
-                let k = self.kind_name();
-                Some(
-                    DialogDef::new(tr!("Porte e finestre — lato", "Doors and windows — side", "Puertas y ventanas — lado", "Portes et fenêtres — côté", "Kapılar ve pencereler — kenar", "Portas e janelas — lado", "Drzwi i okna — bok"))
-                        .with_control(tools::info(tr!(
-                            format!("Spigolo scelto. Ora clicca il tratto della polilinea su cui va la {k}: uno dei due lati che partono dallo spigolo (quello più vicino al cursore è verde)."),
-                            format!("Corner chosen. Now click the stretch of the polyline the {k} goes on: one of the two sides starting from the corner (the one nearest the cursor is green)."),
-                            format!("Esquina elegida. Ahora haga clic en el tramo de la polilínea donde va la {k}: uno de los dos lados que parten de la esquina (el más cercano al cursor está en verde)."),
-                            format!("Coin choisi. Cliquez maintenant le tronçon de la polyligne où va la {k} : l'un des deux côtés partant du coin (le plus proche du curseur est en vert)."),
-                            format!("Köşe seçildi. Şimdi {k} için çoklu çizginin parçasına tıklayın: köşeden çıkan iki kenardan biri (imlece en yakın olan yeşil)."),
-                            format!("Canto escolhido. Agora clique no troço da polilinha onde vai a {k}: um dos dois lados que partem do canto (o mais próximo do cursor está a verde)."),
-                            format!("Narożnik wybrany. Teraz kliknij odcinek polilinii, na którym ma być {k}: jeden z dwóch boków wychodzących z narożnika (najbliższy kursorowi jest zielony)."),
-                        )))
-                        .submit_label("OK")
-                        .cancel_label(tr!("Annulla", "Cancel", "Cancelar", "Annuler", "İptal", "Cancelar", "Anuluj"))
-                        .width(460.0),
-                )
-            }
             Phase::Dist => {
                 let (r, i) = self.corner?;
                 let s = self.toward?;
@@ -752,20 +708,11 @@ impl InteractiveCommand for HoleTool {
                 if let Some(h) = tools::get_num(&m, "h").filter(|v| *v > 0.0) {
                     self.h = h;
                 }
-                self.phase = Phase::CornerInfo;
+                self.phase = Phase::Corner;
                 self.msg = None;
                 CommandStep::NeedPoint
             }
             (Phase::Ask, _) => CommandStep::Cancel,
-            (Phase::CornerInfo, DialogResponse::Submitted(_)) => {
-                self.phase = Phase::Corner;
-                CommandStep::NeedPoint
-            }
-            (Phase::SideInfo, DialogResponse::Submitted(_)) => {
-                self.phase = Phase::Side;
-                CommandStep::NeedPoint
-            }
-            (Phase::CornerInfo | Phase::SideInfo, _) => CommandStep::Cancel,
             (Phase::Dist, DialogResponse::Submitted(m)) => {
                 if let Some(d) = tools::get_num(&m, "d").filter(|v| *v >= 0.0) {
                     self.d = d;
@@ -788,7 +735,7 @@ impl InteractiveCommand for HoleTool {
 
     fn on_enter(&mut self) -> CommandStep {
         match self.phase {
-            Phase::Ask | Phase::Dist | Phase::CornerInfo | Phase::SideInfo => CommandStep::NeedPoint,
+            Phase::Ask | Phase::Dist => CommandStep::NeedPoint,
             _ => CommandStep::Done,
         }
     }
@@ -937,14 +884,6 @@ pub fn wall_direction(ring: &Ring, rings: &[Ring], faces: &[Face], c: P2, d: P2,
 
 fn perimeter_handle() -> Option<Handle> {
     commands::perimeter().and_then(|(h, _)| commands::parse_handle(&h))
-}
-
-/// `RV_FOROSPIGOLO`: a corner was clicked; start the tool again with the
-/// notice for the side.
-pub fn corner_picked(host: &mut dyn HostApi) {
-    if let Some(tool) = take_resume() {
-        host.start_interactive(Box::new(tool));
-    }
 }
 
 /// `RV_FOROLATO`: a side was clicked; find the wall's thickness on the
