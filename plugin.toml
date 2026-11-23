@@ -1,7 +1,7 @@
 [plugin]
 id = "opencad.rilievovani"
 name = "Room Survey"
-version = "0.15.0-prova.1"
+version = "0.15.0-prova.2"
 description = "Room survey: adjust a room drawn by eye to the measured sides and diagonals (least squares), with residuals, dimensions and a table of measures. In the 23 languages of Open CAD Studio."
 author = "Macchecaspita"
 license = "GPL-3.0-only"

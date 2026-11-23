@@ -80,7 +80,7 @@ pub fn rooms(host: &dyn HostApi) -> Vec<Room> {
         .entities()
         .filter(|e| {
             let l = &e.common().layer;
-            !l.eq_ignore_ascii_case(LAYER_ROOM) && !l.eq_ignore_ascii_case(LAYER_NOTES)
+            !l.eq_ignore_ascii_case(LAYER_ROOM) && !l.eq_ignore_ascii_case(LAYER_NOTES) && !l.eq_ignore_ascii_case(crate::partitions::LAYER_PART)
         })
         .filter_map(room_of)
         .collect()
@@ -1187,7 +1187,21 @@ fn open_dialog(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>) {
 fn saved_or_new(host: &dyn HostApi, hs: &[Handle], rooms: &[Room], survey: &Survey) -> Saved {
     let n_sides: usize = rooms.iter().map(|r| r.pts.len()).sum();
     match saved_for(hs) {
-        Some(s) if s.sides.len() == n_sides => s,
+        Some(mut s) if s.sides.len() == n_sides => {
+            // Partitions given since: their walls join the rows, with the
+            // thickness, unless the row is already there with one.
+            let longest = rooms.iter().flat_map(|r| (0..r.pts.len()).map(move |i| solve::dist(r.pts[i], r.pts[(i + 1) % r.pts.len()]))).fold(0.0f64, f64::max);
+            let found = survey.clone().with_partitions(crate::partitions::marks(host)).suggest_inner_walls(inner_reach(survey::guess_unit(longest)));
+            for f in found.into_iter().filter(|f| !f[2].is_empty()) {
+                let same = |r: &Vec<String>| r.len() >= 3 && ((r[0].eq_ignore_ascii_case(&f[0]) && r[1].eq_ignore_ascii_case(&f[1])) || (r[0].eq_ignore_ascii_case(&f[1]) && r[1].eq_ignore_ascii_case(&f[0])));
+                match s.inner_walls.iter_mut().find(|r| same(r)) {
+                    Some(r) if r[2].trim().is_empty() => r[2] = f[2].clone(),
+                    Some(_) => {}
+                    None => s.inner_walls.push(f),
+                }
+            }
+            s
+        }
         _ => {
             let all: Vec<P2> = rooms.iter().flat_map(|r| r.pts.iter().copied()).collect();
             let longest = sizes_for(&rooms.iter().map(|r| r.pts.clone()).collect::<Vec<_>>());
@@ -1213,7 +1227,7 @@ fn saved_or_new(host: &dyn HostApi, hs: &[Handle], rooms: &[Room], survey: &Surv
                 outer_t: String::new(),
                 outer_walls: vec![],
                 // Solid walls between rooms, from the hatches drawn in them.
-                inner_walls: survey.clone().with_hatches(hatches(host)).suggest_inner_walls(inner_reach(survey::guess_unit(longest))),
+                inner_walls: survey.clone().with_hatches(hatches(host)).with_partitions(crate::partitions::marks(host)).suggest_inner_walls(inner_reach(survey::guess_unit(longest))),
             }
         }
     }
@@ -1247,7 +1261,7 @@ fn open_dialog_at(host: &mut dyn HostApi, hs: &[Handle], msg: Option<String>, st
     }
     let mut saved = saved;
     let (survey, lost) = add_outer(host, survey, &mut saved);
-    let survey = survey.with_hatches(hatches(host));
+    let survey = survey.with_hatches(hatches(host)).with_partitions(crate::partitions::marks(host));
     let msg = msg.or(lost);
     remember(hs, saved.clone());
     host.start_interactive(Box::new(tools::MeasureDialog::new(hs.to_vec(), &survey, &saved, msg).starting(start)));
@@ -1612,6 +1626,17 @@ fn explain(e: &SolveError, survey: &Survey, measures: &[Measure]) -> String {
                     "przekątne nie usztywniają całego kształtu: część pomieszczenia nadal może się odkształcać".to_string(),
                 )
             };
+            if rooms.len() > 1 && proposed.is_empty() {
+                s += tr!(
+                    ". Oppure, con il perimetro fisso, dai lo spessore delle tramezze attorno a ogni vano con «Spessori tramezze»: ogni tramezza conta come muro tra i due vani",
+                    ". Or, with the fixed perimeter, give the thickness of the partitions around each room with «Partition thicknesses»: each partition counts as a wall between the two rooms",
+                    ". O bien, con el perímetro fijo, dé el espesor de los tabiques alrededor de cada estancia con «Espesores de tabiques»: cada tabique cuenta como muro entre las dos estancias",
+                    ". Ou bien, avec le périmètre fixe, donnez l'épaisseur des cloisons autour de chaque pièce avec « Épaisseurs des cloisons » : chaque cloison compte comme un mur entre les deux pièces",
+                    ". Ya da sabit çevreyle, «Bölme duvar kalınlıkları» ile her odanın çevresindeki bölme duvarların kalınlığını verin: her bölme duvar iki oda arasında bir duvar sayılır",
+                    ". Ou então, com o perímetro fixo, dê a espessura dos tabiques à volta de cada compartimento com «Espessuras dos tabiques»: cada tabique conta como parede entre os dois compartimentos",
+                    ". Albo, przy stałym obrysie, nadaj grubość ścianek działowych wokół każdego pomieszczenia przyciskiem «Grubości ścianek działowych»: każda ścianka liczy się jako ściana między dwoma pomieszczeniami",
+                );
+            }
             if !proposed.is_empty() {
                 s += &tr!(format!(". Misura anche: {}", proposed.join(", ")), format!(". Also measure: {}", proposed.join(", ")), format!(". Mida también: {}", proposed.join(", ")), format!(". Mesurez aussi : {}", proposed.join(", ")), format!(". Şunları da ölçün: {}", proposed.join(", ")), format!(". Meça também: {}", proposed.join(", ")), format!(". Zmierz także: {}", proposed.join(", ")));
             }

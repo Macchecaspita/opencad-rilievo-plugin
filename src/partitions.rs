@@ -15,12 +15,18 @@ use ocs_plugin_api::dialog::{DialogDef, DialogResponse};
 use ocs_plugin_api::host::codec::{self, Handle};
 use ocs_plugin_api::host::{CommandStep, HostApi, InteractiveCommand, PreviewWire};
 
+use codec::entities::AttachmentPoint;
 use codec::{EntityType, Vector2};
 
 use crate::commands;
 use crate::holes::{self, Ring};
 use crate::solve::{self, P2};
 use crate::tools;
+
+/// Layer of the partitions given with their thickness: the gap between
+/// the two rooms as a closed outline and the thickness written in it. The
+/// measures window reads them back as walls between rooms.
+pub const LAYER_PART: &str = "RILIEVO_TRAMEZZE";
 
 const GREEN: [f32; 4] = [0.45, 0.85, 0.45, 1.0];
 const ORANGE: [f32; 4] = [0.95, 0.55, 0.2, 1.0];
@@ -302,6 +308,66 @@ pub fn snap_to_perimeter(host: &mut dyn HostApi, perim: Handle, pts: &[P2], thic
 fn inside_by(pts: &[P2], p: P2, d: f64) -> bool {
     let n = pts.len();
     (0..n).any(|k| solve::dist(p, tools::seg_foot(p, pts[k], pts[(k + 1) % n])) <= d)
+}
+
+/// The partitions written on the drawing: each gap outline and the
+/// thickness written inside it.
+pub fn marks(host: &dyn HostApi) -> Vec<(Vec<P2>, f64)> {
+    let mut loops = Vec::new();
+    let mut texts = Vec::new();
+    for e in host.document().entities() {
+        if !e.common().layer.eq_ignore_ascii_case(LAYER_PART) {
+            continue;
+        }
+        match e {
+            EntityType::LwPolyline(p) if p.vertices.len() >= 3 => loops.push((e.common().handle, p.vertices.iter().map(|v| [v.location.x, v.location.y]).collect::<Vec<P2>>())),
+            EntityType::MText(m) => {
+                if let Some(t) = commands::parse_num(m.value.trim()).filter(|v| *v > 0.0) {
+                    texts.push(([m.insertion_point.x, m.insertion_point.y], t));
+                }
+            }
+            _ => {}
+        }
+    }
+    loops
+        .into_iter()
+        .filter_map(|(_, l)| texts.iter().find(|(p, _)| commands::point_in_polygon(&l, *p)).map(|(_, t)| (l, *t)))
+        .collect()
+}
+
+/// Write partition `t` in the gap `quad`, replacing any partition written
+/// in the same gap before.
+fn write_mark(host: &mut dyn HostApi, quad: &[P2; 4], z: f64, t: f64) {
+    commands::ensure_layer(host, LAYER_PART, 8);
+    let centre = [(quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4.0, (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4.0];
+    let mut old = Vec::new();
+    for e in host.document().entities() {
+        if !e.common().layer.eq_ignore_ascii_case(LAYER_PART) {
+            continue;
+        }
+        let hit = match e {
+            EntityType::LwPolyline(p) => {
+                let l: Vec<P2> = p.vertices.iter().map(|v| [v.location.x, v.location.y]).collect();
+                l.len() >= 3 && (commands::point_in_polygon(&l, centre) || commands::point_in_polygon(quad, mid(l[0], l[2])))
+            }
+            EntityType::MText(m) => commands::point_in_polygon(quad, [m.insertion_point.x, m.insertion_point.y]),
+            _ => false,
+        };
+        if hit {
+            old.push(e.common().handle);
+        }
+    }
+    for h in old {
+        host.remove_entity(h);
+    }
+    host.add_entity(commands::pline(quad, z, true, LAYER_PART));
+    let len = solve::dist(quad[0], quad[1]);
+    let h = (0.6 * t).min(len / 3.0).max(1e-6);
+    let mut e = commands::mtext(&commands::fmt_num(t, 2), centre, z, h, AttachmentPoint::MiddleCenter, LAYER_PART);
+    if let EntityType::MText(m) = &mut e {
+        m.rotation = commands::readable_angle(quad[0], quad[1]);
+    }
+    host.add_entity(e);
 }
 
 // ── The partition tool ──────────────────────────────────────────────────────
@@ -611,6 +677,14 @@ fn apply_inner(host: &mut dyn HostApi, tool: &PartitionTool) -> Result<String, S
     }
     host.begin_undo_group("RV_TRAMEZZE");
     let ok = move_corners(host, ring.handle, &ring.pts, &new);
+    if ok {
+        let n = new.len();
+        let (a, b) = (new[p.side], new[(p.side + 1) % n]);
+        let uc = unit(p.c, p.d);
+        let fa = foot_on((p.c, uc), a);
+        let fb = foot_on((p.c, uc), b);
+        write_mark(host, &[a, b, fb, fa], ring.z, tool.t);
+    }
     host.end_undo_group();
     if !ok {
         return Err(gone());

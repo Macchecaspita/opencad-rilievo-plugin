@@ -152,6 +152,9 @@ pub struct Survey {
     /// Hatches of the drawing, each as its boundary loops: a hatch between
     /// two rooms marks a solid wall.
     pub hatches: Vec<Vec<Vec<P2>>>,
+    /// Partitions given with "Partition thicknesses": the gap between the
+    /// two rooms and the partition's thickness.
+    pub partitions: Vec<(Vec<P2>, f64)>,
 }
 
 impl Survey {
@@ -181,7 +184,7 @@ impl Survey {
             }
             point_of.push(ids);
         }
-        Survey { rooms, point_of, points, names, outer: 0, hatches: Vec::new() }
+        Survey { rooms, point_of, points, names, outer: 0, hatches: Vec::new(), partitions: Vec::new() }
     }
 
     /// Add the outer outline surveyed exactly: its corners (E1, E2 …) are
@@ -198,6 +201,16 @@ impl Survey {
     /// The drawing's hatches, as boundary loops.
     pub fn with_hatches(mut self, hatches: Vec<Vec<Vec<P2>>>) -> Self {
         self.hatches = hatches;
+        self
+    }
+
+    /// The partitions given with their thickness: each a wall between two
+    /// rooms, like a hatch, whose thickness is already known.
+    pub fn with_partitions(mut self, parts: Vec<(Vec<P2>, f64)>) -> Self {
+        for (l, _) in &parts {
+            self.hatches.push(vec![l.clone()]);
+        }
+        self.partitions.extend(parts);
         self
     }
 
@@ -225,7 +238,7 @@ impl Survey {
                     continue;
                 }
                 let u = [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
-                let mut best: Option<(usize, usize, f64)> = None;
+                let mut best: Option<(usize, usize, f64, P2)> = None;
                 for q in r + 1..n_rooms {
                     for k in 0..self.rooms[q].len() {
                         let (c, d) = side(q, k);
@@ -258,17 +271,18 @@ impl Survey {
                             continue;
                         }
                         if best.is_none_or(|x| gap < x.2) {
-                            best = Some((q, k, gap));
+                            best = Some((q, k, gap, mid));
                         }
                     }
                 }
-                if let Some((q, k, _)) = best {
+                if let Some((q, k, _, mid)) = best {
+                    let t = self.partitions.iter().find(|(l, _)| l.len() >= 3 && inside(l, mid)).map(|(_, t)| format!("{t:.3}")).unwrap_or_default();
                     let nq = self.rooms[q].len();
                     let n = self.rooms[r].len();
                     rows.push(vec![
                         format!("{}–{}", self.corner(r, i), self.corner(r, (i + 1) % n)),
                         format!("{}–{}", self.corner(q, k), self.corner(q, (k + 1) % nq)),
-                        String::new(),
+                        t,
                     ]);
                 }
             }

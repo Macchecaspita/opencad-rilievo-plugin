@@ -744,7 +744,7 @@ impl InteractiveCommand for HoleTool {
 // ── Host side ───────────────────────────────────────────────────────────────
 
 fn excluded(layer: &str) -> bool {
-    [LAYER_ROOM, LAYER_NOTES, LAYER_OPENINGS, LAYER_LABELS].iter().any(|l| layer.eq_ignore_ascii_case(l))
+    [LAYER_ROOM, LAYER_NOTES, LAYER_OPENINGS, LAYER_LABELS, crate::partitions::LAYER_PART].iter().any(|l| layer.eq_ignore_ascii_case(l))
 }
 
 fn verts_of(p: &codec::entities::LwPolyline) -> Vec<(P2, f64)> {
