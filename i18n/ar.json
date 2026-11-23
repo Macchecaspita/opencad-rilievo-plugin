@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ مكتمل (لا يوجد قياس تحقق)",
  "✔ complete, {extra} as a check": "✔ مكتمل، {extra} للتحقق",
  "✘ missing {}": "✘ ينقص {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ إضافة باب أو نافذة (انقر على الجدار في الرسم)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ إضافة باب أو نافذة (انقر على الجدار في الرسم)",
+ "Partition thicknesses": "سماكات الجدران الفاصلة",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "سماكات الجدران الفاصلة: انقر على ضلع الغرفة المراد تحريكها (بالأخضر؛ وبالبرتقالي ضلع الغرفة المجاورة، ويبقى ثابتًا). Enter للإنهاء",
+ "Partition thicknesses: answer in the window": "سماكات الجدران الفاصلة: أجب في النافذة",
+ "⚠ No parallel room faces that side within {reach}": "⚠ لا توجد غرفة موازية مقابل هذا الضلع في حدود {reach}",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "المسافة الحالية بين الغرفتين: {gap}. اكتب سماكة الجدار الفاصل: يصبح الضلع المنقور موازيًا لضلع الغرفة المجاورة على هذه المسافة (تُحسب الزوايا من جديد مع الأضلاع المجاورة). تبقى الغرفة المجاورة ثابتة.",
+ "Partition thickness": "سماكة الجدار الفاصل",
+ "Apply": "تطبيق",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "سماكات الجدران الفاصلة: يلزم غرفتان على الأقل (خطوط متعددة مغلقة).",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "سماكات الجدران الفاصلة: لم تعد الغرفة كما كانت في الرسم.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "سماكات الجدران الفاصلة: بهذه السماكة ستتشوه الغرفة كثيرًا؛ لم يتغير شيء.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "جدار فاصل {t} (سابقًا {before}) — Ctrl+Z للتراجع",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "طُوِّعت الغرف على المحيط الداخلي (الوجه الداخلي للجدران): {snapped} ضلعًا في {moved_rooms} غرفة. Ctrl+Z للتراجع.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "لا يوجد ضلع غرفة قريب وموازٍ بما يكفي للمحيط الداخلي لتطويعه.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "الآن الجدران الفاصلة: اضغط «التالي» وانقر، واحدًا تلو الآخر، على ضلع الغرفة المراد تحريكها؛ ستُسأل عن السماكة. «إغلاق» للقيام بذلك لاحقًا بزر «سماكات الجدران الفاصلة».",
+ "Next: partitions ▸": "التالي: الجدران الفاصلة ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. الغرف على المحيط الداخلي والجدران الفاصلة",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "عندما تضغط Enter في \"2. سماكات الجدران الخارجية\"، يُنقل كل ضلع غرفة قريب وموازٍ تقريبًا للخط الداخلي لجدار خارجي إلى هذا الخط؛ وتُحسب الزوايا من جديد حيث تتقاطع الأضلاع المجاورة (Ctrl+Z للتراجع). ثم «التالي: الجدران الفاصلة» (أو زر \"سماكات الجدران الفاصلة\"): انقر على ضلع الغرفة المراد تحريكها (أخضر)؛ يبقى ضلع الغرفة المجاورة (برتقالي) ثابتًا. اكتب سماكة الجدار الفاصل: يصبح الضلع المنقور موازيًا للضلع المقابل على هذه المسافة. جدار فاصل في كل مرة، Enter للإنهاء."
 }

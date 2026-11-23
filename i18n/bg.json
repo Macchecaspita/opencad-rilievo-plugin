@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ пълно (няма контролно измерване)",
  "✔ complete, {extra} as a check": "✔ пълно, {extra} за контрол",
  "✘ missing {}": "✘ липсват {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Добави врата или прозорец (щракнете стената в чертежа)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Добави врата или прозорец (щракнете стената в чертежа)",
+ "Partition thicknesses": "Дебелини на преградните стени",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Дебелини на преградните стени: щракнете страната на помещението, което ще се мести (в зелено; в оранжево страната на съседното помещение, която остава неподвижна). Enter за край",
+ "Partition thicknesses: answer in the window": "Дебелини на преградните стени: отговорете в прозореца",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Срещу тази страна няма успоредно помещение в рамките на {reach}",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "Сегашно разстояние между двете помещения: {gap}. Въведете дебелината на преградната стена: щракнатата страна става успоредна на страната на съседното помещение, на това разстояние (ъглите се намират наново със съседните страни). Съседното помещение остава неподвижно.",
+ "Partition thickness": "Дебелина на преградната стена",
+ "Apply": "Приложи",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Дебелини на преградните стени: нужни са поне две помещения (затворени полилинии).",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Дебелини на преградните стени: помещението вече не е същото в чертежа.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Дебелини на преградните стени: с тази дебелина помещението би се изкривило твърде много; нищо не е променено.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "Преградна стена от {t} (преди {before}) — Ctrl+Z за отмяна",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Помещенията са нагодени към вътрешния контур (вътрешната страна на стените): {snapped} страни в {moved_rooms} помещения. Ctrl+Z за отмяна.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Няма страна на помещение, достатъчно близка и успоредна на вътрешния контур, за да се нагоди.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Сега преградните стени: натиснете «Напред» и щракнете една по една страната на помещението, което ще се мести; ще бъдете попитани за дебелината. «Затвори», за да го направите по-късно с бутона «Дебелини на преградните стени».",
+ "Next: partitions ▸": "Напред: преградни стени ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Помещения по вътрешния контур и преградни стени",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Когато натиснете Enter в \"2. Дебелини на външните стени\", всяка страна на помещение, близка и почти успоредна на вътрешната линия на външна стена, се премества върху тази линия; ъглите се намират наново там, където се пресичат съседните страни (Ctrl+Z отменя). След това «Напред: преградни стени» (или бутонът \"Дебелини на преградните стени\"): щракнете страната на помещението, което ще се мести (зелена); страната на съседното помещение (оранжева) остава неподвижна. Въведете дебелината на преградната стена: щракнатата страна става успоредна на срещуположната, на това разстояние. По една преградна стена, Enter за край."
 }

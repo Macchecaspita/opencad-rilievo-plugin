@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ पूर्ण (कोई जाँच माप नहीं)",
  "✔ complete, {extra} as a check": "✔ पूर्ण, जाँच के लिए {extra}",
  "✘ missing {}": "✘ कम: {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ दरवाज़ा या खिड़की जोड़ें (ड्रॉइंग में दीवार पर क्लिक)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ दरवाज़ा या खिड़की जोड़ें (ड्रॉइंग में दीवार पर क्लिक)",
+ "Partition thicknesses": "विभाजक दीवारों की मोटाई",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "विभाजक दीवारों की मोटाई: खिसकाए जाने वाले कमरे की भुजा पर क्लिक करें (हरी; नारंगी बगल के कमरे की भुजा है, जो अपनी जगह रहती है)। समाप्त करने के लिए Enter",
+ "Partition thicknesses: answer in the window": "विभाजक दीवारों की मोटाई: विंडो में उत्तर दें",
+ "⚠ No parallel room faces that side within {reach}": "⚠ उस भुजा के सामने {reach} के भीतर कोई समांतर कमरा नहीं है",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "दोनों कमरों के बीच अभी की दूरी: {gap}। विभाजक दीवार की मोटाई दर्ज करें: क्लिक की गई भुजा बगल के कमरे की भुजा के समांतर, इस दूरी पर हो जाती है (कोने पास की भुजाओं के साथ फिर से निकाले जाते हैं)। बगल का कमरा अपनी जगह रहता है।",
+ "Partition thickness": "विभाजक दीवार की मोटाई",
+ "Apply": "लागू करें",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "विभाजक दीवारों की मोटाई: कम से कम दो कमरे (बंद पॉलीलाइनें) चाहिए।",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "विभाजक दीवारों की मोटाई: ड्रॉइंग में कमरा अब पहले जैसा नहीं है।",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "विभाजक दीवारों की मोटाई: इस मोटाई से कमरा बहुत बिगड़ जाएगा; कुछ नहीं बदला।",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "{t} की विभाजक दीवार (पहले {before}) — पूर्ववत करने के लिए Ctrl+Z",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "कमरे भीतरी रूपरेखा (दीवारों के भीतरी तल) पर बैठाए गए: {moved_rooms} कमरों में {snapped} भुजाएँ। पूर्ववत करने के लिए Ctrl+Z।",
+ "No room side near and parallel enough to the inner perimeter to fit.": "भीतरी रूपरेखा पर बैठाने लायक पास और समांतर कोई कमरे की भुजा नहीं है।",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "अब विभाजक दीवारें: «आगे» दबाएँ और एक-एक करके खिसकाए जाने वाले कमरे की भुजा पर क्लिक करें; मोटाई पूछी जाएगी। बाद में «विभाजक दीवारों की मोटाई» बटन से करने के लिए «बंद करें»।",
+ "Next: partitions ▸": "आगे: विभाजक दीवारें ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. भीतरी रूपरेखा पर कमरे और विभाजक दीवारें",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "जब आप \"2. बाहरी दीवारों की मोटाई\" में Enter दबाते हैं, तो बाहरी दीवार की भीतरी रेखा के पास और लगभग समांतर हर कमरे की भुजा उस रेखा पर आ जाती है; कोने वहाँ फिर से निकाले जाते हैं जहाँ पास की भुजाएँ कटती हैं (Ctrl+Z पूर्ववत करता है)। फिर «आगे: विभाजक दीवारें» (या \"विभाजक दीवारों की मोटाई\" बटन): खिसकाए जाने वाले कमरे की भुजा पर क्लिक करें (हरी); बगल के कमरे की भुजा (नारंगी) अपनी जगह रहती है। विभाजक दीवार की मोटाई दर्ज करें: क्लिक की गई भुजा सामने की भुजा के समांतर, उस दूरी पर हो जाती है। एक बार में एक विभाजक दीवार, समाप्त करने के लिए Enter।"
 }

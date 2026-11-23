@@ -471,7 +471,7 @@ impl HoleTool {
     }
 }
 
-fn unit_name(m: f64) -> &'static str {
+pub(crate) fn unit_name(m: f64) -> &'static str {
     if (m - 0.01).abs() < 1e-12 {
         "cm"
     } else if (m - 0.001).abs() < 1e-12 {
@@ -807,7 +807,7 @@ fn faces(host: &dyn HostApi) -> Vec<Face> {
     out
 }
 
-fn live(host: &dyn HostApi, h: Handle) -> Option<EntityType> {
+pub(crate) fn live(host: &dyn HostApi, h: Handle) -> Option<EntityType> {
     match host.entities_batch(&[h]).ok().and_then(|v| v.into_iter().next().flatten()) {
         Some(e) => Some(e),
         None => host.document().get_entity(h).cloned(),

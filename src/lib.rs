@@ -24,6 +24,7 @@ pub mod i18n;
 pub mod commands;
 pub mod holes;
 pub mod labels;
+pub mod partitions;
 mod ribbon;
 pub mod solve;
 pub mod survey;

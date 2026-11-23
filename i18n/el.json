@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ πλήρες (καμία μέτρηση ελέγχου)",
  "✔ complete, {extra} as a check": "✔ πλήρες, {extra} για έλεγχο",
  "✘ missing {}": "✘ λείπουν {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Προσθήκη πόρτας ή παραθύρου (κλικ στον τοίχο στο σχέδιο)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Προσθήκη πόρτας ή παραθύρου (κλικ στον τοίχο στο σχέδιο)",
+ "Partition thicknesses": "Πάχη διαχωριστικών τοίχων",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Πάχη διαχωριστικών τοίχων: κάντε κλικ στην πλευρά του χώρου που θα μετακινηθεί (πράσινη· πορτοκαλί η πλευρά του διπλανού χώρου, που μένει ακίνητη). Enter για τέλος",
+ "Partition thicknesses: answer in the window": "Πάχη διαχωριστικών τοίχων: απαντήστε στο παράθυρο",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Απέναντι από αυτή την πλευρά δεν υπάρχει παράλληλος χώρος σε απόσταση έως {reach}",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "Τρέχουσα απόσταση μεταξύ των δύο χώρων: {gap}. Πληκτρολογήστε το πάχος του διαχωριστικού: η πλευρά που πατήσατε γίνεται παράλληλη στην πλευρά του διπλανού χώρου, σε αυτή την απόσταση (οι γωνίες βρίσκονται ξανά με τις γειτονικές πλευρές). Ο διπλανός χώρος μένει ακίνητος.",
+ "Partition thickness": "Πάχος διαχωριστικού",
+ "Apply": "Εφαρμογή",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Πάχη διαχωριστικών τοίχων: χρειάζονται τουλάχιστον δύο χώροι (κλειστές πολυγραμμές).",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Πάχη διαχωριστικών τοίχων: ο χώρος δεν είναι πια ο ίδιος στο σχέδιο.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Πάχη διαχωριστικών τοίχων: με αυτό το πάχος ο χώρος θα παραμορφωνόταν πολύ· δεν άλλαξε τίποτα.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "Διαχωριστικό {t} (πριν {before}) — Ctrl+Z για αναίρεση",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Οι χώροι προσαρμόστηκαν στο εσωτερικό περίγραμμα (την εσωτερική όψη των τοίχων): {snapped} πλευρές σε {moved_rooms} χώρους. Ctrl+Z για αναίρεση.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Καμία πλευρά χώρου δεν είναι αρκετά κοντά και παράλληλη στο εσωτερικό περίγραμμα για να προσαρμοστεί.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Τώρα τα διαχωριστικά: πατήστε «Επόμενο» και κάντε κλικ, ένα κάθε φορά, στην πλευρά του χώρου που θα μετακινηθεί· θα σας ζητηθεί το πάχος. «Κλείσιμο» για να το κάνετε αργότερα με το κουμπί «Πάχη διαχωριστικών τοίχων».",
+ "Next: partitions ▸": "Επόμενο: διαχωριστικά ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Χώροι στο εσωτερικό περίγραμμα και διαχωριστικά",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Όταν πατάτε Enter στο \"2. Πάχη εξωτερικών τοίχων\", κάθε πλευρά χώρου κοντά και σχεδόν παράλληλη στην εσωτερική γραμμή ενός εξωτερικού τοίχου μεταφέρεται πάνω σε αυτή τη γραμμή· οι γωνίες βρίσκονται ξανά εκεί όπου τέμνονται οι γειτονικές πλευρές (Ctrl+Z αναιρεί). Έπειτα «Επόμενο: διαχωριστικά» (ή το κουμπί \"Πάχη διαχωριστικών τοίχων\"): κάντε κλικ στην πλευρά του χώρου που θα μετακινηθεί (πράσινη)· η πλευρά του διπλανού χώρου (πορτοκαλί) μένει ακίνητη. Πληκτρολογήστε το πάχος του διαχωριστικού: η πλευρά που πατήσατε γίνεται παράλληλη στην απέναντι πλευρά, σε αυτή την απόσταση. Ένα διαχωριστικό κάθε φορά, Enter για τέλος."
 }

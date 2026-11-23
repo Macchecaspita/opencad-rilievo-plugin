@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ volledig (geen controlemaat)",
  "✔ complete, {extra} as a check": "✔ volledig, {extra} als controle",
  "✘ missing {}": "✘ ontbreken {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Deur of raam toevoegen (klik op de muur in de tekening)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Deur of raam toevoegen (klik op de muur in de tekening)",
+ "Partition thicknesses": "Diktes van scheidingswanden",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Diktes van scheidingswanden: klik op de zijde van de ruimte die moet verschuiven (groen; oranje de zijde van de naastgelegen ruimte, die blijft staan). Enter om af te ronden",
+ "Partition thicknesses: answer in the window": "Diktes van scheidingswanden: antwoord in het venster",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Tegenover die zijde ligt binnen {reach} geen evenwijdige ruimte",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "Huidige afstand tussen de twee ruimten: {gap}. Typ de dikte van de scheidingswand: de aangeklikte zijde wordt evenwijdig aan de zijde van de naastgelegen ruimte, op deze afstand (de hoeken worden opnieuw bepaald met de zijden ernaast). De naastgelegen ruimte blijft staan.",
+ "Partition thickness": "Dikte van de scheidingswand",
+ "Apply": "Toepassen",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Diktes van scheidingswanden: er zijn minstens twee ruimten (gesloten polylijnen) nodig.",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Diktes van scheidingswanden: de ruimte is in de tekening niet meer dezelfde.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Diktes van scheidingswanden: met deze dikte zou de ruimte te veel vervormen; er is niets veranderd.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "Scheidingswand van {t} (eerst {before}) — Ctrl+Z om ongedaan te maken",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Ruimten aangepast aan de binnenomtrek (de binnenzijde van de muren): {snapped} zijden in {moved_rooms} ruimten. Ctrl+Z om ongedaan te maken.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Geen enkele zijde van een ruimte ligt dicht en evenwijdig genoeg bij de binnenomtrek om aan te passen.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Nu de scheidingswanden: druk op «Volgende» en klik één voor één op de zijde van de ruimte die moet verschuiven; de dikte wordt gevraagd. «Sluiten» om het later te doen met de knop «Diktes van scheidingswanden».",
+ "Next: partitions ▸": "Volgende: scheidingswanden ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Ruimten op de binnenomtrek en scheidingswanden",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Als u in \"2. Diktes buitenmuren\" op Enter drukt, wordt elke zijde van een ruimte die dicht en bijna evenwijdig bij de binnenlijn van een buitenmuur ligt, op die lijn gezet; de hoeken worden opnieuw bepaald waar de zijden ernaast elkaar snijden (Ctrl+Z maakt het ongedaan). Daarna «Volgende: scheidingswanden» (of de knop \"Diktes van scheidingswanden\"): klik op de zijde van de ruimte die moet verschuiven (groen); de zijde van de naastgelegen ruimte (oranje) blijft staan. Typ de dikte van de scheidingswand: de aangeklikte zijde wordt evenwijdig aan de zijde ertegenover, op die afstand. Eén scheidingswand tegelijk, Enter om af te ronden."
 }

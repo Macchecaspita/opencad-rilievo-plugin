@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ полностью (нет контрольного измерения)",
  "✔ complete, {extra} as a check": "✔ полностью, {extra} для контроля",
  "✘ missing {}": "✘ не хватает: {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Добавить дверь или окно (щелчок по стене на чертеже)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Добавить дверь или окно (щелчок по стене на чертеже)",
+ "Partition thicknesses": "Толщины перегородок",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Толщины перегородок: щёлкните сторону помещения, которое нужно сдвинуть (зелёная; оранжевая — сторона соседнего помещения, она остаётся на месте). Enter для завершения",
+ "Partition thicknesses: answer in the window": "Толщины перегородок: ответьте в окне",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Напротив этой стороны в пределах {reach} нет параллельного помещения",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "Текущее расстояние между двумя помещениями: {gap}. Введите толщину перегородки: щёлкнутая сторона станет параллельной стороне соседнего помещения на этом расстоянии (углы находятся заново с соседними сторонами). Соседнее помещение остаётся на месте.",
+ "Partition thickness": "Толщина перегородки",
+ "Apply": "Применить",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Толщины перегородок: нужно хотя бы два помещения (замкнутые полилинии).",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Толщины перегородок: помещение на чертеже уже не то, что было.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Толщины перегородок: при такой толщине помещение слишком исказится; ничего не изменено.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "Перегородка {t} (было {before}) — Ctrl+Z для отмены",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Помещения подогнаны к внутреннему контуру (внутренней грани стен): {snapped} сторон в {moved_rooms} помещениях. Ctrl+Z для отмены.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Нет стороны помещения, достаточно близкой и параллельной внутреннему контуру, чтобы её подогнать.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Теперь перегородки: нажмите «Далее» и щёлкайте по одной сторону помещения, которое нужно сдвинуть; будет запрошена толщина. «Закрыть», чтобы сделать это позже кнопкой «Толщины перегородок».",
+ "Next: partitions ▸": "Далее: перегородки ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Помещения по внутреннему контуру и перегородки",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Когда вы нажимаете Enter в \"2. Толщина наружных стен\", каждая сторона помещения, близкая и почти параллельная внутренней линии наружной стены, переносится на эту линию; углы находятся заново там, где пересекаются соседние стороны (Ctrl+Z отменяет). Затем «Далее: перегородки» (или кнопка \"Толщины перегородок\"): щёлкните сторону помещения, которое нужно сдвинуть (зелёная); сторона соседнего помещения (оранжевая) остаётся на месте. Введите толщину перегородки: щёлкнутая сторона станет параллельной противоположной стороне на этом расстоянии. По одной перегородке, Enter для завершения."
 }

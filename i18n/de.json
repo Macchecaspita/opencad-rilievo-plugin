@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ vollständig (kein Kontrollmaß)",
  "✔ complete, {extra} as a check": "✔ vollständig, {extra} zur Kontrolle",
  "✘ missing {}": "✘ es fehlen {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Tür oder Fenster hinzufügen (Klick auf die Wand in der Zeichnung)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Tür oder Fenster hinzufügen (Klick auf die Wand in der Zeichnung)",
+ "Partition thicknesses": "Stärken der Trennwände",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Stärken der Trennwände: klicken Sie die Seite des zu verschiebenden Raums an (grün; orange die Seite des Nachbarraums, die stehen bleibt). Enter zum Beenden",
+ "Partition thicknesses: answer in the window": "Stärken der Trennwände: antworten Sie im Fenster",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Dieser Seite liegt innerhalb von {reach} kein paralleler Raum gegenüber",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "Aktueller Abstand zwischen den beiden Räumen: {gap}. Geben Sie die Stärke der Trennwand ein: die angeklickte Seite wird parallel zur Seite des Nachbarraums, in diesem Abstand (die Ecken werden mit den Nachbarseiten neu bestimmt). Der Nachbarraum bleibt stehen.",
+ "Partition thickness": "Stärke der Trennwand",
+ "Apply": "Anwenden",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Stärken der Trennwände: es werden mindestens zwei Räume (geschlossene Polylinien) benötigt.",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Stärken der Trennwände: der Raum ist in der Zeichnung nicht mehr derselbe.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Stärken der Trennwände: mit dieser Stärke würde der Raum zu sehr verformt; nichts wurde geändert.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "Trennwand von {t} (vorher {before}) — Strg+Z zum Rückgängigmachen",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Räume an den Innenumriss (die Innenseite der Wände) angepasst: {snapped} Seiten in {moved_rooms} Räumen. Strg+Z zum Rückgängigmachen.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Keine Raumseite liegt nah und parallel genug am Innenumriss, um sie anzupassen.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Jetzt die Trennwände: drücken Sie «Weiter» und klicken Sie nacheinander die Seite des zu verschiebenden Raums an; die Stärke wird abgefragt. «Schließen», um es später mit der Schaltfläche «Stärken der Trennwände» zu tun.",
+ "Next: partitions ▸": "Weiter: Trennwände ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Räume am Innenumriss und Trennwände",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Wenn Sie in \"2. Außenwandstärken\" Enter drücken, wird jede Raumseite, die nah und fast parallel zur Innenlinie einer Außenwand liegt, auf diese Linie gesetzt; die Ecken werden dort neu bestimmt, wo sich die Nachbarseiten schneiden (Strg+Z macht es rückgängig). Dann «Weiter: Trennwände» (oder die Schaltfläche \"Stärken der Trennwände\"): klicken Sie die Seite des zu verschiebenden Raums an (grün); die Seite des Nachbarraums (orange) bleibt stehen. Geben Sie die Stärke der Trennwand ein: die angeklickte Seite wird parallel zur gegenüberliegenden Seite, in diesem Abstand. Eine Trennwand nach der anderen, Enter zum Beenden."
 }

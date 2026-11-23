@@ -668,6 +668,11 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                     let mut thick = list;
                     thick.resize(room.pts.len(), None);
                     write_thickness_labels(host, &room.pts, room.z, &thick);
+                    let perim_h = parse_handle(&o);
+                    let (snapped, moved_rooms) = match perim_h {
+                        Some(ph) => crate::partitions::snap_to_perimeter(host, ph, &room.pts, &thick),
+                        None => (0, 0),
+                    };
                     let n = thick.len();
                     let done = thick.iter().filter(|t| t.is_some()).count();
                     let missing: Vec<String> = (0..n).filter(|&k| thick[k].is_none()).map(|k| format!("E{}–E{}", k + 1, (k + 1) % n + 1)).collect();
@@ -682,6 +687,37 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                         format!("Nadano grubość {done} z {n} boków obrysu (zapisane na rysunku, warstwa {LAYER_PERIM}). Teraz wybierz pomieszczenia przyciskiem «Pomieszczenia: numery, litery i pomiary»."),
                     );
                     let mut lines = vec![line];
+                    lines.push(if snapped > 0 {
+                        tr!(
+                            format!("Vani adattati al perimetro interno (la faccia interna dei muri): {snapped} lati in {moved_rooms} vani. Ctrl+Z per annullare."),
+                            format!("Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo."),
+                            format!("Estancias ajustadas al perímetro interior (la cara interior de los muros): {snapped} lados en {moved_rooms} estancias. Ctrl+Z para deshacer."),
+                            format!("Pièces ajustées au périmètre intérieur (la face intérieure des murs) : {snapped} côtés dans {moved_rooms} pièces. Ctrl+Z pour annuler."),
+                            format!("Odalar iç çevreye (duvarların iç yüzüne) uyduruldu: {moved_rooms} odada {snapped} kenar. Geri almak için Ctrl+Z."),
+                            format!("Compartimentos ajustados ao perímetro interior (a face interior das paredes): {snapped} lados em {moved_rooms} compartimentos. Ctrl+Z para anular."),
+                            format!("Pomieszczenia dopasowane do obrysu wewnętrznego (wewnętrznej strony ścian): {snapped} boków w {moved_rooms} pomieszczeniach. Ctrl+Z, aby cofnąć."),
+                        )
+                    } else {
+                        tr!(
+                            "Nessun lato di vano abbastanza vicino e parallelo al perimetro interno da adattare.",
+                            "No room side near and parallel enough to the inner perimeter to fit.",
+                            "Ningún lado de estancia lo bastante cercano y paralelo al perímetro interior para ajustarlo.",
+                            "Aucun côté de pièce assez proche et parallèle au périmètre intérieur pour être ajusté.",
+                            "İç çevreye uyduracak kadar yakın ve paralel oda kenarı yok.",
+                            "Nenhum lado de compartimento suficientemente próximo e paralelo ao perímetro interior para ajustar.",
+                            "Żaden bok pomieszczenia nie jest dość blisko i równolegle do obrysu wewnętrznego, by go dopasować.",
+                        )
+                        .to_string()
+                    });
+                    lines.push(tr!(
+                        "Ora le tramezze: premi «Avanti» e clicca, una alla volta, il lato del vano da spostare; ti chiederò lo spessore. «Chiudi» per farlo più tardi con il pulsante «Spessori tramezze».",
+                        "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.",
+                        "Ahora los tabiques: pulse «Siguiente» y haga clic, uno a uno, en el lado de la estancia que se moverá; se le pedirá el espesor. «Cerrar» para hacerlo más tarde con el botón «Espesores de tabiques».",
+                        "Maintenant les cloisons : appuyez sur « Suivant » et cliquez, une à la fois, sur le côté de la pièce à déplacer ; l'épaisseur vous sera demandée. « Fermer » pour le faire plus tard avec le bouton « Épaisseurs des cloisons ».",
+                        "Şimdi bölme duvarlar: «İleri»ye basın ve taşınacak odanın kenarına teker teker tıklayın; kalınlık sorulacak. Daha sonra «Bölme duvar kalınlıkları» düğmesiyle yapmak için «Kapat».",
+                        "Agora os tabiques: prima «Seguinte» e clique, um de cada vez, no lado do compartimento a mover; ser-lhe-á pedida a espessura. «Fechar» para o fazer mais tarde com o botão «Espessuras dos tabiques».",
+                        "Teraz ścianki działowe: naciśnij «Dalej» i klikaj po kolei bok pomieszczenia do przesunięcia; zostaniesz zapytany o grubość. «Zamknij», aby zrobić to później przyciskiem «Grubości ścianek działowych».",
+                    ).to_string());
                     if !missing.is_empty() {
                         let m = missing.join(", ");
                         lines.push(tr!(
@@ -694,7 +730,7 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
                             format!("⚠ Boki wciąż bez grubości (pomarańczowe): {m}. W razie potrzeby naciśnij ponownie «Grubości ścian zewnętrznych» i kliknij je."),
                         ));
                     }
-                    host.start_interactive(Box::new(tools::ReportDialog::titled(thickness_title(), lines)));
+                    host.start_interactive(Box::new(tools::ReportDialog::titled(thickness_title(), lines).then("RV_TRAMEZZE", tr!("Avanti: tramezze ▸", "Next: partitions ▸", "Siguiente: tabiques ▸", "Suivant : cloisons ▸", "İleri: bölme duvarlar ▸", "Seguinte: tabiques ▸", "Dalej: ścianki działowe ▸").to_string())));
                 }
             }
         }
@@ -916,6 +952,9 @@ pub fn handle(host: &mut dyn HostApi, cmd: &str) -> bool {
         "RV_FORO" => crate::holes::start(host),
         "RV_FOROLATO" => crate::holes::side_picked(host),
         "RV_FOROAPPLY" => crate::holes::apply(host),
+        "RV_TRAMEZZE" => crate::partitions::start(host),
+        "RV_TRAMEZZELATO" => crate::partitions::side_picked(host),
+        "RV_TRAMEZZEAPPLY" => crate::partitions::apply(host),
         "RV_LIBRETTO" => match last_book() {
             Some((_, default)) => host.start_interactive(Box::new(tools::BookDialog::new(default))),
             None => host.push_error(tr!(

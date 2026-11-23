@@ -43,7 +43,7 @@ the letters, side dimensions (dimension style **RILIEVO**), diagonals with their
 length and a *measured / computed / residual* table, with residuals over the
 tolerance in red.
 
-Commands: `RV_PERIMETRO` (outer perimeter), `RV_SPESSORI` (outer wall thicknesses),
+Commands: `RV_PERIMETRO` (outer perimeter), `RV_SPESSORI` (outer wall thicknesses; on Enter the room sides near the inner face of the walls go onto it), `RV_TRAMEZZE` (partition thicknesses: the clicked room side goes parallel to the room next door, at the thickness typed),
 `RV_VANO` (rooms: numbers, letters, measures), `RV_ETICHETTE` (corner letters only),
 `RV_APPLICA` (move the original rooms to the result), `RV_FORO` (doors and windows cut into the walls of the finished drawing, with a width/height label outside the building), `RV_LIBRETTO` (measures book), `RV_GUIDE`, `RV_MANUALE` (surveying manual, PDF), `RV_LANG <code>|AUTO`.
 

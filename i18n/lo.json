@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ ຄົບຖ້ວນ (ບໍ່ມີການວັດກວດສອບ)",
  "✔ complete, {extra} as a check": "✔ ຄົບຖ້ວນ, {extra} ສຳລັບກວດສອບ",
  "✘ missing {}": "✘ ຂາດ {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ ເພີ່ມປະຕູ ຫຼື ປ່ອງຢ້ຽມ (ຄລິກໃສ່ຝາໃນແບບແຕ້ມ)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ ເພີ່ມປະຕູ ຫຼື ປ່ອງຢ້ຽມ (ຄລິກໃສ່ຝາໃນແບບແຕ້ມ)",
+ "Partition thicknesses": "ຄວາມໜາຝາກັ້ນ",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "ຄວາມໜາຝາກັ້ນ: ຄລິກດ້ານຂອງຫ້ອງທີ່ຈະຍ້າຍ (ສີຂຽວ; ສີສົ້ມແມ່ນດ້ານຂອງຫ້ອງຂ້າງໆ, ຢູ່ກັບທີ່). Enter ເພື່ອສຳເລັດ",
+ "Partition thicknesses: answer in the window": "ຄວາມໜາຝາກັ້ນ: ຕອບໃນໜ້າຕ່າງ",
+ "⚠ No parallel room faces that side within {reach}": "⚠ ບໍ່ມີຫ້ອງຂະໜານຢູ່ກົງກັນຂ້າມດ້ານນັ້ນພາຍໃນ {reach}",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "ໄລຍະປັດຈຸບັນລະຫວ່າງສອງຫ້ອງ: {gap}. ໃສ່ຄວາມໜາຂອງຝາກັ້ນ: ດ້ານທີ່ຄລິກຈະຂະໜານກັບດ້ານຂອງຫ້ອງຂ້າງໆ ໃນໄລຍະນີ້ (ມຸມຈະຖືກຫາໃໝ່ກັບດ້ານຂ້າງຄຽງ). ຫ້ອງຂ້າງໆຢູ່ກັບທີ່.",
+ "Partition thickness": "ຄວາມໜາຝາກັ້ນ",
+ "Apply": "ນຳໃຊ້",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "ຄວາມໜາຝາກັ້ນ: ຕ້ອງມີຢ່າງໜ້ອຍສອງຫ້ອງ (ໂພລີລາຍປິດ).",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "ຄວາມໜາຝາກັ້ນ: ຫ້ອງໃນແບບແຕ້ມບໍ່ຄືເກົ່າແລ້ວ.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "ຄວາມໜາຝາກັ້ນ: ດ້ວຍຄວາມໜານີ້ ຫ້ອງຈະຜິດຮູບຫຼາຍເກີນໄປ; ບໍ່ມີຫຍັງປ່ຽນ.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "ຝາກັ້ນ {t} (ກ່ອນໜ້າ {before}) — Ctrl+Z ເພື່ອຍົກເລີກ",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "ປັບຫ້ອງເຂົ້າກັບຂອບໃນ (ໜ້າໃນຂອງຝາ) ແລ້ວ: {snapped} ດ້ານໃນ {moved_rooms} ຫ້ອງ. Ctrl+Z ເພື່ອຍົກເລີກ.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "ບໍ່ມີດ້ານຫ້ອງໃດທີ່ໃກ້ ແລະ ຂະໜານກັບຂອບໃນພໍທີ່ຈະປັບ.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "ຕອນນີ້ຝາກັ້ນ: ກົດ «ຕໍ່ໄປ» ແລະ ຄລິກທີລະອັນທີ່ດ້ານຂອງຫ້ອງທີ່ຈະຍ້າຍ; ຈະຖາມຄວາມໜາ. «ປິດ» ເພື່ອເຮັດພາຍຫຼັງດ້ວຍປຸ່ມ «ຄວາມໜາຝາກັ້ນ».",
+ "Next: partitions ▸": "ຕໍ່ໄປ: ຝາກັ້ນ ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. ຫ້ອງຕາມຂອບໃນ ແລະ ຝາກັ້ນ",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "ເມື່ອທ່ານກົດ Enter ໃນ \"2. ຄວາມໜາຂອງຝາຜະໜັງນອກ\", ທຸກດ້ານຂອງຫ້ອງທີ່ໃກ້ ແລະ ເກືອບຂະໜານກັບເສັ້ນໃນຂອງຝານອກ ຈະຖືກຍ້າຍໄປເທິງເສັ້ນນັ້ນ; ມຸມຈະຖືກຫາໃໝ່ບ່ອນທີ່ດ້ານຂ້າງຄຽງຕັດກັນ (Ctrl+Z ຍົກເລີກ). ຈາກນັ້ນ «ຕໍ່ໄປ: ຝາກັ້ນ» (ຫຼື ປຸ່ມ \"ຄວາມໜາຝາກັ້ນ\"): ຄລິກດ້ານຂອງຫ້ອງທີ່ຈະຍ້າຍ (ສີຂຽວ); ດ້ານຂອງຫ້ອງຂ້າງໆ (ສີສົ້ມ) ຢູ່ກັບທີ່. ໃສ່ຄວາມໜາຂອງຝາກັ້ນ: ດ້ານທີ່ຄລິກຈະຂະໜານກັບດ້ານກົງກັນຂ້າມ ໃນໄລຍະນັ້ນ. ເທື່ອລະຝາກັ້ນ, Enter ເພື່ອສຳເລັດ."
 }

@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ valmis (ei tarkistusmittaa)",
  "✔ complete, {extra} as a check": "✔ valmis, {extra} tarkistuksena",
  "✘ missing {}": "✘ puuttuu {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Lisää ovi tai ikkuna (napsauta seinää piirustuksessa)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Lisää ovi tai ikkuna (napsauta seinää piirustuksessa)",
+ "Partition thicknesses": "Väliseinien paksuudet",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Väliseinien paksuudet: napsauta siirrettävän huoneen sivua (vihreä; oranssina viereisen huoneen sivu, joka pysyy paikallaan). Enter lopettaa",
+ "Partition thicknesses: answer in the window": "Väliseinien paksuudet: vastaa ikkunassa",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Tätä sivua vastapäätä ei ole yhdensuuntaista huonetta {reach} sisällä",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "Nykyinen etäisyys kahden huoneen välillä: {gap}. Kirjoita väliseinän paksuus: napsautettu sivu tulee yhdensuuntaiseksi viereisen huoneen sivun kanssa tällä etäisyydellä (kulmat haetaan uudelleen viereisten sivujen kanssa). Viereinen huone pysyy paikallaan.",
+ "Partition thickness": "Väliseinän paksuus",
+ "Apply": "Käytä",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Väliseinien paksuudet: tarvitaan vähintään kaksi huonetta (suljettuja moniviivoja).",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Väliseinien paksuudet: huone ei ole enää piirustuksessa sama.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Väliseinien paksuudet: tällä paksuudella huone vääristyisi liikaa; mitään ei muutettu.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "Väliseinä {t} (ennen {before}) — Ctrl+Z kumoaa",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Huoneet sovitettu sisäreunaan (seinien sisäpintaan): {snapped} sivua {moved_rooms} huoneessa. Ctrl+Z kumoaa.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Mikään huoneen sivu ei ole tarpeeksi lähellä ja yhdensuuntainen sisäreunan kanssa sovitettavaksi.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Nyt väliseinät: paina «Seuraava» ja napsauta yksi kerrallaan siirrettävän huoneen sivua; paksuutta kysytään. «Sulje», jos teet sen myöhemmin painikkeella «Väliseinien paksuudet».",
+ "Next: partitions ▸": "Seuraava: väliseinät ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Huoneet sisäreunalle ja väliseinät",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Kun painat Enter kohdassa \"2. Ulkoseinien paksuudet\", jokainen huoneen sivu, joka on lähellä ja lähes yhdensuuntainen ulkoseinän sisäviivan kanssa, siirretään sille viivalle; kulmat haetaan uudelleen viereisten sivujen leikkauskohdista (Ctrl+Z kumoaa). Sitten «Seuraava: väliseinät» (tai painike \"Väliseinien paksuudet\"): napsauta siirrettävän huoneen sivua (vihreä); viereisen huoneen sivu (oranssi) pysyy paikallaan. Kirjoita väliseinän paksuus: napsautettu sivu tulee yhdensuuntaiseksi vastakkaisen sivun kanssa tällä etäisyydellä. Yksi väliseinä kerrallaan, Enter lopettaa."
 }

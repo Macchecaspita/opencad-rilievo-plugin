@@ -59,7 +59,8 @@ automatiche, non riviste da madrelingua, quindi le correzioni sono benvenute.
 | Comando | Pulsante | Cosa fa |
 |---|---|---|
 | `RV_PERIMETRO` | **1. Perimetro esterno** | facoltativo: clicca la polilinea del perimetro rilevato, Invio; resta ferma nel calcolo |
-| `RV_SPESSORI` | **2. Spessori muri esterni** | clicca il perimetro lato per lato e scrivi spessore e verso del muro: nasce la linea parallela al lato (layer RILIEVO_PERIMETRO); verso l'esterno solo disegno, fuori dal calcolo dei vani |
+| `RV_SPESSORI` | **2. Spessori muri esterni** | clicca il perimetro lato per lato e scrivi spessore e verso del muro: nasce la linea parallela al lato (layer RILIEVO_PERIMETRO); verso l'esterno solo disegno, fuori dal calcolo dei vani; all'Invio porta sul filo interno dei muri i lati dei vani vicini e paralleli |
+| `RV_TRAMEZZE` | **Spessori tramezze** | clicca il lato del vano da spostare e scrivi lo spessore della tramezza: il lato diventa parallelo al vano accanto, che resta fermo |
 | `RV_VANO` | **3. Vani: numeri, lettere e misure** | seleziona i vani, Invio: numeri e lettere sul disegno e una sola finestra con tutti i vani, porte e finestre, poi Calcola, che aggiorna il disegno |
 | `RV_ETICHETTE` | | scrive solo le lettere sui vertici, per l'eidotipo |
 | `RV_APPLICA` | | porta le polilinee originali nella forma dell'ultimo calcolo |

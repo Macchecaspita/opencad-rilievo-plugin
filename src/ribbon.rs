@@ -31,6 +31,7 @@ impl CadModule for RilievoModule {
                     tools: vec![
                         cmd("RV_PERIMETRO", tr!("1. Perimetro esterno", "1. Outer perimeter", "1. Perímetro exterior", "1. Périmètre extérieur", "1. Dış çevre", "1. Perímetro exterior", "1. Obrys zewnętrzny"), include_bytes!("../icons/perimeter.svg")),
                         cmd("RV_SPESSORI", tr!("2. Spessori muri esterni", "2. Outer wall thicknesses", "2. Espesores de muros exteriores", "2. Épaisseurs des murs extérieurs", "2. Dış duvar kalınlıkları", "2. Espessuras das paredes exteriores", "2. Grubości ścian zewnętrznych"), include_bytes!("../icons/walls.svg")),
+                        cmd("RV_TRAMEZZE", tr!("Spessori tramezze", "Partition thicknesses", "Espesores de tabiques", "Épaisseurs des cloisons", "Bölme duvar kalınlıkları", "Espessuras dos tabiques", "Grubości ścianek działowych"), include_bytes!("../icons/partitions.svg")),
                     ],
                 },
                 RibbonGroup {

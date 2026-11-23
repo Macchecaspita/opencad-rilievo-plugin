@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ 完整（无检核测量值）",
  "✔ complete, {extra} as a check": "✔ 完整，{extra} 作检核",
  "✘ missing {}": "✘ 缺少 {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ 添加门或窗（在图纸上单击墙）"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ 添加门或窗（在图纸上单击墙）",
+ "Partition thicknesses": "隔墙厚度",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "隔墙厚度：单击要移动的房间的边（绿色；橙色为相邻房间的边，保持不动）。按 Enter 结束",
+ "Partition thicknesses: answer in the window": "隔墙厚度：请在窗口中回答",
+ "⚠ No parallel room faces that side within {reach}": "⚠ 该边对面 {reach} 以内没有平行的房间",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "两个房间当前的间距：{gap}。输入隔墙厚度：单击的边将与相邻房间的边平行，并位于此距离处（角点与相邻边重新求交）。相邻房间保持不动。",
+ "Partition thickness": "隔墙厚度",
+ "Apply": "应用",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "隔墙厚度：至少需要两个房间（闭合多段线）。",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "隔墙厚度：图纸中的房间已不是原来的样子。",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "隔墙厚度：此厚度会使房间变形过大；未做任何更改。",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "隔墙 {t}（原为 {before}）— 按 Ctrl+Z 撤销",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "房间已贴合内轮廓（墙的内表面）：{moved_rooms} 个房间中的 {snapped} 条边。按 Ctrl+Z 撤销。",
+ "No room side near and parallel enough to the inner perimeter to fit.": "没有足够接近且平行于内轮廓的房间边可以贴合。",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "现在处理隔墙：按«下一步»，然后逐一单击要移动的房间的边；会询问厚度。按«关闭»可稍后用«隔墙厚度»按钮处理。",
+ "Next: partitions ▸": "下一步：隔墙 ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. 贴合内轮廓的房间与隔墙",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "在\"2. 外墙厚度\"中按 Enter 时，凡是靠近且几乎平行于外墙内侧线的房间边都会移到该线上；角点在相邻边的交点处重新求得（Ctrl+Z 撤销）。然后«下一步：隔墙»（或\"隔墙厚度\"按钮）：单击要移动的房间的边（绿色）；相邻房间的边（橙色）保持不动。输入隔墙厚度：单击的边将与对面的边平行，并位于该距离处。每次一道隔墙，按 Enter 结束。"
 }

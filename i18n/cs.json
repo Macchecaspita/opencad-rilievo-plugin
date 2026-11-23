@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ úplné (žádná kontrolní míra)",
  "✔ complete, {extra} as a check": "✔ úplné, {extra} pro kontrolu",
  "✘ missing {}": "✘ chybí {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Přidat dveře nebo okno (klik na zeď ve výkresu)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Přidat dveře nebo okno (klik na zeď ve výkresu)",
+ "Partition thicknesses": "Tloušťky příček",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Tloušťky příček: klikněte na stranu místnosti, která se má posunout (zeleně; oranžově strana sousední místnosti, která zůstane na místě). Enter pro ukončení",
+ "Partition thicknesses: answer in the window": "Tloušťky příček: odpovězte v okně",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Proti této straně není do {reach} žádná rovnoběžná místnost",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "Současná vzdálenost mezi oběma místnostmi: {gap}. Zadejte tloušťku příčky: kliknutá strana bude rovnoběžná se stranou sousední místnosti v této vzdálenosti (rohy se určí znovu se sousedními stranami). Sousední místnost zůstane na místě.",
+ "Partition thickness": "Tloušťka příčky",
+ "Apply": "Použít",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Tloušťky příček: jsou potřeba alespoň dvě místnosti (uzavřené křivky).",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Tloušťky příček: místnost už ve výkresu není stejná.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Tloušťky příček: s touto tloušťkou by se místnost příliš zdeformovala; nic se nezměnilo.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "Příčka {t} (dříve {before}) — Ctrl+Z pro zpět",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Místnosti přizpůsobeny vnitřnímu obrysu (vnitřní líc zdí): {snapped} stran v {moved_rooms} místnostech. Ctrl+Z pro zpět.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Žádná strana místnosti není dost blízko a rovnoběžně s vnitřním obrysem, aby se přizpůsobila.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Teď příčky: stiskněte «Další» a klikejte postupně na stranu místnosti, která se má posunout; budete dotázáni na tloušťku. «Zavřít», chcete-li to udělat později tlačítkem «Tloušťky příček».",
+ "Next: partitions ▸": "Další: příčky ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Místnosti na vnitřním obrysu a příčky",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Když v \"2. Tloušťky obvodových zdí\" stisknete Enter, každá strana místnosti blízká a téměř rovnoběžná s vnitřní čarou obvodové zdi se přesune na tuto čáru; rohy se určí znovu tam, kde se protínají sousední strany (Ctrl+Z vrátí zpět). Pak «Další: příčky» (nebo tlačítko \"Tloušťky příček\"): klikněte na stranu místnosti, která se má posunout (zelená); strana sousední místnosti (oranžová) zůstane na místě. Zadejte tloušťku příčky: kliknutá strana bude rovnoběžná s protější stranou v této vzdálenosti. Jedna příčka po druhé, Enter pro ukončení."
 }

@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ teljes (nincs ellenőrző méret)",
  "✔ complete, {extra} as a check": "✔ teljes, {extra} ellenőrzésként",
  "✘ missing {}": "✘ hiányzik: {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Ajtó vagy ablak hozzáadása (kattintás a falra a rajzon)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Ajtó vagy ablak hozzáadása (kattintás a falra a rajzon)",
+ "Partition thicknesses": "Válaszfalak vastagsága",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Válaszfalak vastagsága: kattintson az elmozdítandó helyiség oldalára (zöld; narancssárga a szomszéd helyiség oldala, amely a helyén marad). Enter a befejezéshez",
+ "Partition thicknesses: answer in the window": "Válaszfalak vastagsága: válaszoljon az ablakban",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Ezzel az oldallal szemben {reach} távolságon belül nincs párhuzamos helyiség",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "A két helyiség jelenlegi távolsága: {gap}. Írja be a válaszfal vastagságát: a kattintott oldal párhuzamos lesz a szomszéd helyiség oldalával, ezen a távolságon (a sarkokat a szomszédos oldalakkal újra meghatározza). A szomszéd helyiség a helyén marad.",
+ "Partition thickness": "Válaszfal vastagsága",
+ "Apply": "Alkalmaz",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Válaszfalak vastagsága: legalább két helyiség (zárt vonallánc) szükséges.",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Válaszfalak vastagsága: a helyiség már nem ugyanaz a rajzon.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Válaszfalak vastagsága: ezzel a vastagsággal a helyiség túlságosan eltorzulna; semmi sem változott.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "{t} válaszfal (előtte {before}) — Ctrl+Z a visszavonáshoz",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Helyiségek a belső kontúrhoz (a falak belső síkjához) igazítva: {snapped} oldal {moved_rooms} helyiségben. Ctrl+Z a visszavonáshoz.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Nincs olyan helyiségoldal, amely elég közel és párhuzamosan lenne a belső kontúrhoz az igazításhoz.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Most a válaszfalak: nyomja meg a «Tovább» gombot, és kattintson egyenként az elmozdítandó helyiség oldalára; a program megkérdezi a vastagságot. «Bezárás», ha később a «Válaszfalak vastagsága» gombbal végzi el.",
+ "Next: partitions ▸": "Tovább: válaszfalak ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Helyiségek a belső kontúron és válaszfalak",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Amikor a \"2. Külső falvastagságok\" lépésben Entert nyom, minden helyiségoldal, amely közel és majdnem párhuzamosan fut egy külső fal belső vonalával, arra a vonalra kerül; a sarkokat ott határozza meg újra, ahol a szomszédos oldalak metszik egymást (Ctrl+Z visszavonja). Ezután «Tovább: válaszfalak» (vagy a \"Válaszfalak vastagsága\" gomb): kattintson az elmozdítandó helyiség oldalára (zöld); a szomszéd helyiség oldala (narancssárga) a helyén marad. Írja be a válaszfal vastagságát: a kattintott oldal párhuzamos lesz a szemközti oldallal, ezen a távolságon. Egyszerre egy válaszfal, Enter a befejezéshez."
 }

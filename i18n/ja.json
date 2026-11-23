@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ 完了 (検査用の測定値なし)",
  "✔ complete, {extra} as a check": "✔ 完了、検査用 {extra}",
  "✘ missing {}": "✘ 不足: {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ ドアまたは窓を追加 (図面の壁をクリック)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ ドアまたは窓を追加 (図面の壁をクリック)",
+ "Partition thicknesses": "間仕切り壁の厚さ",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "間仕切り壁の厚さ: 動かす部屋の辺をクリックしてください (緑。オレンジは隣の部屋の辺で、動きません)。Enter で終了",
+ "Partition thicknesses: answer in the window": "間仕切り壁の厚さ: ウィンドウで答えてください",
+ "⚠ No parallel room faces that side within {reach}": "⚠ その辺の向かいに {reach} 以内の平行な部屋がありません",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "2 つの部屋の現在の間隔: {gap}。間仕切り壁の厚さを入力してください: クリックした辺が隣の部屋の辺と平行になり、この間隔に置かれます (角は隣の辺との交点で求め直します)。隣の部屋は動きません。",
+ "Partition thickness": "間仕切り壁の厚さ",
+ "Apply": "適用",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "間仕切り壁の厚さ: 部屋 (閉じたポリライン) が 2 つ以上必要です。",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "間仕切り壁の厚さ: 図面上の部屋がもとのものと違います。",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "間仕切り壁の厚さ: この厚さでは部屋が大きく変形してしまいます。何も変更していません。",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "間仕切り壁 {t} (変更前 {before}) — Ctrl+Z で元に戻す",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "部屋を内周 (壁の内側の面) に合わせました: {moved_rooms} 部屋で {snapped} 辺。Ctrl+Z で元に戻す。",
+ "No room side near and parallel enough to the inner perimeter to fit.": "内周に合わせられるほど近く平行な部屋の辺はありません。",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "次は間仕切り壁です: «次へ» を押し、動かす部屋の辺を 1 つずつクリックしてください。厚さを尋ねます。後でボタン «間仕切り壁の厚さ» で行う場合は «閉じる»。",
+ "Next: partitions ▸": "次へ: 間仕切り壁 ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. 内周に合わせた部屋と間仕切り壁",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "\"2. 外壁の厚さ\" で Enter を押すと、外壁の内側の線に近くほぼ平行な部屋の辺がその線の上に移ります。角は隣の辺と交わる点で求め直します (Ctrl+Z で元に戻せます)。続いて «次へ: 間仕切り壁» (またはボタン \"間仕切り壁の厚さ\"): 動かす部屋の辺をクリックします (緑)。隣の部屋の辺 (オレンジ) は動きません。間仕切り壁の厚さを入力すると、クリックした辺が向かいの辺と平行になり、その間隔に置かれます。間仕切り壁は 1 つずつ、Enter で終了。"
 }

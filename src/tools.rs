@@ -920,16 +920,24 @@ pub struct ReportDialog {
     lines: Vec<String>,
     done: bool,
     title: Option<String>,
+    /// The command its OK button goes on to, with that button's label.
+    next: Option<(String, String)>,
 }
 
 impl ReportDialog {
     pub fn new(lines: Vec<String>) -> Self {
-        ReportDialog { lines, done: false, title: None }
+        ReportDialog { lines, done: false, title: None, next: None }
     }
 
     /// A short message in a window, with its own title.
     pub fn titled(title: String, lines: Vec<String>) -> Self {
-        ReportDialog { lines, done: false, title: Some(title) }
+        ReportDialog { lines, done: false, title: Some(title), next: None }
+    }
+
+    /// OK goes on to `verb`, its button reading `label`.
+    pub fn then(mut self, verb: &str, label: String) -> Self {
+        self.next = Some((verb.to_string(), label));
+        self
     }
 }
 
@@ -952,11 +960,15 @@ impl InteractiveCommand for ReportDialog {
             let t = l.replacen("RV_VANO: ", "", 1).replacen("RV_VANO : ", "", 1);
             def = def.with_control(info(t.trim().to_string()));
         }
-        Some(def.submit_label("OK").cancel_label(tr!("Chiudi", "Close", "Cerrar", "Fermer", "Kapat", "Fechar", "Zamknij")).width(640.0))
+        let ok = self.next.as_ref().map_or_else(|| "OK".to_string(), |(_, l)| l.clone());
+        Some(def.submit_label(&ok).cancel_label(tr!("Chiudi", "Close", "Cerrar", "Fermer", "Kapat", "Fechar", "Zamknij")).width(640.0))
     }
-    fn on_dialog_response(&mut self, _response: DialogResponse) -> CommandStep {
+    fn on_dialog_response(&mut self, response: DialogResponse) -> CommandStep {
         self.done = true;
-        CommandStep::Cancel
+        match (&self.next, response) {
+            (Some((verb, _)), DialogResponse::Submitted(_)) => deferred(verb, String::new()),
+            _ => CommandStep::Cancel,
+        }
     }
 }
 
@@ -3083,6 +3095,18 @@ pub fn guide_sections() -> Vec<(&'static str, &'static str)> {
                 "\"2. Dış duvar kalınlıkları\" düğmesine basın ve çevrenin kenarlarına tek tek tıklayın. Her biri için bir pencere duvar kalınlığını ve yönü sorar: merkeze doğru (normal dış duvar, hesaba girer) veya dışa doğru (yalnızca çizim). Tamam'a basar basmaz o kenarın paralel çizgisi ve değeri çizimde görünür (RILIEVO_PERIMETRO katmanı): çizgisi olmayan kenar unutulmuş bir kenardır. \"Tüm kenarlar için de\" kutusu henüz boş olanları doldurur. Bitirmek için Enter: özet, kalınlığı olmayan kenarları listeler. Kalınlıklar çizimde kalır ve çevre boyunca oda kenarları bu uzaklıkta kalır.",
                 "Prima \"2. Espessuras das paredes exteriores\" e clique nos lados do perímetro um de cada vez. Para cada um uma janela pede a espessura da parede e o sentido: para o centro (parede exterior normal, entra no cálculo) ou para o exterior (só desenho). Logo que prime OK, a linha paralela e o valor desse lado aparecem no desenho (camada RILIEVO_PERIMETRO): um lado sem linha é um lado esquecido. A caixa \"também para todos os lados\" preenche os que ainda estão vazios. Enter para terminar: o resumo lista os lados sem espessura. As espessuras ficam no desenho e os lados dos compartimentos ao longo do perímetro ficam a essa distância.",
                 "Naciśnij \"2. Grubości ścian zewnętrznych\" i klikaj boki obrysu po kolei. Dla każdego okno pyta o grubość ściany i kierunek: do środka (zwykła ściana zewnętrzna, wchodzi do obliczeń) lub na zewnątrz (tylko rysunek). Po naciśnięciu OK linia równoległa i wartość tego boku od razu pojawiają się na rysunku (warstwa RILIEVO_PERIMETRO): bok bez linii to bok zapomniany. Pole \"także dla wszystkich boków\" wypełnia te jeszcze puste. Enter, aby zakończyć: podsumowanie wymienia boki bez grubości. Grubości zostają na rysunku, a boki pomieszczeń wzdłuż obrysu zachowują tę odległość.",
+            ),
+        ),
+        (
+            tr!("2b. Vani sul perimetro interno e tramezze", "2b. Rooms on the inner perimeter and partitions", "2b. Estancias en el perímetro interior y tabiques", "2b. Pièces sur le périmètre intérieur et cloisons", "2b. İç çevrede odalar ve bölme duvarlar", "2b. Compartimentos no perímetro interior e tabiques", "2b. Pomieszczenia na obrysie wewnętrznym i ścianki działowe"),
+            tr!(
+                "Quando premi Invio in \"2. Spessori muri esterni\", ogni lato di vano vicino e quasi parallelo alla linea interna di un muro esterno viene portato sopra quella linea; gli spigoli si ricalcolano incrociando i lati vicini (Ctrl+Z annulla). Poi «Avanti: tramezze» (o il pulsante \"Spessori tramezze\"): clicca il lato del vano da spostare (verde); il lato del vano accanto (arancione) resta fermo. Scrivi lo spessore della tramezza: il lato cliccato diventa parallelo al lato di fronte, a quella distanza. Una tramezza alla volta, Invio per finire.",
+                "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.",
+                "Al pulsar Intro en \"2. Espesores de muros exteriores\", cada lado de estancia cercano y casi paralelo a la línea interior de un muro exterior se lleva sobre esa línea; las esquinas se recalculan cruzando los lados vecinos (Ctrl+Z deshace). Luego «Siguiente: tabiques» (o el botón \"Espesores de tabiques\"): haga clic en el lado de la estancia que se moverá (verde); el lado de la estancia contigua (naranja) queda fijo. Escriba el espesor del tabique: el lado pulsado queda paralelo al lado de enfrente, a esa distancia. Un tabique cada vez, Intro para terminar.",
+                "Quand vous appuyez sur Entrée dans \"2. Épaisseurs des murs extérieurs\", chaque côté de pièce proche et presque parallèle à la ligne intérieure d'un mur extérieur est porté sur cette ligne ; les coins sont recalculés en croisant les côtés voisins (Ctrl+Z annule). Puis « Suivant : cloisons » (ou le bouton \"Épaisseurs des cloisons\") : cliquez sur le côté de la pièce à déplacer (vert) ; le côté de la pièce voisine (orange) reste fixe. Saisissez l'épaisseur de la cloison : le côté cliqué devient parallèle au côté d'en face, à cette distance. Une cloison à la fois, Entrée pour finir.",
+                "\"2. Dış duvar kalınlıkları\" içinde Enter'a bastığınızda, bir dış duvarın iç çizgisine yakın ve neredeyse paralel her oda kenarı o çizginin üzerine taşınır; köşeler komşu kenarların kesiştiği yerde yeniden bulunur (Ctrl+Z geri alır). Sonra «İleri: bölme duvarlar» (veya \"Bölme duvar kalınlıkları\" düğmesi): taşınacak odanın kenarına tıklayın (yeşil); yan odanın kenarı (turuncu) yerinde kalır. Bölme duvarın kalınlığını yazın: tıklanan kenar karşıdaki kenara bu uzaklıkta paralel olur. Her seferinde bir bölme duvar, bitirmek için Enter.",
+                "Quando prime Enter em \"2. Espessuras das paredes exteriores\", cada lado de compartimento próximo e quase paralelo à linha interior de uma parede exterior é levado para cima dessa linha; os cantos são recalculados cruzando os lados vizinhos (Ctrl+Z anula). Depois «Seguinte: tabiques» (ou o botão \"Espessuras dos tabiques\"): clique no lado do compartimento a mover (verde); o lado do compartimento ao lado (laranja) fica parado. Escreva a espessura do tabique: o lado clicado fica paralelo ao lado da frente, a essa distância. Um tabique de cada vez, Enter para terminar.",
+                "Gdy naciśniesz Enter w \"2. Grubości ścian zewnętrznych\", każdy bok pomieszczenia blisko i prawie równolegle do wewnętrznej linii ściany zewnętrznej zostaje przeniesiony na tę linię; narożniki są wyznaczane na nowo z przecięcia sąsiednich boków (Ctrl+Z cofa). Potem «Dalej: ścianki działowe» (lub przycisk \"Grubości ścianek działowych\"): kliknij bok pomieszczenia do przesunięcia (zielony); bok sąsiedniego pomieszczenia (pomarańczowy) zostaje na miejscu. Wpisz grubość ścianki: kliknięty bok staje się równoległy do boku naprzeciw, w tej odległości. Jedna ścianka naraz, Enter, aby zakończyć.",
             ),
         ),
         (

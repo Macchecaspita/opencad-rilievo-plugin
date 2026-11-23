@@ -324,5 +324,22 @@
  "✔ complete (no check measure)": "✔ đủ (không có số đo kiểm tra)",
  "✔ complete, {extra} as a check": "✔ đủ, {extra} để kiểm tra",
  "✘ missing {}": "✘ thiếu {}",
- "＋ Add a door or window (click the wall in the drawing)": "＋ Thêm cửa đi hoặc cửa sổ (nhấp vào tường trên bản vẽ)"
+ "＋ Add a door or window (click the wall in the drawing)": "＋ Thêm cửa đi hoặc cửa sổ (nhấp vào tường trên bản vẽ)",
+ "Partition thicknesses": "Độ dày tường ngăn",
+ "Partition thicknesses: click the side of the room to move (in green; in orange the side of the room next door, which stays put). Enter to finish": "Độ dày tường ngăn: nhấp vào cạnh của phòng cần dời (màu xanh lá; màu cam là cạnh của phòng bên cạnh, giữ nguyên). Enter để kết thúc",
+ "Partition thicknesses: answer in the window": "Độ dày tường ngăn: trả lời trong cửa sổ",
+ "⚠ No parallel room faces that side within {reach}": "⚠ Đối diện cạnh đó không có phòng song song nào trong phạm vi {reach}",
+ "Present distance between the two rooms: {gap}. Type the partition's thickness: the clicked side becomes parallel to the side of the room next door, at this distance (the corners are found again with the sides next to it). The room next door stays put.": "Khoảng cách hiện tại giữa hai phòng: {gap}. Nhập độ dày tường ngăn: cạnh đã nhấp sẽ song song với cạnh của phòng bên cạnh, ở khoảng cách này (các góc được tính lại với các cạnh kề). Phòng bên cạnh giữ nguyên.",
+ "Partition thickness": "Độ dày tường ngăn",
+ "Apply": "Áp dụng",
+ "Partition thicknesses: at least two rooms (closed polylines) are needed.": "Độ dày tường ngăn: cần ít nhất hai phòng (đa tuyến kín).",
+ "Partition thicknesses: the room is no longer the same in the drawing.": "Độ dày tường ngăn: phòng trên bản vẽ không còn như trước.",
+ "Partition thicknesses: with this thickness the room would be bent out of shape; nothing changed.": "Độ dày tường ngăn: với độ dày này phòng sẽ bị méo quá nhiều; không có gì thay đổi.",
+ "Partition of {t} (before {before}) — Ctrl+Z to undo": "Tường ngăn {t} (trước đó {before}) — Ctrl+Z để hoàn tác",
+ "Rooms fitted to the inner perimeter (the inner face of the walls): {snapped} sides in {moved_rooms} rooms. Ctrl+Z to undo.": "Các phòng đã khớp với đường bao trong (mặt trong của tường): {snapped} cạnh trong {moved_rooms} phòng. Ctrl+Z để hoàn tác.",
+ "No room side near and parallel enough to the inner perimeter to fit.": "Không có cạnh phòng nào đủ gần và song song với đường bao trong để khớp.",
+ "Now the partitions: press «Next» and click, one at a time, the side of the room to move; you will be asked the thickness. «Close» to do it later with the «Partition thicknesses» button.": "Bây giờ là tường ngăn: nhấn «Tiếp» và nhấp lần lượt vào cạnh của phòng cần dời; bạn sẽ được hỏi độ dày. «Đóng» để làm sau bằng nút «Độ dày tường ngăn».",
+ "Next: partitions ▸": "Tiếp: tường ngăn ▸",
+ "2b. Rooms on the inner perimeter and partitions": "2b. Phòng theo đường bao trong và tường ngăn",
+ "When you press Enter in \"2. Outer wall thicknesses\", every room side near and nearly parallel to the inner line of an outer wall is moved onto that line; the corners are found again where the sides next to it cross (Ctrl+Z undoes it). Then «Next: partitions» (or the \"Partition thicknesses\" button): click the side of the room to move (green); the side of the room next door (orange) stays put. Type the partition's thickness: the clicked side becomes parallel to the facing side, at that distance. One partition at a time, Enter to finish.": "Khi bạn nhấn Enter trong \"2. Độ dày tường ngoài\", mỗi cạnh phòng gần và gần như song song với đường trong của một bức tường ngoài sẽ được đưa lên đường đó; các góc được tính lại tại nơi các cạnh kề cắt nhau (Ctrl+Z để hoàn tác). Sau đó «Tiếp: tường ngăn» (hoặc nút \"Độ dày tường ngăn\"): nhấp vào cạnh của phòng cần dời (xanh lá); cạnh của phòng bên cạnh (cam) giữ nguyên. Nhập độ dày tường ngăn: cạnh đã nhấp sẽ song song với cạnh đối diện, ở khoảng cách đó. Mỗi lần một tường ngăn, Enter để kết thúc."
 }
