@@ -150,4 +150,9 @@ S = {
     "ex_end": "Met de eenmaal ingemeten omtrek gaat geen enkele maat door de muren: zijden en diagonalen worden binnen de ruimtes genomen, diktes bij deuren en ramen.",
     "end": "Room Survey is een hobbyproject, niet geschikt voor professioneel gebruik: de auteur aanvaardt geen "
            "verantwoordelijkheid voor het gebruik. Code en updates: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Deuren en ramen openen in de tekening: de knop «Deuren en ramen»',
+    "p_holes": 'Na de berekening opent de knop <b>Deuren en ramen</b> de openingen in de muren: hij onderbreekt de muurlijnen, tekent de dagkanten, maakt de arcering leeg en tekent het kozijn met zijn maat.',
+    "cap_holes": 'Een raam van 120 breed en 140 cm hoog, op 1,50 van hoek 1A: kozijn aan de binnenzijde van de muur; buiten het gebouw de grijze haak en de maat breedte boven hoogte, in centimeters.',
+    "holes": ['druk op <b>Deuren en ramen</b> en kies <b>deur</b> of <b>raam</b>, met <b>breedte</b> en <b>hoogte</b> (de waarden worden voor de volgende opening opnieuw voorgesteld);', 'klik op de <b>hoek</b> vanwaar u hebt gemeten: een hoek van de buitenomtrek of van een ruimte;', 'klik op de <b>zijde</b> waarop de opening ligt en typ de <b>afstand</b> van de hoek tot de dagkant;', 'de plugin onderbreekt de aangeklikte zijde en de lijn aan de andere kant van de muur (ook als die niet evenwijdig is), tekent de dagkanten en maakt de arcering in de opening leeg;', 'op laag <b>RILIEVO_APERTURE</b> verschijnen het kozijn en de maat breedte/hoogte in centimeters, buiten de omtrek van het gebouw.'],
+    "p_holes2": 'Het raam heeft zijn kozijn aan de binnenzijde van de muur; de deur laat de opening vrij. De opdracht werkt alleen op de tekening: een onderbroken ruimte is geen gesloten polylijn meer en telt niet meer mee in de berekening, open de openingen dus <b>na</b> het berekenen. Ctrl+Z maakt de laatste opening ongedaan.',
 }

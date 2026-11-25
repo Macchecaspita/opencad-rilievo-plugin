@@ -147,4 +147,9 @@ S = {
     "ex_end": "Kun ulkoreuna on kerran mitattu, yksikään mitta ei kulje seinien läpi: sivut ja lävistäjät mitataan huoneiden sisällä, paksuudet ovista ja ikkunoista.",
     "end": "Room Survey on harrasteprojekti, joka ei sovellu ammattikäyttöön: tekijä ei ota vastuuta sen käytöstä. "
            "Koodi ja päivitykset: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Ovet ja ikkunat piirustukseen: painike «Ovet ja ikkunat»',
+    "p_holes": 'Laskennan jälkeen painike <b>Ovet ja ikkunat</b> avaa aukot seiniin: se katkaisee seinän viivat, piirtää pielet, tyhjentää rasterin ja piirtää karmin mittoineen.',
+    "cap_holes": 'Ikkuna, leveys 120 ja korkeus 140 cm, 1,50 kulmasta 1A: karmi seinän sisäpinnassa; rakennuksen ulkopuolella harmaa sulje ja mitta leveys korkeuden yläpuolella senttimetreinä.',
+    "holes": ['paina <b>Ovet ja ikkunat</b> ja valitse <b>ovi</b> tai <b>ikkuna</b>, <b>leveys</b> ja <b>korkeus</b> (arvot ehdotetaan uudelleen seuraavalle aukolle);', 'napsauta <b>kulmaa</b>, josta mittasit: ulkoreunan tai huoneen kulmaa;', 'napsauta <b>sivua</b>, jolla aukko on, ja kirjoita <b>etäisyys</b> kulmasta pieleen;', 'laajennus katkaisee napsautetun sivun ja seinän toisella puolella olevan viivan (vaikka se ei olisi yhdensuuntainen), piirtää pielet ja tyhjentää rasterin aukosta;', 'tasolle <b>RILIEVO_APERTURE</b> ilmestyvät karmi ja mitta leveys/korkeus senttimetreinä, rakennuksen ulkoreunan ulkopuolelle.'],
+    "p_holes2": 'Ikkunan karmi on seinän sisäpinnassa; ovi jättää aukon vapaaksi. Komento toimii vain piirustuksessa: katkaistu huone ei ole enää suljettu moniviiva eikä kuulu laskentaan, joten avaa aukot laskennan <b>jälkeen</b>. Ctrl+Z kumoaa viimeisen aukon.',
 }

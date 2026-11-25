@@ -140,4 +140,9 @@ S = {
     "ex_end": "Khi đường bao đã được đo một lần, không số đo nào phải xuyên qua tường: cạnh và đường chéo đo bên trong phòng, độ dày đo ở cửa đi và cửa sổ.",
     "end": "Room Survey là dự án sở thích, không phù hợp cho mục đích chuyên nghiệp: tác giả không chịu trách nhiệm về "
            "việc sử dụng. Mã nguồn và cập nhật: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Mở cửa đi và cửa sổ trên bản vẽ: nút «Cửa đi và cửa sổ»',
+    "p_holes": 'Sau khi tính xong, nút <b>Cửa đi và cửa sổ</b> mở các lỗ trên tường: cắt các đường tường, vẽ má cửa, làm trống phần tô vật liệu và vẽ khung cửa cùng kích thước của nó.',
+    "cap_holes": 'Một cửa sổ rộng 120 và cao 140 cm, cách góc 1A 1,50: khung ở mặt trong của tường; bên ngoài tòa nhà là dấu ngoặc xám và kích thước rộng trên cao, tính bằng xăng-ti-mét.',
+    "holes": ['nhấn <b>Cửa đi và cửa sổ</b> và chọn <b>cửa đi</b> hoặc <b>cửa sổ</b>, với <b>chiều rộng</b> và <b>chiều cao</b> (các giá trị được đề xuất lại cho lỗ tiếp theo);', 'nhấp vào <b>góc</b> mà bạn đã đo từ đó: một góc của đường bao ngoài hoặc của một phòng;', 'nhấp vào <b>cạnh</b> có lỗ cửa, rồi nhập <b>khoảng cách</b> từ góc đến má cửa;', 'plugin cắt cạnh đã nhấp và đường ở phía bên kia tường (kể cả khi không song song), vẽ má cửa và làm trống phần tô trong lỗ;', 'trên lớp <b>RILIEVO_APERTURE</b> xuất hiện khung cửa và kích thước rộng/cao bằng xăng-ti-mét, bên ngoài đường bao của tòa nhà.'],
+    "p_holes2": 'Cửa sổ có khung ở mặt trong của tường; cửa đi để lỗ trống. Lệnh chỉ làm việc trên bản vẽ: một phòng đã bị cắt không còn là đa tuyến kín và không tham gia tính toán nữa, vì vậy hãy mở lỗ <b>sau</b> khi tính. Ctrl+Z hoàn tác lỗ cuối cùng.',
 }

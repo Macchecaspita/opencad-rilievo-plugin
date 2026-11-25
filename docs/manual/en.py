@@ -151,4 +151,9 @@ S = {
     "ex_end": "With the perimeter surveyed once, no measure crosses the walls: sides and diagonals are taken inside the rooms, thicknesses at the doors and windows.",
     "end": "Room Survey is a hobby project, not suitable for professional use: the author accepts no responsibility "
            "for its use. Code and updates: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Opening doors and windows in the drawing: the «Doors and windows» button',
+    "p_holes": 'Once the calculation is done, the <b>Doors and windows</b> button opens the holes in the walls: it cuts the wall lines, draws the jambs, empties the hatch and draws the frame with its label.',
+    "cap_holes": 'A window 120 wide and 140 cm high, 1.50 from corner 1A: frame on the inner face of the wall; outside the building, the grey bracket and the label width over height, in centimetres.',
+    "holes": ['press <b>Doors and windows</b> and choose <b>door</b> or <b>window</b>, with <b>width</b> and <b>height</b> (the values are offered again for the next opening);', 'click the <b>corner</b> you measured from: a corner of the outer perimeter or of a room;', 'click the <b>side</b> the opening is on, then type the <b>distance</b> from the corner to the jamb;', 'the plugin cuts the clicked side and the line on the other side of the wall (even if it is not parallel), draws the jambs and empties the hatch in the hole;', "on layer <b>RILIEVO_APERTURE</b> the frame and the width/height label in centimetres appear, outside the building's perimeter."],
+    "p_holes2": 'A window has its frame on the inner face of the wall; a door leaves the hole free. The command works on the drawing only: an opened room is no longer a closed polyline and no longer takes part in the calculation, so open the holes <b>after</b> calculating. Ctrl+Z undoes the last opening.',
 }

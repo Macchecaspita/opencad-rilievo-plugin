@@ -153,4 +153,9 @@ S = {
     "ex_end": "Gdy obrys jest zmierzony raz, żaden pomiar nie przechodzi przez ściany: boki i przekątne mierzy się w pomieszczeniach, grubości w drzwiach i oknach.",
     "end": "Room Survey to projekt hobbystyczny, nieprzeznaczony do użytku zawodowego: autor nie ponosi "
            "odpowiedzialności za jego użycie. Kod i aktualizacje: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Otwieranie drzwi i okien na rysunku: przycisk «Drzwi i okna»',
+    "p_holes": 'Po obliczeniach przycisk <b>Drzwi i okna</b> wycina otwory w ścianach: przerywa linie ściany, rysuje ościeża, opróżnia kreskowanie i rysuje stolarkę z wymiarem.',
+    "cap_holes": 'Okno o szerokości 120 i wysokości 140 cm, 1,50 od narożnika 1A: rama przy wewnętrznej stronie ściany; na zewnątrz budynku szary nawias i wymiar szerokość nad wysokością, w centymetrach.',
+    "holes": ['naciśnij <b>Drzwi i okna</b> i wybierz <b>drzwi</b> lub <b>okno</b>, podaj <b>szerokość</b> i <b>wysokość</b> (wartości są proponowane ponownie dla następnego otworu);', 'kliknij <b>narożnik</b>, od którego mierzyłeś: narożnik obrysu zewnętrznego lub pomieszczenia;', 'kliknij <b>bok</b>, na którym jest otwór, i wpisz <b>odległość</b> od narożnika do ościeża;', 'wtyczka przerywa kliknięty bok i linię po drugiej stronie ściany (nawet jeśli nie jest równoległa), rysuje ościeża i opróżnia kreskowanie w otworze;', 'na warstwie <b>RILIEVO_APERTURE</b> pojawiają się stolarka i wymiar szerokość/wysokość w centymetrach, poza obrysem budynku.'],
+    "p_holes2": 'Okno ma ramę przy wewnętrznej stronie ściany; drzwi zostawiają otwór wolny. Polecenie działa tylko na rysunku: przerwane pomieszczenie nie jest już zamkniętą polilinią i nie bierze udziału w obliczeniach, dlatego otwory wycinaj <b>po</b> obliczeniach. Ctrl+Z cofa ostatni otwór.',
 }

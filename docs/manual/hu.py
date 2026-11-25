@@ -148,4 +148,9 @@ S = {
     "ex_end": "Ha a kontúrt egyszer felmérték, egyetlen mérés sem halad át a falakon: az oldalakat és átlókat a helyiségekben, a vastagságokat az ajtóknál és ablakoknál mérik.",
     "end": "A Room Survey hobbiprojekt, nem alkalmas professzionális használatra: a szerző nem vállal felelősséget a "
            "használatáért. Kód és frissítések: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Ajtók és ablakok a rajzon: az «Ajtók és ablakok» gomb',
+    "p_holes": 'A számítás után az <b>Ajtók és ablakok</b> gomb kivágja a nyílásokat a falakban: megszakítja a fal vonalait, megrajzolja a kávákat, kiüríti a sraffozást, és megrajzolja a nyílászárót a méretével.',
+    "cap_holes": '120 széles és 140 cm magas ablak, az 1A saroktól 1,50-re: tok a fal belső síkján; az épületen kívül a szürke zárójel és a szélesség a magasság fölött, centiméterben.',
+    "holes": ['nyomja meg az <b>Ajtók és ablakok</b> gombot, és válassza az <b>ajtó</b> vagy <b>ablak</b> lehetőséget, <b>szélességgel</b> és <b>magassággal</b> (az értékeket a következő nyílásnál újra felajánlja);', 'kattintson arra a <b>sarokra</b>, ahonnan mért: a külső kontúr vagy egy helyiség sarkára;', 'kattintson arra az <b>oldalra</b>, amelyen a nyílás van, és írja be a <b>távolságot</b> a saroktól a káváig;', 'a bővítmény megszakítja a kattintott oldalt és a fal másik oldalán lévő vonalat (akkor is, ha nem párhuzamos), megrajzolja a kávákat és kiüríti a sraffozást a nyílásban;', 'a <b>RILIEVO_APERTURE</b> rétegen megjelenik a nyílászáró és a szélesség/magasság centiméterben, az épület kontúrján kívül.'],
+    "p_holes2": 'Az ablak tokja a fal belső síkján van; az ajtó szabadon hagyja a nyílást. A parancs csak a rajzon dolgozik: a megszakított helyiség már nem zárt vonallánc, és nem vesz részt a számításban, ezért a nyílásokat a számítás <b>után</b> vágja ki. A Ctrl+Z visszavonja az utolsó nyílást.',
 }

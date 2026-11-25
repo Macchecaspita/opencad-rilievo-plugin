@@ -152,4 +152,9 @@ S = {
     "ex_end": "Com o perímetro levantado uma só vez, nenhuma medida atravessa as paredes: lados e diagonais tiram-se dentro dos compartimentos, as espessuras nas portas e janelas.",
     "end": "O Room Survey é um projeto amador, não adequado a uso profissional: o autor não assume responsabilidade "
            "pelo seu uso. Código e atualizações: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Abrir portas e janelas no desenho: o botão «Portas e janelas»',
+    "p_holes": 'Terminado o cálculo, o botão <b>Portas e janelas</b> abre os vãos nas paredes: interrompe as linhas da parede, desenha as ombreiras, esvazia a trama e desenha a caixilharia com a sua cota.',
+    "cap_holes": 'Uma janela com 120 de largura e 140 cm de altura, a 1,50 do canto 1A: caixilho na face interior da parede; fora do edifício, o parêntese cinzento e a cota largura sobre altura, em centímetros.',
+    "holes": ['prima <b>Portas e janelas</b> e escolha <b>porta</b> ou <b>janela</b>, com <b>largura</b> e <b>altura</b> (os valores voltam a ser propostos para o vão seguinte);', 'clique no <b>canto</b> a partir do qual mediu: um canto do perímetro exterior ou de um compartimento;', 'clique no <b>lado</b> onde está o vão e escreva a <b>distância</b> do canto à ombreira;', 'o plugin interrompe o lado clicado e a linha do outro lado da parede (mesmo que não seja paralela), desenha as ombreiras e esvazia a trama no vão;', 'na camada <b>RILIEVO_APERTURE</b> aparecem a caixilharia e a cota largura/altura em centímetros, fora do perímetro do edifício.'],
+    "p_holes2": 'A janela tem o caixilho na face interior da parede; a porta deixa o vão livre. O comando trabalha só no desenho: um compartimento interrompido já não é uma polilinha fechada e já não entra no cálculo, por isso abra os vãos <b>depois</b> de calcular. Ctrl+Z anula o último vão.',
 }

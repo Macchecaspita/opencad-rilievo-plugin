@@ -155,4 +155,9 @@ S = {
     "ex_end": "Con el perímetro levantado una sola vez, ninguna medida atraviesa los muros: lados y diagonales se toman dentro de las estancias, los espesores en las puertas y ventanas.",
     "end": "Room Survey es un proyecto aficionado, no apto para uso profesional: el autor no asume responsabilidad "
            "por su uso. Código y actualizaciones: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Abrir puertas y ventanas en el dibujo: el botón «Puertas y ventanas»',
+    "p_holes": 'Terminado el cálculo, el botón <b>Puertas y ventanas</b> abre los huecos en los muros: interrumpe las líneas del muro, dibuja las jambas, vacía el sombreado y dibuja la carpintería con su cota.',
+    "cap_holes": 'Una ventana de 120 de ancho y 140 cm de alto, a 1,50 de la esquina 1A: marco en la cara interior del muro; fuera del edificio, el corchete gris y la cota ancho sobre alto, en centímetros.',
+    "holes": ['pulse <b>Puertas y ventanas</b> y elija <b>puerta</b> o <b>ventana</b>, con <b>ancho</b> y <b>alto</b> (los valores se proponen de nuevo para el hueco siguiente);', 'haga clic en la <b>esquina</b> desde la que midió: una esquina del perímetro exterior o de una estancia;', 'haga clic en el <b>lado</b> donde está el hueco y escriba la <b>distancia</b> desde la esquina hasta la jamba;', 'el plugin interrumpe el lado pulsado y la línea al otro lado del muro (aunque no sea paralela), dibuja las jambas y vacía el sombreado en el hueco;', 'en la capa <b>RILIEVO_APERTURE</b> aparecen la carpintería y la cota ancho/alto en centímetros, fuera del perímetro del edificio.'],
+    "p_holes2": 'La ventana tiene el marco en la cara interior del muro; la puerta deja el hueco libre. El comando trabaja solo en el dibujo: una estancia interrumpida ya no es una polilínea cerrada y ya no entra en el cálculo, así que abra los huecos <b>después</b> de calcular. Ctrl+Z deshace el último hueco.',
 }

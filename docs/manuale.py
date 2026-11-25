@@ -310,6 +310,37 @@ EX_WINDOWS = [((2.0, 13.8), (3.4, 13.8)), ((6.6, 13.8), (8.0, 13.8)), ((11.6, 12
               ((11.4, 0.2), (12.8, 0.2)), ((14.8, 1.6), (14.8, 2.8)), ((0.36, 9.0), (0.27, 10.6))]
 
 
+def plan_holes():
+    # muro esterno orizzontale: fuori sotto (y < 0), vano 1 sopra
+    t = 0.30
+    cyan = colors.HexColor("#1aa3b8")
+    magenta = colors.HexColor("#b0279b")
+    red = colors.HexColor("#d22d2d")
+    pl = Plan(150, (-0.6, -1.25, 5.2, 1.35))
+    fill = colors.HexColor("#d9d9d9")
+    pl.poly([(0, 0), (1.5, 0), (1.5, t), (0, t)], WALL, 0.1, fill=fill)
+    pl.poly([(2.7, 0), (5.0, 0), (5.0, t), (2.7, t)], WALL, 0.1, fill=fill)
+    for (a, b) in [((0, 0), (1.5, 0)), ((2.7, 0), (5.0, 0)), ((0, t), (1.5, t)), ((2.7, t), (5.0, t))]:
+        pl.line(a, b, INK, 1.4)
+    pl.line((0, 0), (0, 1.3), INK, 1.4)
+    pl.line((1.5, 0), (1.5, t), INK, 0.8)
+    pl.line((2.7, 0), (2.7, t), INK, 0.8)
+    # telaio della finestra sul filo interno, montante centrale
+    pl.poly([(1.5, t - 0.08), (2.7, t - 0.08), (2.7, t), (1.5, t)], cyan, 0.9)
+    pl.line((2.1, t - 0.08), (2.1, t), cyan, 0.9)
+    # spigolo di partenza e distanza
+    pl.dot((0, t)); pl.text((0.18, t + 0.12), "1A", 7, INK, bold=True, anchor="start")
+    pl.line((0, t + 0.45), (1.5, t + 0.45), SIDE, 1.0)
+    pl.text((0.75, t + 0.55), num("1,50"), 6.5, SIDE)
+    pl.text((3.9, 0.95), T["d_room"].format(r=1), 9, ACCENT, bold=True)
+    # fuori: parentesi grigia, linea rossa, larghezza sopra l'altezza in cm
+    pl.poly([(1.5, -0.08), (1.5, -0.2), (2.7, -0.2), (2.7, -0.08)], GREY, 0.9, closed=False)
+    pl.line((1.85, -0.72), (2.35, -0.72), red, 0.9)
+    pl.text((2.1, -0.62), "120", 8, magenta)
+    pl.text((2.1, -1.0), "140", 8, magenta)
+    return pl.d
+
+
 def plan_example():
     pl = Plan(164, (-0.6, -0.9, 15.8, 14.9))
     pl.poly(EX_OUTER, WALL, 1.4, fill=HATCH)
@@ -455,6 +486,12 @@ def build(lang):
     s += [P(T["h5"], h1),
           P(T["h_dw"], h2),
           P(T["p_dw"]),
+          P(T["h_holes"], h2),
+          P(T["p_holes"]),
+          plan_holes(),
+          P(T["cap_holes"], cap)]
+    s += bullets(T["holes"])
+    s += [P(T["p_holes2"]),
           P(T["h_ext"], h2),
           P(T["p_ext"]),
           P(T["h6"], h1)]
@@ -555,7 +592,8 @@ def build_html(lang):
           f'<h2>{T["h_order"]}</h2>', p(T["p_order"]), f'<h2>{T["h_fix"]}</h2>', p(T["p_fix"]),
           h_bullets(T["fix"]), f'<h2>{T["h_hatch"]}</h2>', p(T["p_hatch"]), h_bullets(T["hatch"]),
           p(T["p_hatch2"])]
-    h += [f'<h1>{T["h5"]}</h1>', f'<h2>{T["h_dw"]}</h2>', p(T["p_dw"]), f'<h2>{T["h_ext"]}</h2>', p(T["p_ext"]),
+    h += [f'<h1>{T["h5"]}</h1>', f'<h2>{T["h_dw"]}</h2>', p(T["p_dw"]), f'<h2>{T["h_holes"]}</h2>', p(T["p_holes"]),
+          svg(plan_holes(), fam), p(T["cap_holes"], "cap"), h_bullets(T["holes"]), p(T["p_holes2"]), f'<h2>{T["h_ext"]}</h2>', p(T["p_ext"]),
           f'<h1>{T["h6"]}</h1>', h_bullets(T["calc"]), f'<h2>{T["h_vals"]}</h2>', h_table(T["t6"], [56, 36, 72]),
           f'<h2>{T["h_list"]}</h2>', h_bullets(T["list"])]
     h += ['<div class="pb"></div>', f'<h1>{T["ex_h"]}</h1>', p(T["ex_p"]), svg(plan_example(), fam),

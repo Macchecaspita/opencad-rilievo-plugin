@@ -146,4 +146,9 @@ S = {
     "ex_end": "Çevre bir kez ölçüldüğünde hiçbir ölçü duvarları kesmez: kenarlar ve köşegenler odaların içinde, kalınlıklar kapılarda ve pencerelerde alınır.",
     "end": "Room Survey bir hobi projesidir, profesyonel kullanıma uygun değildir: yazar kullanımından doğacak hiçbir "
            "sorumluluğu kabul etmez. Kod ve güncellemeler: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Çizimde kapı ve pencere açmak: «Kapılar ve pencereler» düğmesi',
+    "p_holes": 'Hesap bittikten sonra <b>Kapılar ve pencereler</b> düğmesi duvarlarda boşluk açar: duvar çizgilerini keser, söveleri çizer, taramayı boşaltır ve doğramayı ölçüsüyle birlikte çizer.',
+    "cap_holes": '1A köşesinden 1,50 uzaklıkta, 120 genişliğinde ve 140 cm yüksekliğinde bir pencere: kasa duvarın iç yüzünde; binanın dışında gri ayraç ve santimetre olarak genişlik üstünde yükseklik ölçüsü.',
+    "holes": ['<b>Kapılar ve pencereler</b> düğmesine basın, <b>kapı</b> veya <b>pencere</b> seçin, <b>genişlik</b> ve <b>yükseklik</b> girin (değerler sonraki boşluk için yeniden önerilir);', 'ölçtüğünüz <b>köşeye</b> tıklayın: dış çevrenin veya bir odanın köşesi;', 'boşluğun bulunduğu <b>kenara</b> tıklayın, sonra köşeden söveye olan <b>uzaklığı</b> yazın;', 'eklenti tıklanan kenarı ve duvarın öbür yüzündeki çizgiyi (paralel olmasa bile) keser, söveleri çizer ve boşluktaki taramayı boşaltır;', '<b>RILIEVO_APERTURE</b> katmanında, binanın çevresinin dışında doğrama ve santimetre olarak genişlik/yükseklik ölçüsü belirir.'],
+    "p_holes2": 'Pencerenin kasası duvarın iç yüzündedir; kapı boşluğu açık bırakır. Komut yalnızca çizim üzerinde çalışır: açılmış bir oda artık kapalı çoklu çizgi değildir ve hesaba girmez, bu yüzden boşlukları hesaptan <b>sonra</b> açın. Ctrl+Z son boşluğu geri alır.',
 }

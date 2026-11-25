@@ -143,4 +143,9 @@ S = {
     "ex_end": "Jakmile je obrys jednou zaměřen, žádná míra neprochází zdmi: strany a úhlopříčky se měří uvnitř místností, tloušťky u dveří a oken.",
     "end": "Room Survey je hobby projekt, nevhodný pro profesionální použití: autor nenese žádnou odpovědnost za jeho "
            "použití. Kód a aktualizace: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Otvory dveří a oken ve výkresu: tlačítko «Dveře a okna»',
+    "p_holes": 'Po výpočtu tlačítko <b>Dveře a okna</b> vytvoří otvory ve zdech: přeruší čáry zdi, nakreslí ostění, vyprázdní šrafu a nakreslí výplň otvoru s kótou.',
+    "cap_holes": 'Okno široké 120 a vysoké 140 cm, 1,50 od rohu 1A: rám u vnitřního líce zdi; vně budovy šedá závorka a kóta šířka nad výškou v centimetrech.',
+    "holes": ['stiskněte <b>Dveře a okna</b> a zvolte <b>dveře</b> nebo <b>okno</b>, se <b>šířkou</b> a <b>výškou</b> (hodnoty se znovu nabídnou pro další otvor);', 'klikněte na <b>roh</b>, od kterého jste měřili: roh vnějšího obrysu nebo místnosti;', 'klikněte na <b>stranu</b>, na které je otvor, a zadejte <b>vzdálenost</b> od rohu k ostění;', 'plugin přeruší kliknutou stranu i čáru na druhé straně zdi (i když není rovnoběžná), nakreslí ostění a vyprázdní šrafu v otvoru;', 'na hladině <b>RILIEVO_APERTURE</b> se objeví výplň otvoru a kóta šířka/výška v centimetrech, vně obrysu budovy.'],
+    "p_holes2": 'Okno má rám u vnitřního líce zdi; dveře nechávají otvor volný. Příkaz pracuje jen s výkresem: přerušená místnost už není uzavřená křivka a nevstupuje do výpočtu, proto otvory vytvářejte <b>po</b> výpočtu. Ctrl+Z vrátí poslední otvor.',
 }

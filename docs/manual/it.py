@@ -152,4 +152,9 @@ S = {
     "ex_end": "Con il perimetro rilevato una volta sola, nessuna misura attraversa i muri: lati e diagonali si prendono dentro i vani, gli spessori nelle porte e nelle finestre.",
     "end": "Room Survey è un progetto hobbistico, non adatto a un uso professionale: l'autore non si assume "
            "responsabilità per il suo uso. Codice e aggiornamenti: github.com/Macchecaspita/opencad-rilievo-plugin",
+    "h_holes": 'Aprire porte e finestre nel disegno: pulsante «Porte e finestre»',
+    "p_holes": 'A calcolo finito, il pulsante <b>Porte e finestre</b> apre i fori nei muri: interrompe le linee del muro, ci mette le spallette, svuota il retino e disegna il serramento con la sua quota.',
+    "cap_holes": "Una finestra larga 120 e alta 140 cm, a 1,50 dallo spigolo 1A: telaio sul filo interno del muro; fuori dall'edificio la parentesi grigia e la quota larghezza sopra altezza, in centimetri.",
+    "holes": ['premi <b>Porte e finestre</b> e scegli <b>porta</b> o <b>finestra</b>, con <b>larghezza</b> e <b>altezza</b> (i valori restano proposti per il foro successivo);', 'clicca lo <b>spigolo</b> da cui hai misurato: uno spigolo del perimetro esterno o di un vano;', 'clicca il <b>lato</b> su cui sta il foro, poi scrivi la <b>distanza</b> dallo spigolo alla spalla del foro;', "il plugin interrompe il lato cliccato e la linea dall'altra parte del muro (anche se non è parallela), disegna le spallette e svuota il retino nel foro;", "sul layer <b>RILIEVO_APERTURE</b> compaiono il serramento e la quota larghezza/altezza in centimetri, fuori dal perimetro dell'edificio."],
+    "p_holes2": "La finestra ha il telaio sul filo interno del muro; la porta lascia il foro libero. Il comando lavora solo sul disegno: un vano interrotto non è più una polilinea chiusa e non entra più nel calcolo, quindi apri i fori <b>dopo</b> aver calcolato. Ctrl+Z annulla l'ultimo foro.",
 }
