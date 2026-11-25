@@ -12,6 +12,19 @@ del rilascio.
 
 ## [Non rilasciato]
 
+## [0.14.1] - 2026-11-25
+
+> **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
+> professionale.** Fornito così com'è, senza garanzie: l'autore non si assume alcuna
+> responsabilità per il suo uso né per i risultati. Versione di prova.
+
+### Modificato
+- Compilato per **Open CAD Studio v2026.47** (API dei plugin 28): con la
+  v2026.47 la 0.14.0 non si caricava («wire schema»). Serve Open CAD Studio
+  v2026.47 o successiva.
+- **Manuali PDF** nelle 23 lingue: nuovo paragrafo «Porte e finestre» nel
+  capitolo 5, con figura e i passi del pulsante.
+
 ## [0.14.0] - 2026-11-18
 
 > **Progetto hobbistico, realizzato per divertimento e non adatto a un uso
